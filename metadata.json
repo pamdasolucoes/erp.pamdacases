@@ -1,0 +1,6 @@
+{
+  "name": "PAMDA ERP - Sistema B2B Pamda Cases",
+  "description": "ERP B2B completo para Pamda Cases: gestão de clientes, filiais, produtos, kits, produção, estoque, vendas com recibos e Pix, contas a receber e lucratividade gerencial.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

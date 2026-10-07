@@ -1,0 +1,65 @@
+@import "tailwindcss";
+
+/* Estilos de Impressão Profissional para Recibos A4 e Térmica 80mm */
+@media print {
+  /* Ocultar elementos da interface comum */
+  .no-print,
+  nav,
+  aside,
+  header,
+  button,
+  .fixed.inset-0.bg-slate-900\/60 {
+    display: none !important;
+  }
+
+  body {
+    background: #ffffff !important;
+    color: #000000 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Modo Térmica 80mm ativo */
+  body.printing-thermal {
+    width: 80mm !important;
+    max-width: 80mm !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  body.printing-thermal #printable-receipt-a4 {
+    display: none !important;
+  }
+
+  body.printing-thermal #printable-receipt-thermal {
+    display: block !important;
+    width: 76mm !important;
+    max-width: 76mm !important;
+    margin: 0 auto !important;
+    padding: 2mm 3mm !important;
+    font-family: 'Courier New', Courier, monospace !important;
+    font-size: 11px !important;
+    line-height: 1.25 !important;
+    color: #000000 !important;
+  }
+
+  /* Modo Padrão A4 ativo */
+  body:not(.printing-thermal) #printable-receipt-thermal {
+    display: none !important;
+  }
+
+  body:not(.printing-thermal) #printable-receipt-a4 {
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    padding: 10mm !important;
+    box-shadow: none !important;
+    border: none !important;
+  }
+
+  @page {
+    margin: 5mm;
+  }
+}
