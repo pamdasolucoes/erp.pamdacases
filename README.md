@@ -59,8 +59,8 @@ ERP B2B sob medida para a **PAMDA CASES**, projetado para substituir o legado RE
 ## 🛠️ Como Executar Localmente no VS Code
 
 ### Pré-requisitos
-- Node.js 18+ ou 20+
-- npm ou bun
+- Node.js 24.x
+- npm
 
 ### Passos
 ```bash
@@ -69,10 +69,10 @@ git clone <url-do-repositorio>
 cd pamda-erp
 
 # 2. Instale as dependências
-npm install
+npm ci
 
 # 3. Configure as variáveis de ambiente
-cp .env.example .env
+cp .env.example .env.local
 
 # 4. Inicie o servidor de desenvolvimento
 npm run dev
@@ -80,22 +80,26 @@ npm run dev
 
 Abra seu navegador em `http://localhost:3000`.
 
+## Implantação na Vercel
+
+Consulte [DEPLOY_VERCEL.md](./DEPLOY_VERCEL.md) para importar o repositório, configurar o build e entender a persistência de dados da versão atual.
+
 ---
 
 ## 🗄️ Configuração do Supabase (PostgreSQL)
 
 O sistema possui uma camada reativa integrada que já funciona imediatamente para testes e homologação rápida com dados pré-populados da Pamda Cases.
 
-Para conectar diretamente ao seu projeto Supabase de produção:
+O código atual de dados e autenticação usa `localStorage`, sem conexão com o Supabase. Configurar as variáveis abaixo não ativa essa integração. A migração SQL está disponível como base para uma futura integração:
 
 1. Acesse o painel do **Supabase** ([supabase.com](https://supabase.com)).
 2. Crie um novo projeto (ex: `pamda-erp`).
 3. Vá em **SQL Editor** e execute todo o conteúdo do arquivo:
    `supabase/migrations/20261006000000_init_pamda_erp.sql`.
 4. Em **Project Settings -> API**, copie:
-   - `Project URL` -> Coloque em `VITE_SUPABASE_URL` no `.env`.
-   - `anon public key` -> Coloque em `VITE_SUPABASE_ANON_KEY` no `.env`.
-5. Reinicie a aplicação (`npm run dev`).
+   - `Project URL` -> Coloque em `VITE_SUPABASE_URL` no `.env.local`.
+   - `anon public key` -> Coloque em `VITE_SUPABASE_ANON_KEY` no `.env.local`.
+5. Implemente a integração dos serviços de dados e autenticação com o Supabase antes de usar esse banco em produção.
 
 ---
 
