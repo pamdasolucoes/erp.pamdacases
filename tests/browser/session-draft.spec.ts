@@ -3,11 +3,22 @@ import {setup,selectCatalogProduct} from './support/mockErp';
 import {uuid,branchRow} from '../fixtures/customerRows';
 import {kitId} from '../fixtures/officialProducts';
 
+test('login inicia no dashboard independentemente da navegação armazenada',async({page})=>{
+  await page.addInitScript(key=>sessionStorage.setItem(key,'nova_venda'),`pamda_navigation:https://pamda-test.invalid:${uuid(9000)}`);
+  await setup(page,'admin_gerencial',{stayOnDashboard:true});
+  await expect(page.getByText('Dashboard Geral',{exact:true})).toBeVisible();
+  await expect(page.getByRole('button',{name:'Nova Venda',exact:true}).last()).toBeVisible();
+});
+
 async function refresh(page:Page){
   await page.evaluate(async()=>{
     const path='/src/services/supabase.ts'; const {supabase}=await import(path);
     const {error}=await supabase.auth.refreshSession(); if(error) throw new Error('Synthetic refresh failed');
   });
+}
+async function reopenSale(page:Page){
+  await page.getByRole('button',{name:'Nova Venda',exact:true}).first().click();
+  await expect(page.getByRole('heading',{name:'NOVA VENDA',exact:true})).toBeVisible();
 }
 async function prepare(page:Page){
   await page.getByRole('button',{name:'+ NOVA VENDA',exact:true}).click();
@@ -50,24 +61,25 @@ test('unidade única automática, várias sem marcador exigem escolha e escolha 
   await customer.fill('350'); await customer.press('Enter'); await expect(branch).toHaveValue('');
   await expect(page.getByText('Selecione a unidade desejada.')).toBeVisible();
   await branch.selectOption(uuid(1900)); await refresh(page); await expect(branch).toHaveValue(uuid(1900));
-  await page.reload(); await expect(branch).toHaveValue(uuid(1900));
+  await page.reload(); await reopenSale(page); await expect(page.getByRole('combobox',{name:'Unidade / Filial',exact:true})).toHaveValue(uuid(1900));
   await customer.fill('351');await customer.press('Enter');await expect(branch).toHaveValue(uuid(1351));
   expect(state.writes).toEqual([]);
 });
 
 test('recarga, navegação e Nova Venda repetida preservam toda a preparação',async({page})=>{
-  const {state}=await setup(page); await prepare(page);
-  await page.getByRole('button',{name:'Nova Venda',exact:true}).last().click(); await preserved(page);
+  const {state,sales}=await setup(page); await prepare(page);await expect(page.getByTestId('sale-save-state')).toHaveText('Salvo · Pendente');
+  expect(sales.sales[0].first_product_at).not.toBeNull();
+  await page.getByRole('button',{name:'Nova Venda',exact:true}).first().click(); await preserved(page);
   await page.getByRole('button',{name:'Produtos & Serviços',exact:true}).click();
-  await page.getByRole('button',{name:'Nova Venda',exact:true}).last().click(); await preserved(page);
-  await page.reload(); await preserved(page);
+  await reopenSale(page); await preserved(page);
+  await page.reload(); await reopenSale(page); await preserved(page);
   await expect(page.getByRole('button',{name:'Concluir venda',exact:true})).toBeDisabled();
   expect(state.writes).toEqual([]);expect(state.pageErrors).toEqual([]);
 });
 
 test('StrictMode não duplica o ciclo de Auth nem perde a preparação em remontagem',async({page})=>{
   const {state}=await setup(page,'admin_gerencial',{strictMode:true});await prepare(page);
-  await refresh(page);await preserved(page);await page.reload();await preserved(page);
+  await refresh(page);await preserved(page);await page.reload();await reopenSale(page);await preserved(page);
   expect(state.tokenRequests).toBe(2); // One sign-in and one explicit refresh.
   expect(state.writes).toEqual([]);expect(state.pageErrors).toEqual([]);
 });
@@ -110,7 +122,7 @@ test('falha transitória bloqueia sem apagar; negação de perfil e logout real 
   state.profileActive=true;
   await page.getByLabel('E-mail',{exact:true}).fill('ui-test@example.invalid');
   await page.locator('#login-password').fill('synthetic-only');await page.getByRole('button',{name:'Entrar',exact:true}).click();
-  await preserved(page); expect(state.writes).toEqual([]);
+  await reopenSale(page);await preserved(page); expect(state.writes).toEqual([]);
 });
 
 test('logout entre abas não é ignorado, outro usuário não recupera rascunho e nova venda preserva a pendência anterior',async({page,context})=>{
@@ -131,7 +143,7 @@ test('logout entre abas não é ignorado, outro usuário não recupera rascunho 
   await expect(page.getByTestId('sale-save-state')).toHaveText('Salvo · Pendente');
   const previous=sales.sales.find(sale=>sale.created_by===employee.id)!;
   await page.getByRole('button',{name:'Nova venda',exact:true}).click();
-  await expect(page.getByText('Adicione um produto para começar.')).toBeVisible();await page.reload();
+  await expect(page.getByText('Adicione um produto para começar.')).toBeVisible();await page.reload();await reopenSale(page);
   await expect(page.getByText('Adicione um produto para começar.')).toBeVisible();
   expect(sales.sales.find(sale=>sale.id===previous.id)?.status).toBe('draft');
   expect(sales.writes.filter(write=>write.name==='pamda_cancelar_venda')).toEqual([]);

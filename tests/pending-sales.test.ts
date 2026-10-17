@@ -61,6 +61,8 @@ test('permissões são consultadas no backend com o nome real do argumento OpenA
 
 test('cancelamento exige permissão e motivo, preserva evento/registro e rejeita confirmadas',async()=>{
   const admin=pendingBackend();const id=await admin.service.start(admin.user.id,uuid(1),uuid(1001),uuid(8000));
+  await assert.rejects(()=>admin.service.cancel(admin.user.id,id,'Solicitação'),/produtos/);
+  await admin.service.save(admin.user.id,{p_cliente_id:uuid(1),p_filial_id:uuid(1001),p_itens:[{product_id:admin.fixture.products[0].id,quantity:1,unit_price:Number(admin.fixture.products[0].sale_price),customization:{}}],p_frete:null,p_desconto:0,p_motivo:null,p_observacoes:null,p_venda_id:id,p_forma_id:null,p_prazo_id:null});
   await assert.rejects(()=>admin.service.cancel(admin.user.id,id,' '),/motivo/);
   const details=await admin.service.cancel(admin.user.id,id,'Solicitação');assert.equal(details.sale.status,'cancelled');assert.equal(admin.backend.sales.length,1);assert.ok(details.events.some(e=>e.event_type==='sale_cancelled'));
   const seller=pendingBackend('venda_atendimento');const sellerId=await seller.service.start(seller.user.id,uuid(1),uuid(1001),uuid(8000));

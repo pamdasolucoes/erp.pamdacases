@@ -57,6 +57,14 @@ export const NewSaleView: React.FC<NewSaleViewProps> = ({ initialCustomer, onDis
   useEffect(()=>{
     if(!locked&&selected?.active&&branch?.active&&!contextMismatch)workspace.begin();
   },[selected,branch,contextMismatch,workspace,locked]);
+  useEffect(()=>{
+    const discardEmpty=()=>{void workspace.discardEmptyOnExit();};
+    window.addEventListener('pagehide',discardEmpty);
+    return()=>window.removeEventListener('pagehide',discardEmpty);
+  },[workspace]);
+  const confirmFirstProduct=useCallback(async()=>{
+    if(!await workspace.flush())throw new Error('O primeiro produto ainda não foi confirmado pelo Supabase. Tente novamente antes de continuar.');
+  },[workspace]);
 
   return (
     <div className="space-y-5">
@@ -77,6 +85,8 @@ export const NewSaleView: React.FC<NewSaleViewProps> = ({ initialCustomer, onDis
       {notice && <p role="alert" className="text-sm text-amber-900">{notice}</p>}
       {storageError && <p role="alert" className="text-sm text-rose-800">{storageError}</p>}
       <div className="flex flex-wrap items-center justify-between gap-3 text-xs">
+        {draft.remote?.orderNumber!==null&&draft.remote?.orderNumber!==undefined&&
+          <p className="rounded-lg bg-blue-50 px-3 py-2 font-bold text-blue-900">Pedido nº {draft.remote.orderNumber}{draft.remote.firstProductAt===null?' · provisório':''}</p>}
         <p role="status" data-testid="sale-save-state" className={sync.status==='error'?'text-rose-700':'text-slate-500'}>
           {sync.status==='idle'?'Selecione cliente e unidade para iniciar uma pendência.':sync.status==='saving'?'Salvando…':sync.status==='saved'?'Salvo · Pendente':sync.status==='closed'?sync.message:'Erro ao salvar'}
         </p>
@@ -217,6 +227,7 @@ export const NewSaleView: React.FC<NewSaleViewProps> = ({ initialCustomer, onDis
                 selectedCustomer={contextMismatch ? null : selected || null}
                 selectedBranch={branch || null}
                 sellerName={draft.remote?.sellerName}
+                onFirstProductAdded={confirmFirstProduct}
               />
             )}
         </fieldset>

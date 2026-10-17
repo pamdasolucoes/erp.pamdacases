@@ -21,7 +21,7 @@ function usePreparationField<K extends keyof PricingPreparation>(draft:PricingPr
   return [draft[key],value=>update(previous=>({...previous,[key]:typeof value==='function'?(value as (old:PricingPreparation[K])=>PricingPreparation[K])(previous[key]):value}))];
 }
 
-export function SalePricingPanel({ products, customerId, branchId, draft, onDraftChange, sellerName, customerFreight = pendingCustomerFreight, selectedCustomer = null, selectedBranch = null }: { products: readonly OfficialProduct[]; customerId: string | null; branchId: string | null; draft:PricingPreparation; onDraftChange:React.Dispatch<React.SetStateAction<PricingPreparation>>; sellerName?:string; customerFreight?: CustomerFreightSetting; selectedCustomer?: OfficialCustomer | null; selectedBranch?: OfficialCustomerBranch | null }) {
+export function SalePricingPanel({ products, customerId, branchId, draft, onDraftChange, sellerName, customerFreight = pendingCustomerFreight, selectedCustomer = null, selectedBranch = null, onFirstProductAdded }: { products: readonly OfficialProduct[]; customerId: string | null; branchId: string | null; draft:PricingPreparation; onDraftChange:React.Dispatch<React.SetStateAction<PricingPreparation>>; sellerName?:string; customerFreight?: CustomerFreightSetting; selectedCustomer?: OfficialCustomer | null; selectedBranch?: OfficialCustomerBranch | null; onFirstProductAdded():Promise<void> }) {
   const [items, setItems] = usePreparationField(draft,onDraftChange,'items');
   const [discount, setDiscount] = usePreparationField(draft,onDraftChange,'discount');
   const [discountReason, setDiscountReason] = usePreparationField(draft,onDraftChange,'discountReason');
@@ -79,7 +79,7 @@ export function SalePricingPanel({ products, customerId, branchId, draft, onDraf
     };
     setEvents(previousEvents => [...previousEvents, event]);
   }
-  const addItem = (id: string) => {
+  const addItem = async(id: string) => {
     const product = products.find(value => value.id === id && value.active);
     if (!product) return;
     try {
@@ -94,6 +94,7 @@ export function SalePricingPanel({ products, customerId, branchId, draft, onDraf
       committedPrices.current.set(item.id, snapshot.originalUnitPriceCents);
       committedReasons.current.set(item.id, '');
       invalidate(); setItems(next);
+      if(items.length===0)await onFirstProductAdded();
     } catch (reason) { setError(reason instanceof Error ? reason.message : 'Preço de catálogo inválido.'); }
   };
   const commitPrice = (item: PricingDraftItem) => {

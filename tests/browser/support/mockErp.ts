@@ -10,7 +10,7 @@ export async function selectCatalogProduct(page: Page, id: string) {
 }
 
 // API inteiramente sintetica e interceptada. Nenhuma chamada ao projeto real.
-export async function setup(page: Page, role: 'admin_gerencial' | 'venda_atendimento' = 'admin_gerencial', options:{reuseSession?:boolean;strictMode?:boolean}={}) {
+export async function setup(page: Page, role: 'admin_gerencial' | 'venda_atendimento' = 'admin_gerencial', options:{reuseSession?:boolean;strictMode?:boolean;stayOnDashboard?:boolean}={}) {
   const customers = Array.from({ length:384 }, (_,index) => customerRow(index + 1));
   customers[0] = customerRow(1,{ name:'Loja Árvore',company_name:'Comércio Teste',cpf:'123.456.789-01',notes:'  legado  ' });
   customers[349]=customerRow(350,{customer_code:'350',name:'Cristal Centro'});
@@ -98,7 +98,14 @@ export async function setup(page: Page, role: 'admin_gerencial' | 'venda_atendim
     await page.locator('#login-password').fill('only-synthetic-test-password');
     await page.getByRole('button',{ name:'Entrar',exact:true }).click();
   }
-  if (role === 'admin_gerencial') await expect(page.getByText('384 clientes acessíveis')).toBeVisible();
-  else await expect(page.getByText('Teste isolado',{exact:true}).first()).toBeVisible();
+  await expect(page.getByText('Dashboard Geral',{exact:true})).toBeVisible();
+  if(!options.stayOnDashboard){
+    if (role === 'admin_gerencial') {
+      await page.getByRole('button',{name:'Clientes e Unidades',exact:true}).click();
+      await expect(page.getByText('384 clientes acessíveis')).toBeVisible();
+    } else {
+      await expect(page.getByText('Teste isolado',{exact:true}).first()).toBeVisible();
+    }
+  }
   return { state,customers,branches,products,components,employee,sales };
 }

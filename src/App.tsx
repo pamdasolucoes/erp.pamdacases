@@ -56,9 +56,7 @@ export function App() {
         setNewSaleCustomer(null);
         setActiveReceiptSale(null);
         setIsReceiptModalOpen(false);
-        let savedTab:string|null=null;
-        try{savedTab=sessionStorage.getItem(`pamda_navigation:${import.meta.env.VITE_SUPABASE_URL}:${user.id}`);}catch{}
-        setCurrentTab(savedTab&&canAccessTab(user,savedTab)?savedTab as ActiveTab:user.canReadCustomers && user.role !== 'producao' ? 'clientes' : user.role === 'producao' ? 'producao' : 'dashboard');
+        setCurrentTab('dashboard');
       } else if (!user && !loading) {
         authenticatedId.current = null;
         setCustomerContext(null);
@@ -113,7 +111,12 @@ export function App() {
     setHistoryCustomer(customer);
     setCurrentTab('vendas');
   };
-  const navigate = (tab: ActiveTab) => {
+  const navigate = async(tab: ActiveTab) => {
+    if(currentTab==='nova_venda'&&tab!=='nova_venda'&&currentUser){
+      setNavigationError('');
+      try{await saleWorkspace(currentUser.id).leave();}
+      catch(error){setNavigationError(error instanceof Error?error.message:'Não foi possível concluir a saída da venda.');return;}
+    }
     if (tab === 'nova_venda') { openNewSale(); return; }
     if (tab === 'vendas') setHistoryCustomer(null);
     setCurrentTab(tab);

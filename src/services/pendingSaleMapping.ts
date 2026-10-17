@@ -53,7 +53,7 @@ export function preparationFromSale(userId:string,details:SaleDetails):SalePrepa
       customization:{...item.customization,model:typeof item.customization?.model==='string'?item.customization.model:'',color:typeof item.customization?.color==='string'?item.customization.color:'',
         walletFaces:item.customization?.walletFaces==='1'||item.customization?.walletFaces==='2'?item.customization.walletFaces:''},
     }))};
-  draft.remote={draftKey:sale.draft_key||crypto.randomUUID(),saleId:sale.id,initialCustomerId:sale.customer_id,initialBranchId:sale.branch_id,savedFingerprint:null,status:sale.status,sellerName:sale.seller_snapshot};
+  draft.remote={draftKey:sale.draft_key||crypto.randomUUID(),saleId:sale.id,initialCustomerId:sale.customer_id,initialBranchId:sale.branch_id,savedFingerprint:null,status:sale.status,sellerName:sale.seller_snapshot,orderNumber:sale.order_number,firstProductAt:sale.first_product_at};
   // An uneditable/legacy value is retained for inspection, rather than silently dropped.
   try{draft.remote.savedFingerprint=pendingFingerprint(draft);}catch{}
   return draft;

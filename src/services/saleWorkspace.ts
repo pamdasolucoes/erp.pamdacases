@@ -40,10 +40,36 @@ export class SaleWorkspace {
   begin=()=>{
     if(!this.allowed())return;
     const draft=this.store.getSnapshot();
-    if(!draft.remote&&draft.customerId&&draft.branchId)this.store.update({...draft,remote:{draftKey:crypto.randomUUID(),saleId:null,initialCustomerId:draft.customerId,initialBranchId:draft.branchId,savedFingerprint:null,status:'draft'}});
+    if(!draft.remote&&draft.customerId&&draft.branchId)this.store.update({...draft,remote:{draftKey:crypto.randomUUID(),saleId:null,initialCustomerId:draft.customerId,initialBranchId:draft.branchId,savedFingerprint:null,status:'draft',orderNumber:null,firstProductAt:null}});
     this.activate();
   };
   async flush(){return this.sync?this.sync.flush():true;}
+  private async discardIfNeverHadProducts(){
+    const remote=this.store.getSnapshot().remote;
+    if(!remote?.saleId)return false;
+    const progress=await pendingSalesService.progress(this.userId,remote.saleId);
+    this.store.update(current=>current.remote?.saleId===remote.saleId?
+      {...current,remote:{...current.remote,...progress}}:current);
+    if(progress.firstProductAt!==null)return false;
+    const discarded=await pendingSalesService.discardEmpty(this.userId,remote.saleId);
+    if(!discarded)throw new Error('O servidor não descartou a venda vazia. A pendência foi preservada para nova consulta.');
+    return true;
+  }
+  async leave(){
+    if(!await this.flush())throw new Error('As alterações ainda não foram confirmadas. Tente salvar antes de sair.');
+    await this.pause();
+    if(await this.discardIfNeverHadProducts())this.store.update(emptySalePreparation(this.userId));
+  }
+  async discardEmptyOnExit(){
+    const draft=this.store.getSnapshot(),remote=draft.remote;
+    if(!remote?.saleId||remote.firstProductAt!==null||draft.pricing.items.length>0||this.getSyncState().status==='saving'||this.getSyncState().status==='error')return;
+    try{
+      const discarded=await pendingSalesService.discardEmpty(this.userId,remote.saleId);
+      if(discarded)this.store.update(emptySalePreparation(this.userId));
+    }catch(error){
+      console.warn('Descarte de venda vazia durante o encerramento não confirmado; a pendência continua consultável no Supabase.',error);
+    }
+  }
   async retry(){await this.sync?.retry();}
   async revalidate(){await this.sync?.revalidate();}
   acceptClosed(details:SaleDetails){this.sync?.acceptClosed(details);}
@@ -57,7 +83,9 @@ export class SaleWorkspace {
   }
   async newDraft(){
     if(!await this.flush())throw new Error('Há alterações ainda não salvas. Tente salvar novamente antes de iniciar outra venda.');
-    await this.pause();this.store.update(emptySalePreparation(this.userId));
+    await this.pause();
+    await this.discardIfNeverHadProducts();
+    this.store.update(emptySalePreparation(this.userId));
   }
   dispose(){this.unsubscribeStore();this.unsubscribeSync?.();this.sync?.dispose();this.listeners.clear();}
 }

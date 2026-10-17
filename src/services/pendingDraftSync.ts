@@ -24,10 +24,11 @@ export class PendingDraftSync {
     this.queue=new SerialSaveQueue(async draft=>{
       if(!this.allowed())throw new Error('Valide sua sessão para salvar as alterações.');
       const id=draft.remote?.saleId;if(!id)throw new Error('A venda ainda não foi iniciada.');
-      await service.save(store.userId,pendingSaleArgs(draft,id));
+      const progress=await service.save(store.userId,pendingSaleArgs(draft,id));
       if(this.disposed)return;
       const savedFingerprint=pendingFingerprint(draft);
-      store.update(current=>current.remote&&current.remote.draftKey===draft.remote?.draftKey?{...current,remote:{...current.remote,savedFingerprint}}:current);
+      store.update(current=>current.remote&&current.remote.draftKey===draft.remote?.draftKey?
+        {...current,remote:{...current.remote,...progress,savedFingerprint}}:current);
     });
     this.queue.subscribe(value=>{
       if(this.disposed||this.state.status==='closed'||this.suppress)return;
@@ -44,7 +45,7 @@ export class PendingDraftSync {
   begin(){
     const draft=this.store.getSnapshot();
     if(!draft.remote&&draft.customerId&&draft.branchId){
-      this.store.update({...draft,remote:{draftKey:crypto.randomUUID(),saleId:null,initialCustomerId:draft.customerId,initialBranchId:draft.branchId,savedFingerprint:null,status:'draft'}});
+      this.store.update({...draft,remote:{draftKey:crypto.randomUUID(),saleId:null,initialCustomerId:draft.customerId,initialBranchId:draft.branchId,savedFingerprint:null,status:'draft',orderNumber:null,firstProductAt:null}});
     }
     void this.changed();
   }
@@ -60,6 +61,10 @@ export class PendingDraftSync {
     const details=await this.service.details(this.store.userId,id);
     if(this.disposed)return;
     const current=this.store.getSnapshot();if(current.remote?.draftKey!==remote.draftKey)return;
+    const progress={orderNumber:details.sale.order_number,firstProductAt:details.sale.first_product_at};
+    this.suppress=true;
+    this.store.update(value=>value.remote?.draftKey===remote.draftKey?{...value,remote:{...value.remote,...progress}}:value);
+    this.suppress=false;
     let clean=false;try{clean=!!remote.savedFingerprint&&pendingFingerprint(current)===remote.savedFingerprint;}catch{}
     this.suppress=true;
     if(remote.saleId&&clean||details.sale.status!=='draft')this.store.update(preparationFromSale(this.store.userId,details));
@@ -68,7 +73,7 @@ export class PendingDraftSync {
       return {...value,paymentMethodId:value.paymentMethodId??details.sale.payment_method_id,paymentTermId:value.paymentTermId??details.sale.payment_term_id,
         pricing:!remote.saleId&&sameCustomer&&!value.pricing.manualFreight&&!value.pricing.freight&&details.sale.shipping_confirmed&&details.sale.shipping_charged!==null?
           {...value.pricing,freight:String(details.sale.shipping_charged).replace('.',','),manualFreight:false}:value.pricing,
-        remote:{...value.remote!,status:details.sale.status,sellerName:details.sale.seller_snapshot}};
+        remote:{...value.remote!,status:details.sale.status,sellerName:details.sale.seller_snapshot,...progress}};
     });
     this.suppress=false;this.initialized=true;
     if(details.sale.status!=='draft')this.publish({status:'closed',message:details.sale.status==='cancelled'?'Esta venda foi cancelada. A edição está bloqueada.':'Esta venda está confirmada. A edição está bloqueada.'});

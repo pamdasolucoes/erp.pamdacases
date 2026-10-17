@@ -21,5 +21,6 @@ export interface SalePreparation {
   remote?: {
     draftKey:string; saleId:string|null; initialCustomerId:string; initialBranchId:string;
     savedFingerprint:string|null; status:'draft'|'confirmed'|'cancelled'; sellerName?:string;
+    orderNumber:number|null; firstProductAt:string|null;
   };
 }

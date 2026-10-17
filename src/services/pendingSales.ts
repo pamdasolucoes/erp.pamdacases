@@ -4,7 +4,7 @@ import { isUuid } from './customerEdits';
 import { dbCents } from './pendingSaleMapping';
 import { readAllPages } from './readPages';
 
-export const PENDING_COLUMNS='id,customer_id,branch_id,created_by,created_at,updated_at,customer_snapshot,branch_snapshot,seller_snapshot,subtotal,discount_amount,shipping_charged,shipping_confirmed,total,notes';
+export const PENDING_COLUMNS='id,order_number,first_product_at,customer_id,branch_id,created_by,created_at,updated_at,customer_snapshot,branch_snapshot,seller_snapshot,subtotal,discount_amount,shipping_charged,shipping_confirmed,total,notes';
 export const SALE_COLUMNS=PENDING_COLUMNS+',status,confirmed_at,payment_method_id,payment_term_id,discount_reason,shipping_actual_cost,draft_key,cancelled_at,cancelled_by,cancellation_reason';
 export const ITEM_COLUMNS='id,sale_id,product_id,product_code_snapshot,product_sku_snapshot,description_snapshot,quantity,negotiated_unit_price,line_subtotal,customization,created_at';
 export const EVENT_COLUMNS='id,sale_id,actor_user_id,event_type,details,occurred_at';
@@ -26,6 +26,8 @@ export function permissionArgument(spec:any):string {
 function validateSale(row:PendingSaleRow) {
   if(!row||![row.id,row.customer_id,row.branch_id,row.created_by].every(id=>typeof id==='string'&&isUuid(id))||
     !Number.isFinite(Date.parse(row.created_at))||!Number.isFinite(Date.parse(row.updated_at))||typeof row.seller_snapshot!=='string'||
+    !Number.isSafeInteger(row.order_number)||row.order_number<10000||
+    !(row.first_product_at===null||Number.isFinite(Date.parse(row.first_product_at)))||
     !row.customer_snapshot||!row.branch_snapshot||typeof row.shipping_confirmed!=='boolean') throw new Error('Dados de venda incompatíveis com o contrato oficial.');
   [row.subtotal,row.discount_amount,row.total].forEach(dbCents);if(row.shipping_charged!==null)dbCents(row.shipping_charged);
 }
@@ -57,13 +59,33 @@ export class PendingSalesService {
       if(error)throw saleError(error);if(typeof data!=='string'||!isUuid(data))throw new Error('O servidor não confirmou a venda iniciada.');return data;
     });
   }
-  async save(userId:string,args:SavePendingSaleArgs):Promise<void>{
+  async save(userId:string,args:SavePendingSaleArgs):Promise<{orderNumber:number;firstProductAt:string|null}>{
     if(!isUuid(args.p_venda_id))throw new Error('A venda precisa ser iniciada antes de salvar.');
-    await this.lock(args.p_venda_id,async()=>{
+    return this.lock(args.p_venda_id,async()=>{
       await this.identity(userId);
       const {data,error}=await this.client!.rpc('pamda_salvar_rascunho_venda',args);
       if(error)throw saleError(error);if(data!==args.p_venda_id)throw new Error('O servidor não confirmou a venda esperada.');
+      return this.progress(userId,args.p_venda_id);
     });
+  }
+  async discardEmpty(userId:string,saleId:string):Promise<boolean>{
+    if(!isUuid(saleId))throw new Error('Venda inválida para descarte.');
+    return this.lock(saleId,async()=>{
+      await this.identity(userId);
+      const {data,error}=await this.client!.rpc('pamda_descartar_venda_vazia',{p_venda_id:saleId});
+      if(error)throw saleError(error);
+      if(typeof data!=='boolean')throw new Error('O servidor não confirmou o descarte da venda vazia.');
+      return data;
+    });
+  }
+  async progress(userId:string,saleId:string):Promise<{orderNumber:number;firstProductAt:string|null}>{
+    await this.identity(userId);
+    if(!isUuid(saleId))throw new Error('Venda inválida para consultar numeração.');
+    const {data,error}=await this.client!.from('erp_sales').select('order_number,first_product_at').eq('id',saleId).returns<{order_number:number;first_product_at:string|null}[]>().maybeSingle();
+    if(error)throw saleError(error);
+    if(!data||!Number.isSafeInteger(data.order_number)||data.order_number<10000||
+      !(data.first_product_at===null||Number.isFinite(Date.parse(data.first_product_at))))throw new Error('O servidor retornou numeração de venda inválida.');
+    return {orderNumber:data.order_number,firstProductAt:data.first_product_at};
   }
   private async rows<T>(table:string,columns:string,filter:(query:any)=>any):Promise<T[]>{
     const rows=await readAllPages<T>(async(from,to)=>{

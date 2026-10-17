@@ -6,6 +6,7 @@ export interface PendingSaleRow {
   branch_snapshot:Record<string,unknown>; seller_snapshot:string;
   subtotal:DbNumeric; discount_amount:DbNumeric; shipping_charged:DbNumeric|null;
   shipping_confirmed:boolean; total:DbNumeric; notes:string|null;
+  order_number:number; first_product_at:string|null;
 }
 export interface OfficialSaleRow extends PendingSaleRow {
   status:OfficialSaleStatus; confirmed_at:string|null; payment_method_id:string|null;
