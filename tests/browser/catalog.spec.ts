@@ -1,0 +1,63 @@
+import { expect, test, type Page } from '@playwright/test';
+import { setup } from './support/mockErp';
+import { kitId, productId } from '../fixtures/officialProducts';
+
+const openCatalog = async (page:Page) => page.getByRole('button',{name:'Produtos & Serviços',exact:true}).click();
+test('catalogo oficial preserva layout, tipos, precos NULL, componentes e miniaturas sem escrita',async({page},testInfo)=>{
+  await page.addInitScript(()=>localStorage.setItem('pamda_products',JSON.stringify([{id:'fake',name:'Produto fictício proibido',salePrice:999}])));
+  const {state,products}=await setup(page);
+  const before=structuredClone(products);
+  await openCatalog(page);
+  await expect(page.getByText(/637 itens oficiais · 316 físicos · 4 serviços · 317 kits · 0 insumos · 634 vínculos/)).toBeVisible();
+  await expect(page.getByRole('table').getByRole('row')).toHaveCount(638);
+  for(const name of ['Novo Produto','Novo Kit Composto','Duplicar Produto + Kit']) await expect(page.getByRole('button',{name,exact:true})).toBeDisabled();
+  const physical=page.getByTestId(`product-${productId(1)}`);
+  await expect(physical).toContainText('SKU-CAPA-201'); await expect(physical).toContainText('Não conferido');
+  await expect(physical.locator('img')).toBeVisible();
+  const unknown=page.getByTestId(`product-${productId(2)}`);
+  await expect(unknown.locator('td').nth(3)).toHaveText('Não informado'); await expect(unknown.locator('td').nth(4)).toContainText('0,00');
+  await expect(page.getByTestId(`product-${productId(3)}`).locator('td').nth(5)).toHaveText('Não informado');
+  await page.getByRole('button',{name:'Produtos Físicos',exact:true}).click(); await expect(page.getByRole('table').getByRole('row')).toHaveCount(317);
+  await page.getByRole('button',{name:'Serviços (DTF UV)',exact:true}).click(); await expect(page.getByRole('table').getByRole('row')).toHaveCount(5);
+  await page.getByRole('button',{name:'Kits Compostos',exact:true}).last().click(); await expect(page.getByRole('table').getByRole('row')).toHaveCount(318);
+  const search=page.getByRole('textbox',{name:'Buscar produtos por nome, SKU ou código'});
+  await search.fill('20201'); await expect(page.getByRole('table').getByRole('row')).toHaveCount(2);
+  const kit=page.getByTestId(`product-${kitId(1)}`);
+  await expect(kit).toContainText('2 componentes (1 × Capa TPU transparente, 1 × Serviço de impressão 1)');
+  await expect(kit.locator('td').nth(5)).toContainText('25,00');
+  await expect(kit.getByRole('button',{name:'Editar Capa TPU personalizada'})).toBeDisabled();
+  await expect(kit.getByRole('button',{name:'Clonar Capa TPU personalizada'})).toBeDisabled();
+  await search.fill('SKU-KIT-1'); await expect(kit).toBeVisible();
+  await search.fill('TPU personalizada'); await expect(page.getByRole('table').getByRole('row')).toHaveCount(2);
+  await page.screenshot({path:testInfo.outputPath('catalogo-desktop.png')});
+  await page.getByRole('button',{name:'Insumos',exact:true}).click(); await expect(page.getByText('Nenhum produto encontrado para esta pesquisa.')).toBeVisible();
+  expect(products).toEqual(before); expect(state.writes).toEqual([]); expect(state.pageErrors).toEqual([]); expect(state.productReads).toBeGreaterThan(30);
+});
+test('erro de permissao ou rede nao mostra produtos locais e nova consulta usa dados do servidor',async({page})=>{
+  const {state,products}=await setup(page);
+  state.productError='42501'; await openCatalog(page);
+  await expect(page.getByRole('alert')).toContainText('não tem permissão'); await expect(page.getByRole('table')).toHaveCount(0);
+  state.productError='network'; await page.getByRole('button',{name:'Tentar novamente',exact:true}).click();
+  await expect(page.getByRole('alert')).toContainText('conexão',{timeout:15000});
+  state.productError=''; products[0].sale_price=12.34;
+  await page.getByRole('button',{name:'Tentar novamente',exact:true}).click();
+  await expect(page.getByTestId(`product-${productId(1)}`).locator('td').nth(5)).toContainText('12,34');
+  products[0].sale_price=13;
+  await page.reload(); // O módulo atual é recuperado, sem redirecionar para Clientes.
+  await expect(page.getByTestId(`product-${productId(1)}`).locator('td').nth(5)).toContainText('13,00');
+  expect(state.writes).toEqual([]); expect(state.pageErrors).toEqual([]);
+});
+test('catalogo vazio nao e substituido por dados ficticios e frete padrao nao pode ser salvo',async({page})=>{
+  const {state}=await setup(page);
+  await expect(page.getByText('Pendente de integração',{exact:true})).toBeVisible();
+  await page.getByRole('button',{name:'EDITAR',exact:true}).click();
+  await expect(page.getByLabel('FRETE PADRÃO (R$)',{exact:true})).toBeDisabled();
+  await expect(page.getByText(/Este campo não pode ser salvo nesta etapa/)).toBeVisible();
+  await page.getByRole('button',{name:'Salvar alterações',exact:true}).click();
+  await expect(page.getByRole('alert')).toContainText('Nenhuma alteração');
+  await page.getByRole('button',{name:'Cancelar',exact:true}).click();
+  expect(state.writes).toEqual([]);
+  state.emptyCatalog=true; await openCatalog(page);
+  await expect(page.getByText('Nenhum produto disponível para esta conta.')).toBeVisible();
+  await expect(page.getByText(/0 itens oficiais/)).toBeVisible();
+});

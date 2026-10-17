@@ -10,7 +10,7 @@ export const SalesReportView: React.FC = () => {
   const [endDate, setEndDate] = useState('2026-10-31');
 
   const sales = dbService.getSales();
-  const customers = dbService.getCustomers();
+  const customers = dbService.getDemoCustomers();
 
   // Filtrar vendas no período
   const periodSales = useMemo(() => {

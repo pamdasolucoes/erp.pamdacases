@@ -1,14 +1,15 @@
 import React, { useState } from 'react';
-import { Eye, EyeOff, Lock, User as UserIcon, ShieldCheck } from 'lucide-react';
+import { Eye, EyeOff, Lock, Mail } from 'lucide-react';
 import { authService } from '../../services/auth';
 import { PamdaLogo } from '../common/PamdaLogo';
 
 interface LoginViewProps {
   onLoginSuccess: () => void;
+  sessionError?: string | null;
 }
 
-export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
-  const [username, setUsername] = useState('');
+export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, sessionError }) => {
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -16,8 +17,8 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!username.trim() || !password) {
-      setErrorMessage('Por favor, informe seu usuário e senha.');
+    if (!email.trim() || !password) {
+      setErrorMessage('Por favor, informe seu e-mail e senha.');
       return;
     }
 
@@ -25,7 +26,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
     setErrorMessage('');
 
     try {
-      const res = await authService.login(username, password);
+      const res = await authService.login(email, password);
       if (res.success) {
         onLoginSuccess();
       } else {
@@ -36,12 +37,6 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleQuickLogin = (u: string, p: string) => {
-    setUsername(u);
-    setPassword(p);
-    setErrorMessage('');
   };
 
   return (
@@ -108,32 +103,36 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
                 Bem-vindo ao PAMDA ERP
               </h2>
               <p className="text-xs sm:text-sm text-slate-500 mt-1">
-                Entre com seu <strong className="font-semibold text-slate-700">usuário</strong> e <strong className="font-semibold text-slate-700">senha</strong> para acessar o sistema.
+                Entre com seu <strong className="font-semibold text-slate-700">e-mail</strong> e <strong className="font-semibold text-slate-700">senha</strong> para acessar o sistema.
               </p>
             </div>
 
-            {errorMessage && (
+            {(errorMessage || sessionError) && (
               <div className="mb-5 p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-medium flex items-center gap-2">
                 <span>⚠️</span>
-                <span>{errorMessage}</span>
+                <span role="alert">{errorMessage || sessionError}</span>
               </div>
             )}
 
             <form onSubmit={handleSubmit} className="space-y-4">
-              {/* Usuário (SEM campo de e-mail na interface!) */}
               <div>
                 <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                  Usuário
+                  E-mail
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-                    <UserIcon className="w-4 h-4" />
+                    <Mail className="w-4 h-4" />
                   </div>
                   <input
-                    type="text"
-                    value={username}
-                    onChange={(e) => setUsername(e.target.value)}
-                    placeholder="Digite seu usuário"
+                    type="email"
+                    id="login-email"
+                    name="email"
+                    autoComplete="email"
+                    aria-label="E-mail"
+                    required
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="Digite seu e-mail"
                     className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600 focus:bg-white transition-all font-medium"
                     autoFocus
                   />
@@ -151,6 +150,11 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
                   </div>
                   <input
                     type={showPassword ? 'text' : 'password'}
+                    id="login-password"
+                    name="password"
+                    autoComplete="current-password"
+                    aria-label="Senha"
+                    required
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="Digite sua senha"
@@ -176,35 +180,6 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
               </button>
             </form>
 
-            {/* Quick Access switcher for testing roles seamlessly */}
-            <div className="mt-8 pt-6 border-t border-slate-100">
-              <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">
-                Acessos Rápidos de Demonstração:
-              </p>
-              <div className="flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  onClick={() => handleQuickLogin('admin', 'admin123')}
-                  className="px-2.5 py-1.5 bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 rounded-lg text-xs font-semibold cursor-pointer transition-colors"
-                >
-                  👑 Admin (admin123)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleQuickLogin('vendedor', 'venda123')}
-                  className="px-2.5 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-lg text-xs font-semibold cursor-pointer transition-colors"
-                >
-                  🛒 Vendedor (venda123)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleQuickLogin('producao', 'prod123')}
-                  className="px-2.5 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 rounded-lg text-xs font-semibold cursor-pointer transition-colors"
-                >
-                  ⚙️ Produção (prod123)
-                </button>
-              </div>
-            </div>
           </div>
         </div>
       </div>

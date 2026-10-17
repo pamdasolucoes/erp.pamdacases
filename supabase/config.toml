@@ -1,0 +1,6 @@
+project_id = "erp-pamda"
+
+[functions.pamda-auth]
+# Login é anônimo. Todas as demais ações validam JWT e funcionário no handler.
+verify_jwt = false
+import_map = "./functions/deno.json"

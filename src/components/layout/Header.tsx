@@ -1,7 +1,6 @@
 import React from 'react';
 import { Menu, Plus, Bell, Shield, User as UserIcon } from 'lucide-react';
 import { User } from '../../types/erp';
-import { authService } from '../../services/auth';
 import { PamdaLogo } from '../common/PamdaLogo';
 
 interface HeaderProps {
@@ -57,55 +56,6 @@ export const Header: React.FC<HeaderProps> = ({
         <div className="h-6 w-px bg-slate-200 mx-1 hidden sm:block" />
 
         <div className="flex items-center gap-2 pl-1">
-          {/* Quick role switcher for testing */}
-          <div className="flex items-center bg-slate-100 p-0.5 rounded-xl text-[10px] font-bold border border-slate-200">
-            <button
-              type="button"
-              onClick={() => {
-                const adminUser = authService.getUsers().find((u) => u.role === 'admin_gerencial');
-                if (adminUser) authService.switchUser(adminUser.id);
-              }}
-              className={`px-2 py-1 rounded-lg transition-colors cursor-pointer ${
-                currentUser?.role === 'admin_gerencial'
-                  ? 'bg-purple-700 text-white shadow-2xs font-extrabold'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-              title="Testar como Administrador Gerencial (acesso a todas as métricas)"
-            >
-              Admin
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                const vendedorUser = authService.getUsers().find((u) => u.role === 'venda_atendimento');
-                if (vendedorUser) authService.switchUser(vendedorUser.id);
-              }}
-              className={`px-2 py-1 rounded-lg transition-colors cursor-pointer ${
-                currentUser?.role === 'venda_atendimento'
-                  ? 'bg-blue-600 text-white shadow-2xs font-extrabold'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-              title="Testar como Vendedor (métricas restritas conforme permissão)"
-            >
-              Vendedor
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                const prodUser = authService.getUsers().find((u) => u.role === 'producao');
-                if (prodUser) authService.switchUser(prodUser.id);
-              }}
-              className={`px-2 py-1 rounded-lg transition-colors cursor-pointer ${
-                currentUser?.role === 'producao'
-                  ? 'bg-amber-600 text-white shadow-2xs font-extrabold'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-              title="Testar como Operador Produção"
-            >
-              Produção
-            </button>
-          </div>
-
           <div className="w-8 h-8 rounded-full bg-slate-900 text-white flex items-center justify-center font-bold text-xs uppercase shadow-xs">
             {currentUser?.username.substring(0, 2).toUpperCase() || 'AD'}
           </div>

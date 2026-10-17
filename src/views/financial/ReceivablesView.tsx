@@ -36,7 +36,7 @@ export const ReceivablesView: React.FC<ReceivablesViewProps> = ({ onViewReceipt 
     setSales(dbService.getSales());
   };
 
-  const customers = dbService.getCustomers();
+  const customers = dbService.getDemoCustomers();
 
   // Filtragem
   const filteredSales = sales.filter((s) => {

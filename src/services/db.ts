@@ -1,3 +1,5 @@
+// Dados locais exclusivos dos modulos de demonstracao. O cadastro oficial usa
+// customerService/CustomersService e nunca e persistido por este servico.
 import {
   Customer,
   Product,
@@ -1136,7 +1138,7 @@ class DatabaseService {
   }
 
   // Clientes
-  public getCustomers(): Customer[] {
+  public getDemoCustomers(): Customer[] {
     return [...this.customers];
   }
 

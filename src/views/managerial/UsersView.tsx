@@ -1,332 +1,110 @@
-import React, { useState } from 'react';
-import { Users, Plus, Shield, CheckCircle2, XCircle, Key, Edit2 } from 'lucide-react';
-import { User, UserRole } from '../../types/erp';
+import React, { useEffect, useState } from 'react';
+import type { User } from '../../types/erp';
+import type { EmployeeInput } from '../../types/employees';
 import { authService } from '../../services/auth';
+import { employeeService } from '../../services/employees';
 import { Modal } from '../../components/common/Modal';
 
+const emptyForm = (): EmployeeInput => ({ username: '', name: '', password: '', role: 'venda_atendimento', active: true, canReadCustomers: false, canViewFinancialMetrics: false });
+
 export const UsersView: React.FC = () => {
-  const [users, setUsers] = useState<User[]>(authService.getUsers());
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingUserId, setEditingUserId] = useState<string | null>(null);
+  const [employees, setEmployees] = useState<User[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
+  const [editing, setEditing] = useState<User | null>(null);
+  const [open, setOpen] = useState(false);
+  const [form, setForm] = useState<EmployeeInput>(emptyForm);
+  const [busy, setBusy] = useState(false);
+  const [resetting, setResetting] = useState<User | null>(null);
+  const [temporaryPassword, setTemporaryPassword] = useState('');
+  const user = authService.getCurrentUser();
 
-  const [form, setForm] = useState({
-    username: '',
-    name: '',
-    role: 'venda_atendimento' as UserRole,
-    password: '',
-    canViewFinancialMetrics: false,
-    active: true,
-  });
+  async function load() {
+    setLoading(true);
+    setError('');
+    try { setEmployees(await employeeService.list()); }
+    catch (error) { setError(error instanceof Error ? error.message : 'Erro ao carregar funcionários.'); }
+    finally { setLoading(false); }
+  }
+  useEffect(() => { void load(); }, []);
+  if (user?.role !== 'admin_gerencial') return <p role="alert">Acesso não autorizado.</p>;
 
-  const refreshUsers = () => {
-    setUsers(authService.getUsers());
-  };
-
-  const handleOpenNewUser = () => {
-    setEditingUserId(null);
-    setForm({
-      username: '',
-      name: '',
-      role: 'venda_atendimento',
-      password: '',
-      canViewFinancialMetrics: false,
-      active: true,
-    });
-    setIsModalOpen(true);
-  };
-
-  const handleOpenEditUser = (user: User) => {
-    setEditingUserId(user.id);
-    setForm({
-      username: user.username,
-      name: user.name,
-      role: user.role,
-      password: '', // deixar vazio se não quiser alterar senha
-      canViewFinancialMetrics: user.role === 'admin_gerencial' ? true : !!user.canViewFinancialMetrics,
-      active: user.active,
-    });
-    setIsModalOpen(true);
-  };
-
-  const handleToggleFinancialPermission = async (userId: string) => {
-    await authService.toggleUserFinancialMetrics(userId);
-    refreshUsers();
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!form.username.trim() || !form.name.trim()) {
-      alert('Nome e Nome de usuário são obrigatórios.');
-      return;
-    }
-
-    if (editingUserId) {
-      const res = await authService.updateUser(editingUserId, {
-        name: form.name,
-        role: form.role,
-        active: form.active,
-        canViewFinancialMetrics: form.role === 'admin_gerencial' ? true : form.canViewFinancialMetrics,
-        newPassword: form.password ? form.password : undefined,
-      });
-      if (res.success) {
-        alert('Usuário atualizado com sucesso!');
-        refreshUsers();
-        setIsModalOpen(false);
-      } else {
-        alert(res.error);
-      }
-    } else {
-      if (!form.password) {
-        alert('A senha é obrigatória para um novo usuário.');
-        return;
-      }
-      const res = await authService.createUser({
-        username: form.username,
-        name: form.name,
-        role: form.role,
-        password: form.password,
-        canViewFinancialMetrics: form.role === 'admin_gerencial' ? true : form.canViewFinancialMetrics,
-        active: form.active,
-      });
-      if (res.success) {
-        alert('Novo usuário cadastrado com sucesso!');
-        refreshUsers();
-        setIsModalOpen(false);
-      } else {
-        alert(res.error);
-      }
-    }
-  };
-
+  function edit(employee: User | null) {
+    setEditing(employee);
+    setForm(employee ? { username: employee.username, name: employee.name, password: '', role: employee.role, active: employee.active, canReadCustomers: !!employee.canReadCustomers, canViewFinancialMetrics: !!employee.canViewFinancialMetrics } : emptyForm());
+    setError('');
+    setOpen(true);
+  }
+  async function save(event: React.FormEvent) {
+    event.preventDefault();
+    setBusy(true);
+    setError('');
+    try {
+      if (editing) await employeeService.update(editing.id, form);
+      else await employeeService.create(form);
+      setOpen(false);
+      setForm(emptyForm());
+      setNotice(editing ? 'Funcionário atualizado.' : 'Funcionário criado. Entregue a senha temporária por canal privado; a troca será exigida no primeiro acesso.');
+      await load();
+      if (editing?.id === user?.id) await authService.refresh();
+    } catch (error) { setError(error instanceof Error ? error.message : 'Não foi possível salvar.'); }
+    finally { setBusy(false); }
+  }
+  async function resetPassword(event: React.FormEvent) {
+    event.preventDefault();
+    if (!resetting) return;
+    setBusy(true);
+    setError('');
+    try {
+      await employeeService.resetPassword(resetting.id, temporaryPassword);
+      setResetting(null);
+      setTemporaryPassword('');
+      setNotice('Senha temporária redefinida. Confirme a identidade do funcionário e entregue a senha por canal privado.');
+      await load();
+      if (resetting.id === user?.id) await authService.refresh();
+    } catch (error) { setError(error instanceof Error ? error.message : 'Não foi possível redefinir a senha.'); }
+    finally { setBusy(false); }
+  }
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
-            Gestão de Usuários & Níveis de Acesso
-          </h1>
-          <p className="text-xs text-slate-500">
-            Controle de operadores, vendedores e equipe de produção (sem exigência de e-mail)
-          </p>
-        </div>
-
-        <button
-          onClick={handleOpenNewUser}
-          className="flex items-center gap-1.5 px-4 py-2 bg-purple-700 hover:bg-purple-800 text-white text-xs font-bold rounded-xl shadow-xs transition-colors cursor-pointer"
-        >
-          <Plus className="w-4 h-4" />
-          <span>Novo Usuário</span>
-        </button>
+    <section className="space-y-5">
+      <div className="flex justify-between items-center gap-3">
+        <div><h1 className="text-xl font-bold text-slate-900">Funcionários e acessos</h1><p className="text-sm text-slate-500">Contas de acesso ao ERP Pamda</p></div>
+        <button onClick={() => edit(null)} className="bg-blue-600 text-white rounded-xl px-4 py-2 text-sm font-bold">Novo funcionário</button>
       </div>
-
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold uppercase text-[11px]">
-              <tr>
-                <th className="py-3 px-5">Nome do Funcionário</th>
-                <th className="py-3 px-4">Usuário (Login)</th>
-                <th className="py-3 px-4">Perfil / Permissão</th>
-                <th className="py-3 px-4 text-center">Faturamento no Dashboard</th>
-                <th className="py-3 px-4 text-center">Status</th>
-                <th className="py-3 px-4">Data Cadastro</th>
-                <th className="py-3 px-5 text-right">Ação</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 text-slate-700">
-              {users.map((u) => {
-                const isGerencial = u.role === 'admin_gerencial';
-                const hasFinancialAccess = isGerencial || !!u.canViewFinancialMetrics;
-                return (
-                  <tr key={u.id} className="hover:bg-slate-50/70">
-                    <td className="py-3 px-5 font-bold text-slate-900">
-                      {u.name}
-                    </td>
-                    <td className="py-3 px-4 font-mono font-semibold text-blue-700">
-                      {u.username}
-                    </td>
-                    <td className="py-3 px-4">
-                      <span
-                        className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase ${
-                          u.role === 'admin_gerencial'
-                            ? 'bg-purple-100 text-purple-800 border border-purple-200'
-                            : u.role === 'venda_atendimento'
-                            ? 'bg-blue-100 text-blue-800 border border-blue-200'
-                            : 'bg-amber-100 text-amber-800 border border-amber-200'
-                        }`}
-                      >
-                        {u.role === 'admin_gerencial'
-                          ? 'Admin / Gerencial'
-                          : u.role === 'venda_atendimento'
-                          ? 'Venda / Atendimento'
-                          : 'Produção'}
-                      </span>
-                    </td>
-                    <td className="py-3 px-4 text-center">
-                      {isGerencial ? (
-                        <span className="inline-block px-2 py-0.5 rounded text-[10px] font-bold bg-purple-100 text-purple-800 border border-purple-200">
-                          Total (Admin)
-                        </span>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() => handleToggleFinancialPermission(u.id)}
-                          className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-colors cursor-pointer border ${
-                            hasFinancialAccess
-                              ? 'bg-emerald-50 text-emerald-800 border-emerald-300 hover:bg-emerald-100'
-                              : 'bg-slate-100 text-slate-500 border-slate-200 hover:bg-slate-200'
-                          }`}
-                        >
-                          {hasFinancialAccess ? '✓ Liberado' : '🔒 Oculto (Clique p/ liberar)'}
-                        </button>
-                      )}
-                    </td>
-                    <td className="py-3 px-4 text-center">
-                      <span
-                        className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold ${
-                          u.active
-                            ? 'bg-emerald-100 text-emerald-800'
-                            : 'bg-slate-100 text-slate-600'
-                        }`}
-                      >
-                        {u.active ? 'Ativo' : 'Inativo'}
-                      </span>
-                    </td>
-                    <td className="py-3 px-4 text-slate-500">
-                      {new Date(u.createdAt).toLocaleDateString('pt-BR')}
-                    </td>
-                    <td className="py-3 px-5 text-right">
-                      <button
-                        onClick={() => handleOpenEditUser(u)}
-                        className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold rounded text-[11px] transition-colors cursor-pointer inline-flex items-center gap-1"
-                      >
-                        <Edit2 className="w-3 h-3" />
-                        <span>Editar</span>
-                      </button>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+      {error && <p role="alert" className="text-sm text-rose-700">{error}</p>}
+      {notice && <p role="status" className="text-sm text-emerald-700">{notice}</p>}
+      {loading ? <p role="status">Carregando funcionários...</p> : (
+        <div className="overflow-x-auto bg-white border border-slate-200 rounded-2xl">
+          <table className="w-full text-left text-sm"><thead className="bg-slate-50"><tr><th className="p-3">Usuário</th><th className="p-3">Nome</th><th className="p-3">Perfil</th><th className="p-3">Status</th><th className="p-3">Ações</th></tr></thead>
+            <tbody>{employees.map(employee => <tr key={employee.id} className="border-t border-slate-100">
+              <td className="p-3 font-mono">{employee.username}</td><td className="p-3">{employee.name}</td><td className="p-3">{employee.role === 'admin_gerencial' ? 'Administrador' : employee.role === 'producao' ? 'Produção' : 'Venda / Atendimento'}</td><td className="p-3">{employee.active ? 'Ativo' : 'Inativo'}</td>
+              <td className="p-3 space-x-3"><button onClick={() => edit(employee)} className="text-blue-700">Editar</button><button onClick={() => { setResetting(employee); setTemporaryPassword(''); setError(''); }} className="text-blue-700">Redefinir senha</button></td>
+            </tr>)}</tbody></table>
+          {!employees.length && <p className="p-4 text-slate-500">Nenhum funcionário disponível.</p>}
         </div>
-      </div>
-
-      {/* Modal: Novo/Editar Usuário */}
-      <Modal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        title={editingUserId ? 'Editar Usuário' : 'Novo Usuário do ERP'}
-        subtitle="Defina o nome de login e perfil de acesso sem exigir e-mail"
-        maxWidth="md"
-      >
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
-              Nome Completo do Funcionário *
-            </label>
-            <input
-              type="text"
-              required
-              value={form.name}
-              onChange={(e) => setForm({ ...form, name: e.target.value })}
-              placeholder="Ex: Carlos Oliveira"
-              className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs font-medium focus:ring-2 focus:ring-purple-600 focus:outline-none"
-            />
-          </div>
-
-          <div>
-            <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
-              Nome de Usuário (Para Login) *
-            </label>
-            <input
-              type="text"
-              required
-              disabled={!!editingUserId}
-              value={form.username}
-              onChange={(e) => setForm({ ...form, username: e.target.value })}
-              placeholder="Ex: carlos.producao"
-              className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs font-mono font-medium focus:ring-2 focus:ring-purple-600 focus:outline-none disabled:bg-slate-100"
-            />
-          </div>
-
-          <div>
-            <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
-              Perfil de Acesso (Permissões) *
-            </label>
-            <select
-              value={form.role}
-              onChange={(e) => setForm({ ...form, role: e.target.value as UserRole })}
-              className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-purple-600 focus:outline-none bg-white"
-            >
-              <option value="venda_atendimento">Venda / Atendimento (Vendas, Clientes, Recibos)</option>
-              <option value="producao">Produção (Fila de Produção, Status dos Modelos)</option>
-              <option value="admin_gerencial">Admin / Gerencial (Lucratividade, Custos, Usuários)</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
-              {editingUserId ? 'Nova Senha (Opcional)' : 'Senha de Acesso *'}
-            </label>
-            <input
-              type="password"
-              value={form.password}
-              onChange={(e) => setForm({ ...form, password: e.target.value })}
-              placeholder={editingUserId ? 'Deixe em branco para não alterar' : 'Mínimo 4 caracteres'}
-              className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs font-mono font-medium focus:ring-2 focus:ring-purple-600 focus:outline-none"
-            />
-          </div>
-
-          <div className="pt-1 space-y-2">
-            <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-slate-800">
-              <input
-                type="checkbox"
-                checked={form.active}
-                onChange={(e) => setForm({ ...form, active: e.target.checked })}
-                className="w-4 h-4 rounded text-purple-600 focus:ring-purple-500"
-              />
-              <span>Usuário Ativo no Sistema</span>
-            </label>
-
-            <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-blue-900 bg-blue-50/70 p-2 rounded-xl border border-blue-200">
-              <input
-                type="checkbox"
-                disabled={form.role === 'admin_gerencial'}
-                checked={form.role === 'admin_gerencial' ? true : form.canViewFinancialMetrics}
-                onChange={(e) => setForm({ ...form, canViewFinancialMetrics: e.target.checked })}
-                className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500"
-              />
-              <div>
-                <span className="block font-bold">
-                  {form.role === 'admin_gerencial'
-                    ? 'Acesso Financeiro Total (Incluso no perfil Admin)'
-                    : 'Permitir visualizar Faturamento e Contas a Receber no Dashboard'}
-                </span>
-                <span className="text-[10px] text-slate-500 font-normal block">
-                  Permite que este operador veja faturamento do dia, do mês e indicadores financeiros no painel.
-                </span>
-              </div>
-            </label>
-          </div>
-
-          <div className="flex justify-end gap-2 pt-3 border-t border-slate-200">
-            <button
-              type="button"
-              onClick={() => setIsModalOpen(false)}
-              className="px-4 py-2 border border-slate-300 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
-            >
-              Cancelar
-            </button>
-            <button
-              type="submit"
-              className="px-4 py-2 bg-purple-700 hover:bg-purple-800 text-white rounded-xl text-xs font-bold shadow-xs transition-colors cursor-pointer"
-            >
-              Salvar Usuário
-            </button>
-          </div>
+      )}
+      <Modal isOpen={open} onClose={() => { setOpen(false); setForm(emptyForm()); }} title={editing ? 'Editar funcionário' : 'Novo funcionário'}>
+        <form onSubmit={save} className="space-y-4 text-sm">
+          {error && <p role="alert" className="text-rose-700">{error}</p>}
+          <label className="block">Usuário<input required readOnly={!!editing} pattern="[a-z0-9][a-z0-9._-]{2,39}" value={form.username} onChange={event => setForm({ ...form, username: event.target.value.toLowerCase() })} className="block w-full border rounded-lg p-2 mt-1" /></label>
+          <label className="block">Nome<input required maxLength={100} value={form.name} onChange={event => setForm({ ...form, name: event.target.value })} className="block w-full border rounded-lg p-2 mt-1" /></label>
+          {!editing && <label className="block">Senha temporária<input required type="password" autoComplete="new-password" minLength={12} maxLength={128} value={form.password} onChange={event => setForm({ ...form, password: event.target.value })} className="block w-full border rounded-lg p-2 mt-1" /></label>}
+          <label className="block">Perfil<select value={form.role} onChange={event => { const role = event.target.value as User['role']; setForm({ ...form, role, ...(role === 'producao' ? { canReadCustomers: false, canViewFinancialMetrics: false } : {}) }); }} className="block w-full border rounded-lg p-2 mt-1"><option value="venda_atendimento">Venda / Atendimento</option><option value="producao">Produção</option><option value="admin_gerencial">Administrador</option></select></label>
+          <label className="flex gap-2"><input type="checkbox" checked={form.active} onChange={event => setForm({ ...form, active: event.target.checked })} />Funcionário ativo</label>
+          <label className="flex gap-2"><input type="checkbox" disabled={form.role === 'producao'} checked={form.canReadCustomers} onChange={event => setForm({ ...form, canReadCustomers: event.target.checked })} />Consultar clientes e unidades</label>
+          <label className="flex gap-2"><input type="checkbox" disabled={form.role === 'producao'} checked={form.canViewFinancialMetrics} onChange={event => setForm({ ...form, canViewFinancialMetrics: event.target.checked })} />Visualizar métricas financeiras de demonstração</label>
+          <button disabled={busy} className="bg-blue-600 text-white rounded-lg px-4 py-2 disabled:opacity-50">{busy ? 'Salvando...' : 'Salvar funcionário'}</button>
         </form>
       </Modal>
-    </div>
+      <Modal isOpen={!!resetting} onClose={() => { setResetting(null); setTemporaryPassword(''); }} title={`Redefinir senha de ${resetting?.username || ''}`}>
+        <form onSubmit={resetPassword} className="space-y-4 text-sm">
+          {error && <p role="alert" className="text-rose-700">{error}</p>}
+          <p>Confirme a identidade do funcionário antes de redefinir a senha. Ele precisará trocar a senha temporária ao entrar.</p>
+          <label className="block">Nova senha temporária<input required type="password" autoComplete="new-password" minLength={12} maxLength={128} value={temporaryPassword} onChange={event => setTemporaryPassword(event.target.value)} className="block w-full border rounded-lg p-2 mt-1" /></label>
+          <button disabled={busy} className="bg-blue-600 text-white rounded-lg px-4 py-2 disabled:opacity-50">Redefinir senha</button>
+        </form>
+      </Modal>
+    </section>
   );
 };

@@ -1,14 +1,16 @@
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
-import {defineConfig} from 'vite';
+import {defineConfig, loadEnv} from 'vite';
+import {assertNoFrontendSecrets} from './src/services/supabaseConfig.ts';
 
-export default defineConfig(() => {
+export default defineConfig(({mode}) => {
+  assertNoFrontendSecrets(loadEnv(mode, process.cwd(), 'VITE_'));
   return {
     plugins: [react(), tailwindcss()],
     resolve: {
       alias: {
-        '@': path.resolve(__dirname, '.'),
+        '@': path.resolve(import.meta.dirname, '.'),
       },
     },
     server: {

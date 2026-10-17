@@ -174,7 +174,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   <span>Todas as Vendas</span>
                 </button>
 
-                <button
+                {currentUser?.canReadCustomers && <button
                   onClick={() => handleNav('clientes')}
                   className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-left transition-colors cursor-pointer ${
                     currentTab === 'clientes'
@@ -183,8 +183,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   }`}
                 >
                   <Users className="w-4 h-4" />
-                  <span>Clientes e Filiais</span>
-                </button>
+                  <span>Clientes e Unidades</span>
+                </button>}
               </div>
             </div>
           )}

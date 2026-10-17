@@ -1,5 +1,18 @@
 # PAMDA ERP - Sistema B2B Pamda Cases
 
+Vendas pendentes oficiais: [início automático, salvamento serial, retomada e cancelamento autorizado](./docs/VENDAS_PENDENTES.md). A confirmação e as movimentações de estoque/financeiro continuam bloqueadas nesta etapa.
+
+Sessão, unidade automática e recuperação temporária da Nova Venda: [comportamento e verificação no localhost](./docs/SESSAO_E_RASCUNHO.md).
+
+Buscas integradas na Nova Venda e prévia de recibo A4/80 mm: veja [configuração, comportamento e testes](./docs/BUSCAS_E_PREVIA_RECIBO.md). A confirmação oficial de vendas permanece bloqueada.
+
+**Etapa atual: autenticação e consulta de clientes no Supabase PAMDA CORE.**
+O login usa e-mail e senha do Supabase Auth; o perfil ativo é consultado em `public.erp_user_profiles` pelo `user_id`.
+Clientes e unidades usam as tabelas oficiais existentes e são somente leitura.
+Os demais módulos continuam demonstrativos, com dados locais e indicação na interface.
+
+Consulte [INTEGRACAO_PAMDA_CORE.md](./docs/INTEGRACAO_PAMDA_CORE.md) para conferir os requisitos de RLS, autenticação, leitura do catálogo oficial e validação local. O aplicativo e o build não executam SQL.
+
 ERP B2B sob medida para a **PAMDA CASES**, projetado para substituir o legado REIN e permitir a gestão integral de clientes, redes com filiais, políticas comerciais, produtos físicos, serviços de estamparia DTF UV, kits personalizados com cálculo de custo composto, clonagem inteligente de produtos/kits, emissão de recibos com numeração sequencial (a partir de 10000) e Pix dinâmico, esteira de produção e controle de lucratividade gerencial com snapshot histórico de custos.
 
 ---
@@ -88,25 +101,36 @@ Consulte [DEPLOY_VERCEL.md](./DEPLOY_VERCEL.md) para importar o repositório, co
 
 ## 🗄️ Configuração do Supabase (PostgreSQL)
 
-O sistema possui uma camada reativa integrada que já funciona imediatamente para testes e homologação rápida com dados pré-populados da Pamda Cases.
+Use exclusivamente o projeto existente **erp-pamda**. Não reexecute a migration 03 de importação e não execute `supabase/migrations/20261006000000_init_pamda_erp.sql`: ela não representa o schema oficial dos 384 clientes.
 
-O código atual de dados e autenticação usa `localStorage`, sem conexão com o Supabase. Configurar as variáveis abaixo não ativa essa integração. A migração SQL está disponível como base para uma futura integração:
+Configure `VITE_SUPABASE_URL` e a chave pública `VITE_SUPABASE_PUBLISHABLE_KEY` ou `VITE_SUPABASE_ANON_KEY` em `.env.local`. A URL deve ser a **Project URL real**, não o nome do projeto convertido em hostname. O frontend autentica diretamente no Supabase Auth e consulta o perfil pela coluna `user_id`; não usa usuário/senha de demonstração nem uma sessão própria em `localStorage`.
 
-1. Acesse o painel do **Supabase** ([supabase.com](https://supabase.com)).
-2. Crie um novo projeto (ex: `pamda-erp`).
-3. Vá em **SQL Editor** e execute todo o conteúdo do arquivo:
-   `supabase/migrations/20261006000000_init_pamda_erp.sql`.
-4. Em **Project Settings -> API**, copie:
-   - `Project URL` -> Coloque em `VITE_SUPABASE_URL` no `.env.local`.
-   - `anon public key` -> Coloque em `VITE_SUPABASE_ANON_KEY` no `.env.local`.
-5. Implemente a integração dos serviços de dados e autenticação com o Supabase antes de usar esse banco em produção.
+Para executar e testar localmente:
+
+```bash
+npm ci
+npm run dev
+```
+
+Abra `http://localhost:3000` e entre com o e-mail e a senha de uma conta existente no Supabase Auth. A sessão do Supabase é restaurada após atualizar a página; use **Sair** para encerrá-la. A conta precisa ter um perfil ativo em `erp_user_profiles`.
+
+O perfil deve ter uma política RLS de `SELECT` que permita ao usuário autenticado ler somente a própria linha (`user_id = auth.uid()`). A leitura de `customers` e `customer_branches` exige `GRANT SELECT` para `authenticated` e políticas RLS de `SELECT` que autorizem o administrador ativo sem conceder escrita ou acesso anônimo. A implementação local anterior de SQL 05 usa `erp_employees`; essa condição não autoriza automaticamente um perfil que exista somente em `erp_user_profiles`. Inspecione/substitua as políticas de autorização restritivas compatíveis com o esquema real — não desative RLS. Se a consulta for bloqueada, a tela identifica a tabela e informa o predicado esperado.
 
 ---
 
-## 👥 Credenciais Padrão para Testes
+## Validação local
 
-| Perfil | Usuário | Senha | Nível de Acesso |
-|---|---|---|---|
-| **Admin / Gerencial** | `admin` | `admin123` | Acesso total, custos, margens, lucratividade, usuários e logs |
-| **Venda / Atendimento**| `vendedor` | `venda123` | Vendas, clientes, recibos, sem ver lucro/custos |
-| **Produção** | `producao` | `prod123` | Fila de produção e status, sem dados financeiros |
+Produtos, Serviços & Kits e Nova Venda agora consultam o catálogo oficial do Supabase, incluindo componentes por UUID e valores nulos. Cadastro/edição/clonagem de produtos continuam bloqueados. O frete padrão do cliente aparece como pendente; o frete da preparação é manual e não altera o cliente. Veja [catálogo oficial, frete e pendências de banco](./docs/CATALOGO_OFICIAL_E_FRETE.md). Nenhuma migration foi criada/aplicada nesta atualização.
+
+A Nova Venda também permite negociar preços, restaurar o valor original e calcular margens dos itens sem alterar o catálogo. Consulte [negociação e snapshots](./docs/NEGOCIACAO_PRECOS.md). A migration 07 anterior serve somente à demonstração e não autoriza itens do catálogo oficial; vendas oficiais continuam bloqueadas.
+
+A atualização de clientes integra a busca da Nova Venda, a edição cadastral e a navegação para histórico. A edição depende da revisão e aplicação da migration incremental **06**, preparada para a autenticação atual; ela não foi executada automaticamente. O histórico oficial e a confirmação de venda continuam dependentes da integração do módulo de vendas. Consulte [configuração, arquivos alterados e validação](./docs/CLIENTES_EDICAO_E_VENDAS.md).
+
+```bash
+npm test
+npm run test:ui
+npm run lint
+npm run build
+```
+
+Os testes de SQL usam PostgreSQL em memória com dados sintéticos. Não criam projetos Supabase, não fazem login no projeto real e não alteram dados comerciais. Não existem senhas padrão, usuários fictícios de produção ou login automático de administrador.

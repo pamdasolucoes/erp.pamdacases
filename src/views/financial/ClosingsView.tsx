@@ -8,7 +8,7 @@ export const ClosingsView: React.FC = () => {
   const [closings, setClosings] = useState<BillingClosing[]>(dbService.getBillingClosings());
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  const customers = dbService.getCustomers();
+  const customers = dbService.getDemoCustomers();
   const sales = dbService.getSales();
 
   const [selectedCustomerId, setSelectedCustomerId] = useState<string>(customers[0]?.id || '');

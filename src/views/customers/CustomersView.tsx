@@ -1,861 +1,103 @@
-import React, { useState } from 'react';
-import {
-  Users,
-  Plus,
-  Edit2,
-  Building2,
-  MapPin,
-  Phone,
-  Mail,
-  CreditCard,
-  CheckCircle2,
-  XCircle,
-  ShieldCheck,
-  ChevronRight,
-  Save,
-} from 'lucide-react';
-import { Customer, CustomerBranch, CustomerPaymentPolicy, PaymentPolicyType } from '../../types/erp';
-import { dbService } from '../../services/db';
-import { Modal } from '../../components/common/Modal';
-import { Badge } from '../../components/common/Badge';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Building2, Search, RefreshCw, MapPin, AlertTriangle, Pencil, History, ShoppingCart } from 'lucide-react';
+import type { OfficialCustomer, CustomerContext } from '../../types/pamdaCore';
+import { searchCustomers } from '../../services/customerMapping';
+import { useCustomers } from '../../hooks/useCustomers';
+import { authService } from '../../services/auth';
+import { canEditCustomers } from '../../services/customerEdits';
+import { CustomerEditModal } from './CustomerEditModal';
+import { customerFreightLabel } from '../../services/freight';
 
-export const CustomersView: React.FC = () => {
-  const [customers, setCustomers] = useState<Customer[]>(dbService.getCustomers());
-  const [selectedCustomerId, setSelectedCustomerId] = useState<string>(
-    customers[0]?.id || ''
-  );
-  const [activeTab, setActiveTab] = useState<'filiais' | 'politica' | 'observacoes'>('filiais');
+function Field({ label, value }: { label: string; value: string | null | undefined }) {
+  return <div><dt className="text-[11px] font-bold uppercase text-slate-400">{label}</dt><dd className="mt-1 text-sm text-slate-800 break-words whitespace-pre-wrap">{value || 'Não informado'}</dd></div>;
+}
+function dateLabel(value: string | null, original: string | null): string | null {
+  if (!value) return original;
+  const [year, month, day] = value.split('-');
+  return `${day}/${month}/${year}`;
+}
 
-  // Modais
-  const [isCustomerModalOpen, setIsCustomerModalOpen] = useState(false);
-  const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
+interface CustomersViewProps {
+  initialCustomerId?: string;
+  onSelectCustomer?: (customer: CustomerContext) => void;
+  onNewSale: (customer: CustomerContext) => void;
+  onConsultSales: (customer: CustomerContext) => void;
+}
+export const CustomersView: React.FC<CustomersViewProps> = ({ initialCustomerId, onSelectCustomer, onNewSale, onConsultSales }) => {
+  const { customers, loading, error, reload, acceptUpdated } = useCustomers();
+  const [query, setQuery] = useState('');
+  const [selectedId, setSelectedId] = useState(initialCustomerId || '');
+  const [editing, setEditing] = useState<OfficialCustomer | null>(null);
+  const [notice, setNotice] = useState('');
+  const canEdit = canEditCustomers(authService.getCurrentUser());
 
-  const [isBranchModalOpen, setIsBranchModalOpen] = useState(false);
-  const [editingBranch, setEditingBranch] = useState<CustomerBranch | null>(null);
-
-  // Form states - Customer
-  const [custForm, setCustForm] = useState({
-    name: '',
-    companyName: '',
-    cnpj: '',
-    phone: '',
-    email: '',
-    contactName: '',
-    notes: '',
-    isChain: true,
-    billingMode: 'consolidado' as Customer['billingMode'],
-    // Payment policy defaults
-    policyType: 'pagamento_entrega' as PaymentPolicyType,
-    produceOnlyAfterPayment: false,
-    closingFrequency: 'none' as CustomerPaymentPolicy['closingFrequency'],
-    closingDay: 5,
-    paymentTermDays: 7,
-    creditLimit: 5000,
-    allowNewOrdersWithOverdue: true,
-    autoBlockOnOverdue: false,
-    showPixOnPendingReceipts: true,
-  });
-
-  // Form states - Branch
-  const [branchForm, setBranchForm] = useState({
-    name: '',
-    tradeName: '',
-    address: '',
-    neighborhood: '',
-    city: 'Curitiba',
-    state: 'PR',
-    zipCode: '',
-    phone: '',
-    contactName: '',
-    notes: '',
-    active: true,
-  });
-
-  const selectedCustomer = customers.find((c) => c.id === selectedCustomerId) || customers[0];
-
-  const refreshCustomers = () => {
-    setCustomers(dbService.getCustomers());
-  };
-
-  const handleOpenNewCustomer = () => {
-    setEditingCustomer(null);
-    setCustForm({
-      name: '',
-      companyName: '',
-      cnpj: '',
-      phone: '',
-      email: '',
-      contactName: '',
-      notes: '',
-      isChain: true,
-      billingMode: 'consolidado',
-      policyType: 'pagamento_entrega',
-      produceOnlyAfterPayment: false,
-      closingFrequency: 'weekly',
-      closingDay: 5,
-      paymentTermDays: 7,
-      creditLimit: 10000,
-      allowNewOrdersWithOverdue: true,
-      autoBlockOnOverdue: false,
-      showPixOnPendingReceipts: true,
-    });
-    setIsCustomerModalOpen(true);
-  };
-
-  const handleOpenEditCustomer = (cust: Customer) => {
-    setEditingCustomer(cust);
-    setCustForm({
-      name: cust.name,
-      companyName: cust.companyName || '',
-      cnpj: cust.cnpj || '',
-      phone: cust.phone,
-      email: cust.email || '',
-      contactName: cust.contactName,
-      notes: cust.notes || '',
-      isChain: cust.isChain,
-      billingMode: cust.billingMode,
-      policyType: cust.paymentPolicy.policyType,
-      produceOnlyAfterPayment: cust.paymentPolicy.produceOnlyAfterPayment,
-      closingFrequency: cust.paymentPolicy.closingFrequency,
-      closingDay: cust.paymentPolicy.closingDay || 5,
-      paymentTermDays: cust.paymentPolicy.paymentTermDays,
-      creditLimit: cust.paymentPolicy.creditLimit,
-      allowNewOrdersWithOverdue: cust.paymentPolicy.allowNewOrdersWithOverdue,
-      autoBlockOnOverdue: cust.paymentPolicy.autoBlockOnOverdue,
-      showPixOnPendingReceipts: cust.paymentPolicy.showPixOnPendingReceipts,
-    });
-    setIsCustomerModalOpen(true);
-  };
-
-  const handleSaveCustomer = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!custForm.name.trim() || !custForm.phone.trim()) {
-      alert('Nome e Telefone são obrigatórios.');
-      return;
-    }
-
-    const payload = {
-      name: custForm.name.trim(),
-      companyName: custForm.companyName.trim() || undefined,
-      cnpj: custForm.cnpj.trim() || undefined,
-      phone: custForm.phone.trim(),
-      email: custForm.email.trim() || undefined,
-      contactName: custForm.contactName.trim() || custForm.name.trim(),
-      notes: custForm.notes.trim() || undefined,
-      active: true,
-      isChain: custForm.isChain,
-      billingMode: custForm.billingMode,
-      paymentPolicy: {
-        policyType: custForm.policyType,
-        produceOnlyAfterPayment: custForm.produceOnlyAfterPayment,
-        closingFrequency: custForm.closingFrequency,
-        closingDay: Number(custForm.closingDay),
-        paymentTermDays: Number(custForm.paymentTermDays),
-        creditLimit: Number(custForm.creditLimit),
-        allowNewOrdersWithOverdue: custForm.allowNewOrdersWithOverdue,
-        autoBlockOnOverdue: custForm.autoBlockOnOverdue,
-        showPixOnPendingReceipts: custForm.showPixOnPendingReceipts,
-      },
-      branches: editingCustomer ? editingCustomer.branches : [],
-    };
-
-    if (editingCustomer) {
-      dbService.saveCustomer({ ...payload, id: editingCustomer.id });
-    } else {
-      const created = dbService.saveCustomer(payload);
-      setSelectedCustomerId(created.id);
-    }
-
-    refreshCustomers();
-    setIsCustomerModalOpen(false);
-  };
-
-  const handleOpenNewBranch = () => {
-    if (!selectedCustomer) return;
-    setEditingBranch(null);
-    setBranchForm({
-      name: '',
-      tradeName: '',
-      address: '',
-      neighborhood: '',
-      city: 'Curitiba',
-      state: 'PR',
-      zipCode: '',
-      phone: selectedCustomer.phone,
-      contactName: selectedCustomer.contactName,
-      notes: '',
-      active: true,
-    });
-    setIsBranchModalOpen(true);
-  };
-
-  const handleSaveBranch = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedCustomer) return;
-    if (!branchForm.name.trim() || !branchForm.address.trim()) {
-      alert('Nome da filial e Endereço são obrigatórios.');
-      return;
-    }
-
-    if (editingBranch) {
-      dbService.updateBranch(selectedCustomer.id, editingBranch.id, branchForm);
-    } else {
-      dbService.addBranch(selectedCustomer.id, branchForm);
-    }
-
-    refreshCustomers();
-    setIsBranchModalOpen(false);
-  };
-
+  const filtered = useMemo(() => searchCustomers(customers, query), [customers, query]);
+  const selected = filtered.find(customer => customer.id === selectedId) || filtered[0];
+  useEffect(() => {
+    if (selected) onSelectCustomer?.({ id: selected.id, customerCode: selected.customerCode });
+  }, [selected?.id, selected?.customerCode, onSelectCustomer]);
+  const units = customers.flatMap(customer => [...customer.branches]);
+  const reviews = units.filter(unit => unit.addressNeedsReview).length;
   return (
-    <div className="space-y-6">
-      {/* Top Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
-            Clientes, Redes e Filiais
-          </h1>
-          <p className="text-xs text-slate-500">
-            Cadastro mestre de redes B2B, matrizes e filiais com políticas comerciais
-          </p>
-        </div>
-        <button
-          onClick={handleOpenNewCustomer}
-          className="flex items-center justify-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl shadow-xs transition-colors cursor-pointer"
-        >
-          <Plus className="w-4 h-4" />
-          <span>Novo Cliente</span>
-        </button>
+    <div className="space-y-5">
+      <div className="flex flex-col sm:flex-row justify-between gap-3 sm:items-center">
+        <div><h1 className="text-2xl font-black text-slate-900">Clientes e Unidades</h1><p className="text-sm text-slate-500">Cadastro oficial PAMDA CORE · Consulta</p></div>
+        <button disabled={loading} onClick={reload} className="inline-flex justify-center items-center gap-2 rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold bg-white disabled:opacity-50"><RefreshCw className="w-4 h-4" />Atualizar lista</button>
       </div>
-
-      {/* Main Grid: Left selector, Right details (Screens 3) */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Left Column: Customer List Selection */}
-        <div className="lg:col-span-4 bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden flex flex-col">
-          <div className="p-4 border-b border-slate-100 bg-slate-50/60">
-            <h2 className="text-xs font-bold text-slate-700 uppercase tracking-wider">
-              Clientes Cadastrados ({customers.length})
-            </h2>
-          </div>
-          <div className="divide-y divide-slate-100 overflow-y-auto max-h-[600px]">
-            {customers.map((c) => {
-              const isSelected = c.id === selectedCustomerId;
-              return (
-                <div
-                  key={c.id}
-                  onClick={() => setSelectedCustomerId(c.id)}
-                  className={`p-4 flex items-center justify-between cursor-pointer transition-colors ${
-                    isSelected ? 'bg-blue-50/80 border-l-4 border-blue-600' : 'hover:bg-slate-50'
-                  }`}
-                >
-                  <div className="min-w-0 pr-2">
-                    <div className="flex items-center gap-2">
-                      <span className="font-bold text-sm text-slate-900 truncate">
-                        {c.name}
-                      </span>
-                      <span
-                        className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
-                          c.active ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-600'
-                        }`}
-                      >
-                        {c.active ? 'Ativo' : 'Inativo'}
-                      </span>
-                    </div>
-                    <p className="text-xs text-slate-500 mt-0.5 truncate">
-                      {c.cnpj || c.companyName || 'Sem CNPJ informado'}
-                    </p>
-                    <p className="text-[11px] text-slate-400 mt-0.5">
-                      {c.branches.length > 0
-                        ? `${c.branches.length} filial(is) cadastradas`
-                        : 'Cliente avulso (sem filiais)'}
-                    </p>
-                  </div>
-                  <ChevronRight
-                    className={`w-4 h-4 transition-transform ${
-                      isSelected ? 'text-blue-600 translate-x-1' : 'text-slate-300'
-                    }`}
-                  />
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Right Column: Selected Customer / Chain Details (Screen 3) */}
-        {selectedCustomer ? (
-          <div className="lg:col-span-8 space-y-5">
-            {/* Customer Profile Card */}
-            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs">
-              <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
-                <div className="flex items-start gap-4">
-                  <div className="w-14 h-14 rounded-2xl bg-blue-100 text-blue-600 flex items-center justify-center font-black text-xl shadow-xs">
-                    <Building2 className="w-7 h-7" />
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <h2 className="text-xl font-black text-slate-900">
-                        {selectedCustomer.name}
-                      </h2>
-                      <span
-                        className={`text-xs font-bold px-2 py-0.5 rounded-full ${
-                          selectedCustomer.active
-                            ? 'bg-emerald-100 text-emerald-800'
-                            : 'bg-slate-100 text-slate-600'
-                        }`}
-                      >
-                        {selectedCustomer.active ? 'Ativo' : 'Inativo'}
-                      </span>
-                      {selectedCustomer.isChain && (
-                        <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">
-                          Rede B2B
-                        </span>
-                      )}
-                    </div>
-                    <div className="mt-2 grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs text-slate-600">
-                      <div>
-                        <span className="text-slate-400 block text-[10px] uppercase font-bold">CNPJ:</span>
-                        <span className="font-mono">{selectedCustomer.cnpj || 'Não informado'}</span>
-                      </div>
-                      <div>
-                        <span className="text-slate-400 block text-[10px] uppercase font-bold">Telefone:</span>
-                        <span>{selectedCustomer.phone}</span>
-                      </div>
-                      <div>
-                        <span className="text-slate-400 block text-[10px] uppercase font-bold">Contato:</span>
-                        <span className="font-semibold text-slate-900">{selectedCustomer.contactName}</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <button
-                  onClick={() => handleOpenEditCustomer(selectedCustomer)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition-colors cursor-pointer self-start"
-                >
-                  <Edit2 className="w-3.5 h-3.5" />
-                  <span>Editar</span>
-                </button>
-              </div>
-
-              {/* Tabs */}
-              <div className="mt-6 border-b border-slate-200 flex items-center justify-between">
-                <div className="flex items-center gap-6">
-                  <button
-                    onClick={() => setActiveTab('filiais')}
-                    className={`pb-3 text-xs font-bold border-b-2 cursor-pointer transition-colors ${
-                      activeTab === 'filiais'
-                        ? 'border-blue-600 text-blue-600'
-                        : 'border-transparent text-slate-500 hover:text-slate-800'
-                    }`}
-                  >
-                    Filiais ({selectedCustomer.branches.length})
+      {loading ? <p role="status" className="rounded-xl border border-slate-200 bg-white p-8 text-slate-600">Carregando clientes e unidades...</p> : error ? (
+        <div role="alert" className="rounded-xl border border-rose-200 bg-rose-50 p-5 text-sm text-rose-800"><p>{error}</p><button onClick={reload} className="mt-3 font-bold underline">Tentar novamente</button></div>
+      ) : (
+        <>
+          {notice && <p role="status" className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">{notice}</p>}
+          <div className="flex flex-wrap gap-3 text-xs text-slate-600" aria-live="polite"><span>{customers.length} clientes acessíveis</span><span>{units.length} unidades</span><span className="text-amber-800">{reviews} endereços sinalizados para revisão</span></div>
+          <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">Condição de pagamento não configurada. As unidades iniciais ainda aguardam conferência para classificação de redes e filiais.</div>
+          <label className="block text-sm font-bold text-slate-700">Pesquisar por código comercial, nome ou documento
+            <div className="relative mt-2"><Search className="absolute left-3 top-3 h-4 w-4 text-slate-400" /><input type="search" value={query} onChange={event => setQuery(event.target.value)} placeholder="Código, nome, razão social ou CPF/CNPJ" className="w-full rounded-xl border border-slate-300 bg-white py-2.5 pl-10 pr-3 text-sm font-normal" /></div>
+          </label>
+          {!customers.length ? <p role="status" className="rounded-xl border border-slate-200 bg-white p-8 text-sm text-slate-500">Nenhum cliente foi retornado. Se esta conta deveria ver os 384 clientes oficiais, confira o GRANT SELECT e as políticas RLS de customers e customer_branches.</p> : !filtered.length ? <p role="status" className="rounded-xl border border-slate-200 bg-white p-8 text-sm text-slate-500">Nenhum cliente encontrado para esta pesquisa.</p> : (
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
+              <section aria-label="Lista de clientes" className="lg:col-span-4 rounded-2xl border border-slate-200 bg-white overflow-hidden">
+                <p className="p-4 border-b border-slate-100 text-xs font-bold text-slate-500">{filtered.length} de {customers.length} clientes</p>
+                <div className="max-h-[650px] overflow-y-auto divide-y divide-slate-100">{filtered.map(customer => (
+                  <button key={customer.id} onClick={() => setSelectedId(customer.id)} aria-pressed={customer.id === selected?.id} className={`block w-full p-4 text-left border-l-4 ${customer.id === selected?.id ? 'border-blue-600 bg-blue-50' : 'border-transparent hover:bg-slate-50'}`}>
+                    <span className="block font-mono text-xs font-bold text-blue-700 whitespace-pre-wrap">{customer.customerCode}</span>
+                    <span className="block mt-1 text-sm font-bold text-slate-900">{customer.name}</span>
+                    <span className="block mt-1 text-xs text-slate-500">{customer.branches.length} unidade(s) · {customer.active ? 'Ativo' : 'Inativo'}</span>
                   </button>
-                  <button
-                    onClick={() => setActiveTab('politica')}
-                    className={`pb-3 text-xs font-bold border-b-2 cursor-pointer transition-colors ${
-                      activeTab === 'politica'
-                        ? 'border-blue-600 text-blue-600'
-                        : 'border-transparent text-slate-500 hover:text-slate-800'
-                    }`}
-                  >
-                    Condição de Pagamento
-                  </button>
-                  <button
-                    onClick={() => setActiveTab('observacoes')}
-                    className={`pb-3 text-xs font-bold border-b-2 cursor-pointer transition-colors ${
-                      activeTab === 'observacoes'
-                        ? 'border-blue-600 text-blue-600'
-                        : 'border-transparent text-slate-500 hover:text-slate-800'
-                    }`}
-                  >
-                    Observações
-                  </button>
-                </div>
-
-                {activeTab === 'filiais' && (
-                  <button
-                    onClick={handleOpenNewBranch}
-                    className="flex items-center gap-1 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg transition-colors cursor-pointer mb-2"
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                    <span>Nova Filial</span>
-                  </button>
-                )}
-              </div>
-
-              {/* Tab Content: Filiais */}
-              {activeTab === 'filiais' && (
-                <div className="pt-4">
-                  {selectedCustomer.branches.length === 0 ? (
-                    <div className="text-center py-8 text-slate-400 text-xs">
-                      Este cliente não possui filiais cadastradas. As vendas usam o endereço principal da matriz.
-                    </div>
-                  ) : (
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-left text-xs">
-                        <thead>
-                          <tr className="border-b border-slate-200 text-slate-400 uppercase text-[11px] font-bold">
-                            <th className="py-2.5">Nome da Filial</th>
-                            <th className="py-2.5">Endereço</th>
-                            <th className="py-2.5">Telefone</th>
-                            <th className="py-2.5 text-center">Status</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-100 text-slate-700">
-                          {selectedCustomer.branches.map((b) => (
-                            <tr key={b.id} className="hover:bg-slate-50/80">
-                              <td className="py-3 font-bold text-slate-900">
-                                {b.name}
-                                {b.tradeName && (
-                                  <span className="block text-[11px] font-normal text-slate-400">
-                                    {b.tradeName}
-                                  </span>
-                                )}
-                              </td>
-                              <td className="py-3 text-slate-600">
-                                {b.address}, {b.neighborhood} - {b.city}/{b.state}
-                                {b.zipCode && ` (CEP: ${b.zipCode})`}
-                              </td>
-                              <td className="py-3 font-mono">{b.phone}</td>
-                              <td className="py-3 text-center">
-                                <span
-                                  className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold ${
-                                    b.active
-                                      ? 'bg-emerald-100 text-emerald-800'
-                                      : 'bg-slate-100 text-slate-600'
-                                  }`}
-                                >
-                                  {b.active ? 'Ativa' : 'Inativa'}
-                                </span>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Tab Content: Condição de Pagamento */}
-              {activeTab === 'politica' && (
-                <div className="pt-4 space-y-4">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-                    <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
-                      <p className="text-[11px] font-bold text-slate-400 uppercase">
-                        Política Comercial Principal
-                      </p>
-                      <p className="text-base font-black text-blue-700 capitalize">
-                        {selectedCustomer.paymentPolicy.policyType.replace('_', ' ')}
-                      </p>
-                      <div className="space-y-1 text-slate-600 pt-1">
-                        <p>
-                          Faturamento:{' '}
-                          <strong className="text-slate-900 uppercase">
-                            {selectedCustomer.billingMode}
-                          </strong>
-                        </p>
-                        <p>
-                          Prazo de Pagamento:{' '}
-                          <strong className="text-slate-900">
-                            {selectedCustomer.paymentPolicy.paymentTermDays} dias
-                          </strong>
-                        </p>
-                        <p>
-                          Limite de Crédito:{' '}
-                          <strong className="text-slate-900 font-mono">
-                            R$ {selectedCustomer.paymentPolicy.creditLimit.toFixed(2)}
-                          </strong>
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
-                      <p className="text-[11px] font-bold text-slate-400 uppercase">
-                        Regras de Liberação & Bloqueio
-                      </p>
-                      <div className="space-y-2 pt-1 text-slate-700">
-                        <div className="flex items-center gap-2">
-                          {selectedCustomer.paymentPolicy.produceOnlyAfterPayment ? (
-                            <CheckCircle2 className="w-4 h-4 text-amber-600 shrink-0" />
-                          ) : (
-                            <XCircle className="w-4 h-4 text-slate-400 shrink-0" />
-                          )}
-                          <span>
-                            Produzir somente após pagamento:{' '}
-                            <strong>
-                              {selectedCustomer.paymentPolicy.produceOnlyAfterPayment ? 'SIM' : 'NÃO'}
-                            </strong>
-                          </span>
-                        </div>
-
-                        <div className="flex items-center gap-2">
-                          {selectedCustomer.paymentPolicy.allowNewOrdersWithOverdue ? (
-                            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                          ) : (
-                            <XCircle className="w-4 h-4 text-rose-500 shrink-0" />
-                          )}
-                          <span>
-                            Permitir novos pedidos com saldo vencido:{' '}
-                            <strong>
-                              {selectedCustomer.paymentPolicy.allowNewOrdersWithOverdue ? 'SIM' : 'NÃO'}
-                            </strong>
-                          </span>
-                        </div>
-
-                        <div className="flex items-center gap-2">
-                          {selectedCustomer.paymentPolicy.showPixOnPendingReceipts ? (
-                            <CheckCircle2 className="w-4 h-4 text-blue-600 shrink-0" />
-                          ) : (
-                            <XCircle className="w-4 h-4 text-slate-400 shrink-0" />
-                          )}
-                          <span>
-                            Exibir Pix em recibos pendentes:{' '}
-                            <strong>
-                              {selectedCustomer.paymentPolicy.showPixOnPendingReceipts ? 'SIM' : 'NÃO'}
-                            </strong>
-                          </span>
-                        </div>
-                      </div>
-                    </div>
+                ))}</div>
+              </section>
+              {selected && <article className="lg:col-span-8 space-y-5">
+                <section className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6">
+                  <div className="flex items-start gap-3"><Building2 className="w-7 h-7 text-blue-600 shrink-0" /><div><h2 className="text-xl font-bold text-slate-900">{selected.name}</h2><p className="text-xs text-slate-500 mt-1">{selected.active ? 'Cadastro ativo' : 'Cadastro inativo'}</p></div></div>
+                  <div className="mt-5 flex flex-col sm:flex-row sm:flex-wrap gap-2">
+                    <button disabled={!canEdit} title={canEdit ? 'Editar cadastro' : 'Seu perfil não tem permissão de edição'} onClick={() => { setNotice(''); setEditing(selected); }} className="inline-flex justify-center items-center gap-2 rounded-xl border border-slate-300 px-3 py-2 text-xs font-bold text-slate-700 disabled:opacity-50"><Pencil className="h-4 w-4" />EDITAR</button>
+                    <button onClick={() => onConsultSales({ id: selected.id, customerCode: selected.customerCode })} className="inline-flex justify-center items-center gap-2 rounded-xl border border-slate-300 px-3 py-2 text-xs font-bold text-slate-700"><History className="h-4 w-4" />CONSULTAR VENDAS</button>
+                    <button onClick={() => onNewSale({ id: selected.id, customerCode: selected.customerCode })} className="inline-flex justify-center items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-xs font-bold text-white hover:bg-blue-700"><ShoppingCart className="h-4 w-4" />+ NOVA VENDA</button>
                   </div>
-
-                  {selectedCustomer.paymentPolicy.financialNotes && (
-                    <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-amber-900 text-xs">
-                      <strong>Observações Financeiras:</strong>{' '}
-                      {selectedCustomer.paymentPolicy.financialNotes}
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Tab Content: Observações */}
-              {activeTab === 'observacoes' && (
-                <div className="pt-4 text-xs text-slate-600 bg-slate-50 p-4 rounded-xl border border-slate-200">
-                  {selectedCustomer.notes || 'Nenhuma observação interna registrada.'}
-                </div>
-              )}
+                  <label className="block mt-5 text-xs font-bold uppercase text-slate-500">Código comercial<input readOnly value={selected.customerCode} className="block w-full mt-1 rounded-lg border border-slate-200 bg-slate-50 p-2.5 font-mono text-base text-slate-900" /></label>
+                  <dl className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-5">
+                    <Field label="Razão social" value={selected.companyName} /><Field label="CNPJ" value={selected.cnpj} /><Field label="CPF" value={selected.cpf} /><Field label="Documento original" value={selected.cpfCnpjOriginal} /><Field label="Inscrição estadual" value={selected.stateRegistration} /><Field label="Tipo de pessoa original" value={selected.legacyPersonType} />
+                    <Field label="Contato" value={selected.contactName} /><Field label="Telefone" value={selected.phone} /><Field label="Celular" value={selected.mobilePhone} /><Field label="WhatsApp" value={selected.whatsappPhone} /><Field label="E-mail" value={selected.email} /><Field label="Referência" value={selected.referenceName} /><Field label="Telefone da referência" value={selected.referencePhone} />
+                    <Field label="Cadastro no sistema anterior" value={dateLabel(selected.legacyRegisteredOn, selected.legacyRegisteredRaw)} /><Field label="Última compra no sistema anterior" value={dateLabel(selected.legacyLastPurchaseOn, selected.legacyLastPurchaseRaw)} />
+                  </dl>
+                  <div className="mt-5 border-t border-slate-100 pt-4"><h3 className="text-sm font-bold">Condição de pagamento não configurada</h3><p className="text-xs text-slate-500 mt-1">Prazo e limite de crédito ainda não definidos.</p></div>
+                  <dl className="mt-4 space-y-4"><Field label="Frete padrão (R$)" value={customerFreightLabel(selected.defaultFreight)} /><Field label="Observações" value={selected.notes} /></dl>
+                </section>
+                <section className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6 space-y-4">
+                  <h3 className="font-bold text-slate-900">Unidades cadastradas ({selected.branches.length})</h3>
+                  {!selected.branches.length && <p className="text-sm text-slate-500">Nenhuma unidade disponível para este cliente.</p>}
+                  {selected.branches.map(branch => <div key={branch.id} className="rounded-xl border border-slate-200 p-4 space-y-4">
+                    <div className="flex flex-wrap items-center gap-2"><MapPin className="w-4 h-4 text-slate-400" /><h4 className="text-sm font-bold">{branch.name}</h4><span className="text-xs text-slate-500">{branch.active ? 'Ativa' : 'Inativa'}</span></div>
+                    {branch.addressNeedsReview && <p className="flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 p-2 text-xs font-semibold text-amber-900"><AlertTriangle className="w-4 h-4 shrink-0" />Endereço sinalizado para revisão. Confirme antes de entregar.</p>}
+                    <dl className="grid grid-cols-1 sm:grid-cols-2 gap-4"><Field label="Nome fantasia" value={branch.tradeName} /><Field label="Endereço" value={branch.address} /><Field label="Número" value={branch.number} /><Field label="Complemento" value={branch.complement} /><Field label="Bairro" value={branch.neighborhood} /><Field label="Cidade" value={branch.city} /><Field label="Estado" value={branch.state} /><Field label="CEP" value={branch.zipCode} /><Field label="Telefone" value={branch.phone} /><Field label="Contato" value={branch.contactName} /><Field label="Código da importação" value={branch.importSourceCustomerCode} /><Field label="Observações da unidade" value={branch.notes} /></dl>
+                  </div>)}
+                </section>
+              </article>}
             </div>
-          </div>
-        ) : null}
-      </div>
-
-      {/* Modal: Novo/Editar Cliente */}
-      <Modal
-        isOpen={isCustomerModalOpen}
-        onClose={() => setIsCustomerModalOpen(false)}
-        title={editingCustomer ? 'Editar Cliente / Rede' : 'Novo Cliente / Rede'}
-        subtitle="Cadastre os dados principais e a política comercial padrão"
-        maxWidth="3xl"
-      >
-        <form onSubmit={handleSaveCustomer} className="space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
-                Nome do Cliente / Rede *
-              </label>
-              <input
-                type="text"
-                required
-                value={custForm.name}
-                onChange={(e) => setCustForm({ ...custForm, name: e.target.value })}
-                placeholder="Ex: Cristal Cel"
-                className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs font-medium focus:ring-2 focus:ring-blue-600 focus:outline-none"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
-                Razão Social
-              </label>
-              <input
-                type="text"
-                value={custForm.companyName}
-                onChange={(e) => setCustForm({ ...custForm, companyName: e.target.value })}
-                placeholder="Ex: Cristal Cel Acessórios LTDA"
-                className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs font-medium focus:ring-2 focus:ring-blue-600 focus:outline-none"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
-                CNPJ / CPF
-              </label>
-              <input
-                type="text"
-                value={custForm.cnpj}
-                onChange={(e) => setCustForm({ ...custForm, cnpj: e.target.value })}
-                placeholder="12.345.678/0001-90"
-                className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs font-medium focus:ring-2 focus:ring-blue-600 focus:outline-none font-mono"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
-                Telefone Principal *
-              </label>
-              <input
-                type="text"
-                required
-                value={custForm.phone}
-                onChange={(e) => setCustForm({ ...custForm, phone: e.target.value })}
-                placeholder="(41) 3333-4444"
-                className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs font-medium focus:ring-2 focus:ring-blue-600 focus:outline-none"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
-                Nome do Responsável / Contato *
-              </label>
-              <input
-                type="text"
-                required
-                value={custForm.contactName}
-                onChange={(e) => setCustForm({ ...custForm, contactName: e.target.value })}
-                placeholder="Ex: João Silva"
-                className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs font-medium focus:ring-2 focus:ring-blue-600 focus:outline-none"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
-                Faturamento da Rede
-              </label>
-              <select
-                value={custForm.billingMode}
-                onChange={(e) => setCustForm({ ...custForm, billingMode: e.target.value as any })}
-                className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs font-medium focus:ring-2 focus:ring-blue-600 focus:outline-none bg-white"
-              >
-                <option value="consolidado">Consolidado (Única conta matriz)</option>
-                <option value="separado">Por Filial (Cada filial paga o seu)</option>
-              </select>
-            </div>
-          </div>
-
-          <div className="pt-3 border-t border-slate-200">
-            <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider mb-3">
-              Política Comercial & Pagamento
-            </h4>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
-              <div>
-                <label className="block text-slate-600 font-semibold mb-1">Condição Padrão</label>
-                <select
-                  value={custForm.policyType}
-                  onChange={(e) => setCustForm({ ...custForm, policyType: e.target.value as any })}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-xl font-medium focus:ring-2 focus:ring-blue-600 focus:outline-none bg-white"
-                >
-                  <option value="pagamento_entrega">Pagamento na Entrega</option>
-                  <option value="pre_pago">Pré-Pago / Antecipado</option>
-                  <option value="pix_manual">Pix Manual</option>
-                  <option value="fechamento_semanal">Fechamento Semanal</option>
-                  <option value="fechamento_mensal">Fechamento Mensal</option>
-                  <option value="condicao_especial">Condição Especial</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-slate-600 font-semibold mb-1">Prazo (Dias)</label>
-                <input
-                  type="number"
-                  value={custForm.paymentTermDays}
-                  onChange={(e) => setCustForm({ ...custForm, paymentTermDays: Number(e.target.value) })}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-xl font-medium focus:ring-2 focus:ring-blue-600 focus:outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-slate-600 font-semibold mb-1">Limite de Crédito (R$)</label>
-                <input
-                  type="number"
-                  value={custForm.creditLimit}
-                  onChange={(e) => setCustForm({ ...custForm, creditLimit: Number(e.target.value) })}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-xl font-medium focus:ring-2 focus:ring-blue-600 focus:outline-none font-mono"
-                />
-              </div>
-            </div>
-
-            <div className="mt-4 space-y-2 text-xs">
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={custForm.produceOnlyAfterPayment}
-                  onChange={(e) => setCustForm({ ...custForm, produceOnlyAfterPayment: e.target.checked })}
-                  className="rounded text-blue-600 focus:ring-blue-500 w-4 h-4"
-                />
-                <span className="font-semibold text-slate-800">
-                  Produzir somente após pagamento confirmado (bloqueia fila de produção)
-                </span>
-              </label>
-
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={custForm.allowNewOrdersWithOverdue}
-                  onChange={(e) => setCustForm({ ...custForm, allowNewOrdersWithOverdue: e.target.checked })}
-                  className="rounded text-blue-600 focus:ring-blue-500 w-4 h-4"
-                />
-                <span className="font-semibold text-slate-800">
-                  Permitir novos pedidos mesmo com saldo vencido
-                </span>
-              </label>
-
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={custForm.showPixOnPendingReceipts}
-                  onChange={(e) => setCustForm({ ...custForm, showPixOnPendingReceipts: e.target.checked })}
-                  className="rounded text-blue-600 focus:ring-blue-500 w-4 h-4"
-                />
-                <span className="font-semibold text-slate-800">
-                  Exibir Chave Pix e QR Code em recibos pendentes
-                </span>
-              </label>
-            </div>
-          </div>
-
-          <div className="flex justify-end gap-2 pt-4 border-t border-slate-200">
-            <button
-              type="button"
-              onClick={() => setIsCustomerModalOpen(false)}
-              className="px-4 py-2 border border-slate-300 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
-            >
-              Cancelar
-            </button>
-            <button
-              type="submit"
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-xs transition-colors cursor-pointer flex items-center gap-1.5"
-            >
-              <Save className="w-4 h-4" />
-              <span>Salvar Cliente</span>
-            </button>
-          </div>
-        </form>
-      </Modal>
-
-      {/* Modal: Nova/Editar Filial */}
-      <Modal
-        isOpen={isBranchModalOpen}
-        onClose={() => setIsBranchModalOpen(false)}
-        title={editingBranch ? 'Editar Filial' : `Nova Filial - ${selectedCustomer?.name}`}
-        subtitle="Informe o endereço que sairá registrado nos recibos e entregas"
-        maxWidth="2xl"
-      >
-        <form onSubmit={handleSaveBranch} className="space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
-                Nome da Filial *
-              </label>
-              <input
-                type="text"
-                required
-                value={branchForm.name}
-                onChange={(e) => setBranchForm({ ...branchForm, name: e.target.value })}
-                placeholder="Ex: Centro 1 ou Loja Estação"
-                className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs font-medium focus:ring-2 focus:ring-blue-600 focus:outline-none"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
-                Nome Fantasia
-              </label>
-              <input
-                type="text"
-                value={branchForm.tradeName}
-                onChange={(e) => setBranchForm({ ...branchForm, tradeName: e.target.value })}
-                placeholder="Ex: Cristal Cel XV"
-                className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs font-medium focus:ring-2 focus:ring-blue-600 focus:outline-none"
-              />
-            </div>
-
-            <div className="sm:col-span-2">
-              <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
-                Endereço Completo *
-              </label>
-              <input
-                type="text"
-                required
-                value={branchForm.address}
-                onChange={(e) => setBranchForm({ ...branchForm, address: e.target.value })}
-                placeholder="Rua XV de Novembro, 123"
-                className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs font-medium focus:ring-2 focus:ring-blue-600 focus:outline-none"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
-                Bairro *
-              </label>
-              <input
-                type="text"
-                required
-                value={branchForm.neighborhood}
-                onChange={(e) => setBranchForm({ ...branchForm, neighborhood: e.target.value })}
-                placeholder="Centro"
-                className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs font-medium focus:ring-2 focus:ring-blue-600 focus:outline-none"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
-                CEP
-              </label>
-              <input
-                type="text"
-                value={branchForm.zipCode}
-                onChange={(e) => setBranchForm({ ...branchForm, zipCode: e.target.value })}
-                placeholder="80020-310"
-                className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs font-medium focus:ring-2 focus:ring-blue-600 focus:outline-none font-mono"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
-                Telefone da Filial
-              </label>
-              <input
-                type="text"
-                value={branchForm.phone}
-                onChange={(e) => setBranchForm({ ...branchForm, phone: e.target.value })}
-                placeholder="(41) 99901-0001"
-                className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs font-medium focus:ring-2 focus:ring-blue-600 focus:outline-none"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
-                Responsável na Filial
-              </label>
-              <input
-                type="text"
-                value={branchForm.contactName}
-                onChange={(e) => setBranchForm({ ...branchForm, contactName: e.target.value })}
-                placeholder="Ex: Marcos Gerente"
-                className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs font-medium focus:ring-2 focus:ring-blue-600 focus:outline-none"
-              />
-            </div>
-          </div>
-
-          <div className="flex justify-end gap-2 pt-4 border-t border-slate-200">
-            <button
-              type="button"
-              onClick={() => setIsBranchModalOpen(false)}
-              className="px-4 py-2 border border-slate-300 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
-            >
-              Cancelar
-            </button>
-            <button
-              type="submit"
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-xs transition-colors cursor-pointer flex items-center gap-1.5"
-            >
-              <Save className="w-4 h-4" />
-              <span>Salvar Filial</span>
-            </button>
-          </div>
-        </form>
-      </Modal>
+          )}
+        </>
+      )}
+      {editing && <CustomerEditModal key={editing.id + editing.updatedAt} customer={editing} onClose={() => setEditing(null)} onSaved={updated => { acceptUpdated(updated); setSelectedId(updated.id); setEditing(null); setNotice('Cadastro atualizado e confirmado pelo PAMDA CORE.'); }} />}
     </div>
   );
 };

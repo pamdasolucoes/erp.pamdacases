@@ -21,24 +21,26 @@ As rotas da aplicação retornam `index.html`, permitindo abrir links diretament
 2. Conecte o GitHub e autorize acesso a `pamdasolucoes/erp.pamdacases`.
 3. Importe o repositório e selecione `main` como branch de produção.
 4. Mantenha o diretório raiz na raiz do repositório e a configuração acima.
-5. Clique em **Deploy**.
+5. Configure as variáveis públicas abaixo e conclua a configuração do backend conforme [INTEGRACAO_PAMDA_CORE.md](./docs/INTEGRACAO_PAMDA_CORE.md).
+6. Clique em **Deploy** após revisar e validar a autenticação no projeto existente.
 
 Após a conexão, novos pushes na branch `main` iniciam uma implantação de produção.
 
 ## Variáveis de ambiente e dados
 
-O `.env.local` fica apenas no computador e não é enviado ao GitHub. A versão atual não lê as variáveis `VITE_SUPABASE_*` e `VITE_DEFAULT_PIX_*` do modelo `.env.example`; nenhuma delas é necessária para este build. Os dados, configurações e usuários são persistidos no `localStorage` de cada navegador.
+O `.env.local` fica apenas no computador e não é enviado ao GitHub. Em **Settings → Environment Variables**, configure `VITE_SUPABASE_URL` e `VITE_SUPABASE_PUBLISHABLE_KEY` (ou `VITE_SUPABASE_ANON_KEY`) para o projeto existente **erp-pamda**, e faça um novo deploy.
 
-Publicar na Vercel não cria um banco de dados compartilhado. Os dados locais não são transferidos para o domínio publicado nem sincronizados entre dispositivos. A integração dos serviços com Supabase ainda precisa ser implementada para essa finalidade.
+A autenticação usa Supabase Auth e a Edge Function `pamda-auth`. Clientes e unidades oficiais são lidos do Supabase sob RLS e não são persistidos no `localStorage`. O SDK persiste somente sua sessão de autenticação. Os demais módulos de demonstração continuam usando dados locais; eles não criam vendas reais no Supabase.
 
-A autenticação atual é demonstrativa, com usuários padrão e login automático inicial como administrador. Para operar com dados reais, implemente autenticação no servidor e autorização no banco antes de disponibilizar o ERP à equipe.
+Configure o domínio de produção e cada domínio de preview autorizado em `PAMDA_ALLOWED_ORIGINS` na Edge Function. Não existe conta administrativa automática. O primeiro administrador é criado manualmente pelo procedimento seguro documentado.
 
-Quando a aplicação passar a usar variáveis, cadastre-as em **Settings → Environment Variables** e faça um novo deploy. Variáveis com prefixo `VITE_` são públicas no bundle do navegador; chaves privadas devem ficar no servidor.
+Variáveis `VITE_` são públicas no bundle. Nunca cadastre `service_role`, `sb_secret_` ou credenciais privadas com esse prefixo. A credencial administrativa é usada somente no servidor da Edge Function e em terminal privado para o bootstrap.
 
 ## Verificação local
 
 ```bash
 npm ci
+npm test
 npm run lint
 npm run build
 npm run preview

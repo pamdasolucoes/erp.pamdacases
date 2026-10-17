@@ -12,13 +12,23 @@ import {
 import { Sale, FinancialStatus, ProductionStatus } from '../../types/erp';
 import { dbService } from '../../services/db';
 import { exportToCsv } from '../../services/csvExport';
+import type { CustomerContext } from '../../types/pamdaCore';
+import { CustomerSalesHistoryView } from './CustomerSalesHistoryView';
+import { OfficialSalesView } from './OfficialSalesView';
 
 interface SalesListViewProps {
   onViewReceipt: (sale: Sale) => void;
   onNewSaleClick: () => void;
+  customerContext?: CustomerContext | null;
+  onBackToCustomer?: () => void;
 }
 
-export const SalesListView: React.FC<SalesListViewProps> = ({
+export const SalesListView: React.FC<SalesListViewProps> = props => <div className="space-y-4">
+  {props.customerContext&&<div className="flex flex-wrap gap-4 text-sm"><button type="button" onClick={props.onBackToCustomer} className="text-blue-700 underline">Voltar ao cliente</button><button type="button" onClick={props.onNewSaleClick} className="text-blue-700 font-bold">+ Nova venda</button></div>}
+  <OfficialSalesView customerId={props.customerContext?.id} onContinue={props.onNewSaleClick}/>
+</div>;
+
+const DemoSalesListView: React.FC<SalesListViewProps> = ({
   onViewReceipt,
   onNewSaleClick,
 }) => {

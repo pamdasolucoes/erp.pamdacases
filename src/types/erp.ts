@@ -8,7 +8,8 @@ export interface User {
   name: string;
   role: UserRole;
   active: boolean;
-  passwordHash: string; // SHA-256 ou hash seguro
+  canReadCustomers?: boolean; // Perfil validado pela Edge Function no servidor
+  mustChangePassword?: boolean;
   canViewFinancialMetrics?: boolean; // Permissão específica para visualizar faturamento e métricas no Dashboard
   createdAt: string;
 }
@@ -58,6 +59,7 @@ export interface CustomerBranch {
   createdAt: string;
 }
 
+// Modelo legado exclusivo de demonstracao. Cadastro oficial: types/pamdaCore.ts.
 export interface Customer {
   id: string;
   name: string;
@@ -194,8 +196,16 @@ export interface SaleItem {
   productType: ProductType;
   unit: string;
   quantity: number;
-  unitPrice: number;
-  unitDiscount: number;
+  unitPrice: number; // Preco negociado; nao e alteracao do catalogo
+  unitDiscount: number; // Legado: desconto por unidade; nao repetir o desconto global
+  originalUnitPriceSnapshot?: number; // Preco de catalogo no instante da venda futura
+  priceChangeReason?: string;
+  priceAuthorizationSnapshot?: {
+    required: boolean;
+    authorizedByUserId: string;
+    authorizedAt: string;
+    scope: 'demo_only' | 'official';
+  }; // scope demo_only nunca autoriza uma venda oficial
   subtotal: number;
   // Snapshot imutável de custo no exato instante da venda!
   unitCostSnapshot: number;
