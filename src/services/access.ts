@@ -12,6 +12,9 @@ export function canAccessTab(user: User | null, tab: string): boolean {
   if (!user?.active || user.mustChangePassword) return false;
   const commercial = user.role === 'admin_gerencial' || user.role === 'venda_atendimento';
   if (tab === 'clientes') return commercial && user.canReadCustomers === true;
+  if (['contas_receber', 'fechamentos', 'entregas', 'despesas'].includes(tab)) return user.role === 'admin_gerencial' || user.role === 'financeiro';
+  if (tab === 'estoque') return commercial || user.role === 'estoque_expedicao';
+  if (tab === 'produtos' || tab === 'kits') return commercial || user.role === 'estoque_expedicao';
   if (ADMIN_TABS.has(tab)) return user.role === 'admin_gerencial';
   if (SALES_TABS.has(tab)) return commercial;
   return tab === 'dashboard' || tab === 'producao';

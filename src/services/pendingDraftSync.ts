@@ -71,7 +71,7 @@ export class PendingDraftSync {
     else this.store.update(value=>{
       const sameCustomer=value.customerId===details.sale.customer_id;
       return {...value,paymentMethodId:value.paymentMethodId??details.sale.payment_method_id,paymentTermId:value.paymentTermId??details.sale.payment_term_id,
-        pricing:!remote.saleId&&sameCustomer&&!value.pricing.manualFreight&&!value.pricing.freight&&details.sale.shipping_confirmed&&details.sale.shipping_charged!==null?
+        pricing:sameCustomer&&value.branchId===details.sale.branch_id&&!value.commercialDefaultsPending&&!value.pricing.manualFreight&&!value.pricing.freight&&details.sale.shipping_confirmed&&details.sale.shipping_charged!==null?
           {...value.pricing,freight:String(details.sale.shipping_charged).replace('.',','),manualFreight:false}:value.pricing,
         remote:{...value.remote!,status:details.sale.status,sellerName:details.sale.seller_snapshot,...progress}};
     });
@@ -81,6 +81,7 @@ export class PendingDraftSync {
   private async changed(){
     const draft=this.store.getSnapshot();if(this.disposed||!this.active||!draft.remote||this.suppress)return;
     if(this.state.status==='closed')return;
+    if(draft.commercialDefaultsPending){this.clearScheduled();this.fingerprint='';this.publish({status:'saving',message:'Consultando condições comerciais…'});return;}
     if(!this.initialized){
       if(!this.initializing){
         this.publish({status:'saving',message:''});
@@ -107,7 +108,7 @@ export class PendingDraftSync {
     if(draft&&this.active&&this.allowed()&&this.state.status!=='closed')this.queue.enqueue(draft);else if(draft)this.fingerprint='';
   }
   async retry(){this.fingerprint='';await this.changed();try{pendingFingerprint(this.store.getSnapshot());}catch{return;}this.sendScheduled();if(this.initialized&&this.state.status!=='closed')await this.queue.retry();}
-  async flush(){await this.changed();if(this.getSnapshot().status==='closed')return true;if(this.getSnapshot().status==='error')return false;this.sendScheduled();return this.initialized&&await this.queue.flush();}
+  async flush(){await this.changed();if(this.store.getSnapshot().commercialDefaultsPending)return false;if(this.getSnapshot().status==='closed')return true;if(this.getSnapshot().status==='error')return false;this.sendScheduled();return this.initialized&&await this.queue.flush();}
   async pause(){this.active=false;this.clearScheduled();this.fingerprint='';await this.initializing;await this.queue.pause();}
   resume(){if(this.state.status==='closed')return;this.active=true;this.queue.resume();void this.changed();}
   acceptClosed(details:SaleDetails){

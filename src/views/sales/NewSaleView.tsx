@@ -11,6 +11,9 @@ import { authService } from '../../services/auth';
 import { useSalePreparation } from '../../hooks/useSalePreparation';
 import { defaultBranchId } from '../../services/defaultBranch';
 import type { PricingPreparation } from '../../types/salePreparation';
+import { useCommercialContext } from '../../hooks/useCommercialContext';
+import { useCorePermission } from '../../hooks/useCorePermission';
+import { centsInput } from '../../services/salePricing';
 
 interface NewSaleViewProps {
   initialCustomer?: CustomerContext | null;
@@ -30,6 +33,10 @@ export const NewSaleView: React.FC<NewSaleViewProps> = ({ initialCustomer, onDis
   const userId = authService.getCurrentUser()!.id;
   const { draft, setDraft, storageError, sync, workspace } = useSalePreparation(userId);
   const { customerId, branchId } = draft;
+  const commercial = useCommercialContext(userId, customerId, branchId);
+  const shippingPermission = useCorePermission(userId, 'sales.shipping.override');
+  const customerFreight = useMemo(() => commercial.data ? { status: 'available' as const, amountCents: commercial.data.effectiveShippingCents,
+    source: commercial.data.branchShippingCents !== null ? 'branch_override' as const : 'customer_default' as const } : pendingCustomerFreight, [commercial.data]);
   const [query, setQuery] = useState('');
   const [notice, setNotice] = useState('');
   const locked=sync.status==='closed'||!!draft.remote&&draft.remote.status!=='draft';
@@ -48,15 +55,24 @@ export const NewSaleView: React.FC<NewSaleViewProps> = ({ initialCustomer, onDis
     initialCustomer.customerCode !== selected.customerCode;
 
   useEffect(() => {
-    if (!selected || locked || draft.remote?.saleId || (branchId && selected.branches.some(unit => unit.id === branchId && unit.active))) return;
+    if (!selected || locked || draft.remote?.saleId && !draft.commercialDefaultsPending || (branchId && selected.branches.some(unit => unit.id === branchId && unit.active))) return;
     const next = defaultBranchId(selected);
     if (branchId !== next) {
       setDraft(previous => previous.customerId === selected.id ? { ...previous, branchId: next } : previous);
     }
-  }, [selected, branchId, setDraft,locked,draft.remote?.saleId]);
+  }, [selected, branchId, setDraft,locked,draft.remote?.saleId,draft.commercialDefaultsPending]);
   useEffect(()=>{
-    if(!locked&&selected?.active&&branch?.active&&!contextMismatch)workspace.begin();
-  },[selected,branch,contextMismatch,workspace,locked]);
+    if(!locked&&selected?.active&&branch?.active&&!contextMismatch&&commercial.data)workspace.begin();
+  },[selected,branch,contextMismatch,workspace,locked,commercial.data]);
+  useEffect(() => {
+    const context = commercial.data;
+    if (!context || locked) return;
+    setDraft(previous => {
+      if (previous.customerId !== context.customerId || previous.branchId !== context.branchId || previous.remote?.saleId && !previous.commercialDefaultsPending) return previous;
+      return { ...previous, commercialDefaultsPending:false, paymentMethodId: context.paymentMethodId, paymentTermId: context.paymentTermId,
+        pricing: previous.pricing.manualFreight ? previous.pricing : { ...previous.pricing, freight: context.effectiveShippingCents === null ? '' : centsInput(context.effectiveShippingCents), manualFreight: false } };
+    });
+  }, [commercial.data, draft.commercialDefaultsPending, locked, setDraft]);
   useEffect(()=>{
     const discardEmpty=()=>{void workspace.discardEmptyOnExit();};
     window.addEventListener('pagehide',discardEmpty);
@@ -95,7 +111,7 @@ export const NewSaleView: React.FC<NewSaleViewProps> = ({ initialCustomer, onDis
         type="button"
         className="text-xs text-slate-500 underline underline-offset-2"
         onClick={async() => {
-          try{await workspace.newDraft();onDiscard?.();setNotice('A venda anterior permanece registrada no Supabase.');}
+          try{const discarded=await workspace.newDraft();onDiscard?.();setNotice(discarded?'Preparação vazia descartada pelo servidor.':'A venda anterior permanece registrada no Supabase.');}
           catch(error){setNotice(error instanceof Error?error.message:'Não foi possível abrir outra venda.');}
         }}
       >
@@ -125,11 +141,13 @@ export const NewSaleView: React.FC<NewSaleViewProps> = ({ initialCustomer, onDis
                 ...previous,
                 customerId: customer.id,
                 branchId: defaultBranchId(customer),
-                pricing: previous.customerId === customer.id
+                commercialDefaultsPending: previous.customerId !== customer.id || previous.branchId !== defaultBranchId(customer),
+                paymentMethodId: previous.customerId === customer.id && previous.branchId === defaultBranchId(customer) ? previous.paymentMethodId : null,
+                paymentTermId: previous.customerId === customer.id && previous.branchId === defaultBranchId(customer) ? previous.paymentTermId : null,
+                pricing: previous.customerId === customer.id && previous.branchId === defaultBranchId(customer)
                   ? previous.pricing
                   : { ...previous.pricing, freight: '', freightReason: '', manualFreight: false },
               }));
-              if(customer.active&&defaultBranchId(customer))workspace.begin();
             }}
             loading={loading}
             error={error}
@@ -168,14 +186,14 @@ export const NewSaleView: React.FC<NewSaleViewProps> = ({ initialCustomer, onDis
                       aria-label="Unidade / Filial"
                       className={`${inputClass} mt-1`}
                       value={branchId}
-                      onChange={event => {const id=event.target.value;setDraft(previous => ({ ...previous, branchId:id }));if(selected.active&&selected.branches.some(unit=>unit.id===id&&unit.active))workspace.begin();}}
+                      onChange={event => {const id=event.target.value;setDraft(previous => ({ ...previous, branchId:id,commercialDefaultsPending:!!id,paymentMethodId:null,paymentTermId:null,pricing:{...previous.pricing,freight:'',freightReason:'',manualFreight:false} }));}}
                     >
                       <option value="">
                         {selected.branches.length ? 'Selecione a unidade' : 'Nenhuma unidade disponível'}
                       </option>
                       {selected.branches.map(unit => (
                         <option key={unit.id} value={unit.id} disabled={!unit.active}>
-                          {branchLabel(unit, selected.branches.length === 1)}
+                          {branchLabel(unit, selected.branches.filter(item=>item.active).length === 1)}
                           {unit.active
                             ? ` — ${[unit.address, unit.number, unit.city, unit.state].filter(Boolean).join(', ')}`
                             : ' — Inativa'}
@@ -205,6 +223,9 @@ export const NewSaleView: React.FC<NewSaleViewProps> = ({ initialCustomer, onDis
             </>
           )}
         </section>
+        {commercial.loading&&<p role="status" className="text-sm text-slate-500">Consultando frete e condições comerciais…</p>}
+        {commercial.error&&<p role="alert" className="text-sm text-rose-800">{commercial.error} <button type="button" onClick={commercial.reload} className="underline">Atualizar condições comerciais</button></p>}
+        {shippingPermission.error&&<p role="alert" className="text-sm text-amber-800">{shippingPermission.error} A alteração do frete está bloqueada até validar a permissão.</p>}
         <p className="text-xs text-slate-500">{draft.paymentMethodId||draft.paymentTermId?'Condição de pagamento cadastrada preservada nesta venda.':'Condição de pagamento não configurada'}</p>
 
         {productsLoading
@@ -223,7 +244,8 @@ export const NewSaleView: React.FC<NewSaleViewProps> = ({ initialCustomer, onDis
                 products={products}
                 customerId={customerId || null}
                 branchId={branch?.id || null}
-                customerFreight={selected?.defaultFreight || pendingCustomerFreight}
+                customerFreight={customerFreight}
+                freightEditable={shippingPermission.allowed}
                 selectedCustomer={contextMismatch ? null : selected || null}
                 selectedBranch={branch || null}
                 sellerName={draft.remote?.sellerName}

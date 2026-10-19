@@ -11,7 +11,7 @@ export function initialSaleFreight(setting: CustomerFreightSetting): string {
 }
 export function captureSaleFreight(customerId: string | null, setting: CustomerFreightSetting, input: string, reason: string, manual: boolean): SaleFreightSnapshot {
   return { customerId, defaultFreight: { ...setting }, chargedCents: parsePriceInput(input),
-    source: manual ? 'manual' : setting.status === 'available' && setting.amountCents !== null ? 'customer_default' : 'not_set',
+    source: manual ? 'manual' : setting.status === 'available' && setting.amountCents !== null ? setting.source || 'customer_default' : 'not_set',
     reason: reason.trim(), realDeliveryCostCents: null };
 }
 export function saleTotalWithFreight(itemsNetCents: number | null, freightInput: string): { totalCents: number | null; error: string | null } {

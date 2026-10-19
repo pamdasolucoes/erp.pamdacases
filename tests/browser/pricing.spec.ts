@@ -8,7 +8,7 @@ async function openPricing(page: Page, role: 'admin_gerencial' | 'venda_atendime
   const backend=await setup(page,role);
   await page.getByRole('button',{name:'Nova Venda',exact:true}).last().click();
   await selectCatalogProduct(page,kitId(1));
-  await page.getByLabel('Frete cobrado (R$)',{exact:true}).fill('0,00');
+  if(role==='admin_gerencial')await page.getByLabel('Frete cobrado (R$)',{exact:true}).fill('0,00');
   return backend;
 }
 test('precos e frete continuam utilizaveis no celular',async({page},testInfo)=>{
@@ -62,7 +62,9 @@ test('catalogo oficial nao usa autorizacao de demonstracao nem permite confirmar
   expect(state.writes).toEqual([]);
 });
 test('perfil vendedor prepara preco e frete sem obter custos restritos na interface',async({page})=>{
-  const {state}=await openPricing(page,'venda_atendimento');
+  const {state,sales}=await openPricing(page,'venda_atendimento');
+  await expect(page.getByLabel('Frete cobrado (R$)',{exact:true})).toBeDisabled();
+  sales.permissions['sales.shipping.override']=true;await page.evaluate(()=>window.dispatchEvent(new Event('focus')));
   await page.getByLabel('Valor unitário do item 1').fill('4,00');
   await expect(page.getByText(/requer análise gerencial antes de concluir/)).toBeVisible();
   await expect(page.getByTestId('direct-cost')).toHaveCount(0);

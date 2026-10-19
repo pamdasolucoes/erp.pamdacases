@@ -1,6 +1,6 @@
 // PAMDA CASES - Tipagens de Domínio do ERP B2B
 
-export type UserRole = 'admin_gerencial' | 'venda_atendimento' | 'producao';
+export type UserRole = 'admin_gerencial' | 'venda_atendimento' | 'producao' | 'financeiro' | 'estoque_expedicao';
 
 export interface User {
   id: string;
@@ -8,7 +8,7 @@ export interface User {
   name: string;
   role: UserRole;
   active: boolean;
-  canReadCustomers?: boolean; // Perfil validado pela Edge Function no servidor
+  canReadCustomers?: boolean; // Perfil validado no Supabase; a leitura continua sujeita a RLS.
   mustChangePassword?: boolean;
   canViewFinancialMetrics?: boolean; // Permissão específica para visualizar faturamento e métricas no Dashboard
   createdAt: string;

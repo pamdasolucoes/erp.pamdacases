@@ -47,12 +47,11 @@ test('erro de permissao ou rede nao mostra produtos locais e nova consulta usa d
   await expect(page.getByTestId(`product-${productId(1)}`).locator('td').nth(5)).toContainText('13,00');
   expect(state.writes).toEqual([]); expect(state.pageErrors).toEqual([]);
 });
-test('catalogo vazio nao e substituido por dados ficticios e frete padrao nao pode ser salvo',async({page})=>{
+test('catálogo vazio não usa dados fictícios e frete é gerenciado em operações oficiais próprias',async({page})=>{
   const {state}=await setup(page);
-  await expect(page.getByText('Pendente de integração',{exact:true})).toBeVisible();
+  await expect(page.getByRole('region',{name:'Condições comerciais oficiais'})).toContainText('Condição de pagamento não configurada');
   await page.getByRole('button',{name:'EDITAR',exact:true}).click();
-  await expect(page.getByLabel('FRETE PADRÃO (R$)',{exact:true})).toBeDisabled();
-  await expect(page.getByText(/Este campo não pode ser salvo nesta etapa/)).toBeVisible();
+  await expect(page.getByText(/Frete e condições comerciais são gerenciados na ficha/)).toBeVisible();
   await page.getByRole('button',{name:'Salvar alterações',exact:true}).click();
   await expect(page.getByRole('alert')).toContainText('Nenhuma alteração');
   await page.getByRole('button',{name:'Cancelar',exact:true}).click();

@@ -55,5 +55,5 @@ export function buildCustomerUpdate(customer: OfficialCustomer, form: CustomerFo
     }
     if (Object.keys(changed).length) branches.push({ id: branch.id, expectedUpdatedAt: branch.updatedAt, changes: changed, confirmAddressReviewed: draft.confirmAddressReviewed });
   }
-  return { id: customer.id, expectedUpdatedAt: customer.updatedAt, changes, branches };
+  return { id: customer.id, expectedCustomerCode: customer.customerCode, expectedUpdatedAt: customer.updatedAt, changes, branches };
 }

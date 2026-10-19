@@ -4,8 +4,6 @@ import type { OfficialCustomer } from '../../types/pamdaCore';
 import { customerService } from '../../services/customerService';
 import { Modal } from '../../components/common/Modal';
 import { buildCustomerUpdate, createCustomerForm, customerFields, branchFields } from './customerForm';
-import { customerFreightLabel } from '../../services/freight';
-import { centsInput } from '../../services/salePricing';
 
 export function CustomerEditModal({ customer, onClose, onSaved }: { customer: OfficialCustomer; onClose(): void; onSaved(customer: OfficialCustomer): void }) {
   const [form, setForm] = useState(() => createCustomerForm(customer));
@@ -40,10 +38,7 @@ export function CustomerEditModal({ customer, onClose, onSaved }: { customer: Of
             </label>)}
           </div>
           <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={form.active} onChange={event => setForm({ ...form, active: event.target.checked })} />Cliente ativo</label>
-          <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 space-y-2">
-            <label className="block text-xs font-bold text-slate-600">FRETE PADRÃO (R$)<input disabled readOnly inputMode="decimal" value={customer.defaultFreight.status === 'available' && customer.defaultFreight.amountCents !== null ? centsInput(customer.defaultFreight.amountCents) : ''} placeholder={customerFreightLabel(customer.defaultFreight)} aria-describedby="customer-freight-pending" className={`${inputClass} max-w-xs`} /></label>
-            <p id="customer-freight-pending" className="text-xs text-amber-900">Frete padrão pendente de integração de gravação. Este campo não pode ser salvo nesta etapa. Os demais dados cadastrais mantêm seu fluxo de edição.</p>
-          </div>
+          <p className="text-xs text-slate-500">Frete e condições comerciais são gerenciados na ficha do cliente, em operações próprias do PAMDA CORE.</p>
         </fieldset>
         {form.branches.map((draft, index) => <fieldset key={draft.id} disabled={busy} className="space-y-4 rounded-xl border border-slate-200 p-4">
           <legend className="px-2 text-sm font-bold text-slate-900">Unidade {index + 1}: {customer.branches.find(branch => branch.id === draft.id)?.name}</legend>

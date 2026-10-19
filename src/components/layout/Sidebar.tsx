@@ -72,12 +72,16 @@ export const Sidebar: React.FC<SidebarProps> = ({
     admin_gerencial: 'Administrador / Gerencial',
     venda_atendimento: 'Vendas / Atendimento',
     producao: 'Operação Produção',
+    financeiro: 'Financeiro',
+    estoque_expedicao: 'Estoque / Expedição',
   }[currentUser?.role || 'venda_atendimento'];
 
   const roleBadgeColor = {
     admin_gerencial: 'bg-purple-100 text-purple-800 border-purple-200',
     venda_atendimento: 'bg-blue-100 text-blue-800 border-blue-200',
     producao: 'bg-amber-100 text-amber-800 border-amber-200',
+    financeiro: 'bg-emerald-100 text-emerald-800 border-emerald-200',
+    estoque_expedicao: 'bg-cyan-100 text-cyan-800 border-cyan-200',
   }[currentUser?.role || 'venda_atendimento'];
 
   return (
@@ -189,8 +193,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </div>
           )}
 
-          {/* Catálogo & Estoque (Admin ou Vendas) */}
-          {(isAdmin || isVendas) && (
+          {/* Catálogo & Estoque */}
+          {(isAdmin || isVendas || currentUser?.role === 'estoque_expedicao') && (
             <div>
               <div className="px-3 pb-1 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
                 Catálogo & Estoque
@@ -255,8 +259,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </div>
           </div>
 
-          {/* Financeiro (Admin ou Vendas com restrições) */}
-          {isAdmin && (
+          {/* Navegação financeira; cada backend continua validando permissões. */}
+          {(isAdmin || currentUser?.role === 'financeiro') && (
             <div>
               <div className="px-3 pb-1 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
                 Financeiro

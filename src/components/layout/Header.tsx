@@ -43,7 +43,7 @@ export const Header: React.FC<HeaderProps> = ({
       </div>
 
       <div className="flex items-center gap-3">
-        {onNewSaleClick && currentUser?.role !== 'producao' && (
+        {onNewSaleClick && (currentUser?.role === 'admin_gerencial' || currentUser?.role === 'venda_atendimento') && (
           <button
             onClick={onNewSaleClick}
             className="flex items-center gap-1.5 px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-xl shadow-xs transition-colors cursor-pointer"
@@ -68,7 +68,8 @@ export const Header: React.FC<HeaderProps> = ({
                 ? 'Gerencial'
                 : currentUser?.role === 'venda_atendimento'
                 ? 'Vendas'
-                : 'Produção'}
+                : currentUser?.role === 'financeiro' ? 'Financeiro'
+                : currentUser?.role === 'estoque_expedicao' ? 'Estoque / Expedição' : 'Produção'}
             </p>
           </div>
         </div>

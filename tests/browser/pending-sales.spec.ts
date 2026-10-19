@@ -51,7 +51,7 @@ test('inícios concorrentes recebem números distintos do servidor',async({page}
   expect(result.every(entry=>entry.error===null)).toBe(true);
   const numbers=sales.sales.map(row=>row.order_number);
   expect(new Set(numbers).size).toBe(numbers.length);
-  expect(numbers.every(number=>number>=10000)).toBe(true);
+  expect(numbers.every(number=>number!==null&&number>=10000)).toBe(true);
 });
 
 test('salva preços, personalização, frete e desconto serialmente e retoma itens oficiais após recarregar',async({page})=>{
@@ -154,8 +154,10 @@ test('troca de cliente durante início mantém uma venda e serializa a mudança 
 });
 
 test('salvamento negado não anuncia sucesso, conserva edição e não descarta pendência ao tentar outra venda',async({page})=>{
-  const {sales}=await setup(page,'venda_atendimento');await page.getByRole('button',{name:'Nova Venda',exact:true}).last().click();
+  const {sales}=await setup(page,'venda_atendimento');sales.permissions['sales.shipping.override']=true;await page.getByRole('button',{name:'Nova Venda',exact:true}).last().click();
   const customer=page.getByRole('combobox',{name:'Cliente',exact:true});await customer.fill('350');await expect(page.getByRole('listbox').getByRole('option')).toHaveCount(1);await customer.press('Enter');await saved(page);
+  await expect(page.getByLabel('Frete cobrado (R$)',{exact:true})).toBeEnabled();
+  sales.permissions['sales.shipping.override']=false; // Revogada após a validação da interface.
   await page.getByLabel('Frete cobrado (R$)',{exact:true}).fill('15,00');
   await expect(page.getByTestId('sale-save-state')).toHaveText('Erro ao salvar');
   await page.getByRole('button',{name:'Nova venda',exact:true}).click();

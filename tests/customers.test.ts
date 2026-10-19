@@ -57,12 +57,11 @@ test('não trunca páginas quando max_rows do servidor é menor que 100', async 
   assert.equal(pages[pages.length - 1].from, 370);
 });
 
-test('coluna futura de matriz não é solicitada por padrão e depende de opt-in explícito',async()=>{
+test('consulta solicita sempre a matriz oficial is_primary, sem opt-in',async()=>{
   const current=backend();await new CustomersService(current.client).list();
-  assert.ok(current.calls.every(call=>!call.columns.includes('is_primary')));
-  const future=backend();await new CustomersService(future.client,{branchPrimaryEnabled:true}).list();
-  assert.ok(future.calls.filter(call=>call.table==='customer_branches').every(call=>call.columns.endsWith(',is_primary')));
+  assert.ok(current.calls.filter(call=>call.table==='customer_branches').every(call=>call.columns.endsWith(',is_primary')));
 });
+
 test('UUIDs, códigos com zeros e espaços são preservados sem conversão numérica', () => {
   const row = customer(1, { customer_code: ' 000012-A ' });
   const mapped = mapCustomer(row, []);

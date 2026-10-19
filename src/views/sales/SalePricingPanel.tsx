@@ -5,7 +5,7 @@ import type { PricePreparationEvent, PricingDraftItem, PricingLine } from '../..
 import { authService } from '../../services/auth';
 import { calculateSalePricing, captureProductPricing, centsInput, formatMoney, parsePriceInput } from '../../services/salePricing';
 import type { CustomerFreightSetting } from '../../types/freight';
-import { captureSaleFreight, initialSaleFreight, pendingCustomerFreight, saleTotalWithFreight } from '../../services/freight';
+import { captureSaleFreight, pendingCustomerFreight, saleTotalWithFreight } from '../../services/freight';
 import type { OfficialCustomer, OfficialCustomerBranch } from '../../types/pamdaCore';
 import type { ReceiptDocumentData } from '../../types/receipt';
 import { SearchDropdown } from '../../components/common/SearchDropdown';
@@ -21,7 +21,7 @@ function usePreparationField<K extends keyof PricingPreparation>(draft:PricingPr
   return [draft[key],value=>update(previous=>({...previous,[key]:typeof value==='function'?(value as (old:PricingPreparation[K])=>PricingPreparation[K])(previous[key]):value}))];
 }
 
-export function SalePricingPanel({ products, customerId, branchId, draft, onDraftChange, sellerName, customerFreight = pendingCustomerFreight, selectedCustomer = null, selectedBranch = null, onFirstProductAdded }: { products: readonly OfficialProduct[]; customerId: string | null; branchId: string | null; draft:PricingPreparation; onDraftChange:React.Dispatch<React.SetStateAction<PricingPreparation>>; sellerName?:string; customerFreight?: CustomerFreightSetting; selectedCustomer?: OfficialCustomer | null; selectedBranch?: OfficialCustomerBranch | null; onFirstProductAdded():Promise<void> }) {
+export function SalePricingPanel({ products, customerId, branchId, draft, onDraftChange, sellerName, customerFreight = pendingCustomerFreight, selectedCustomer = null, selectedBranch = null, onFirstProductAdded, freightEditable = false }: { products: readonly OfficialProduct[]; customerId: string | null; branchId: string | null; draft:PricingPreparation; onDraftChange:React.Dispatch<React.SetStateAction<PricingPreparation>>; sellerName?:string; customerFreight?: CustomerFreightSetting; selectedCustomer?: OfficialCustomer | null; selectedBranch?: OfficialCustomerBranch | null; onFirstProductAdded():Promise<void>; freightEditable?:boolean }) {
   const [items, setItems] = usePreparationField(draft,onDraftChange,'items');
   const [discount, setDiscount] = usePreparationField(draft,onDraftChange,'discount');
   const [discountReason, setDiscountReason] = usePreparationField(draft,onDraftChange,'discountReason');
@@ -51,16 +51,6 @@ export function SalePricingPanel({ products, customerId, branchId, draft, onDraf
     setError('');
   };
   useEffect(() => { invalidate(); }, [customerId, branchId]);
-  const defaultFreightCents = customerFreight.status === 'available' ? customerFreight.amountCents : null;
-  const freightContext = useRef({customerId,status:customerFreight.status,amount:defaultFreightCents});
-  useEffect(() => {
-    const previous=freightContext.current;
-    freightContext.current={customerId,status:customerFreight.status,amount:defaultFreightCents};
-    if(previous.customerId===customerId && (manualFreight || (previous.status===customerFreight.status&&previous.amount===defaultFreightCents))) return;
-    setFreight(initialSaleFreight(customerFreight)); setFreightReason(''); setManualFreight(false);
-    committedFreight.current = initialSaleFreight(customerFreight);
-    invalidate();
-  }, [customerId, customerFreight.status, defaultFreightCents]);
   const changeItem = (id: string, patch: Partial<Pick<PricingDraftItem, 'priceInput' | 'quantityInput' | 'reason' | 'customization'>>) => {
     invalidate(); setItems(previous => previous.map(item => item.id === id ? { ...item, ...patch } : item));
   };
@@ -200,6 +190,7 @@ export function SalePricingPanel({ products, customerId, branchId, draft, onDraf
           FRETE COBRADO (R$)
           <input
             aria-label="Frete cobrado (R$)"
+            disabled={!freightEditable}
             inputMode="decimal"
             value={freight}
             placeholder="0,00"
@@ -216,6 +207,7 @@ export function SalePricingPanel({ products, customerId, branchId, draft, onDraf
             aria-invalid={!!freight.trim() && parsePriceInput(freight) === null}
           />
         </label>
+        {!freightEditable && <p className="text-xs text-slate-500">A alteração do frete exige autorização do servidor.</p>}
         {orderTotal.error && <p role="status" className="text-sm text-amber-900">{orderTotal.error}</p>}
         <label className="block text-sm font-bold">
           OBSERVAÇÕES

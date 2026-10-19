@@ -1,7 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { User, UserRole } from '../types/erp';
 
-const ERP_ROLES: UserRole[] = ['admin_gerencial', 'venda_atendimento', 'producao'];
+const ERP_ROLES: UserRole[] = ['admin_gerencial', 'venda_atendimento', 'producao', 'financeiro', 'estoque_expedicao'];
 
 interface ErpUserProfile {
   user_id: string;
@@ -38,7 +38,7 @@ function userProfileError(userId: string, profile: ErpUserProfile | null): strin
   if (profile.user_id !== userId) return 'O user_id do perfil não corresponde à identidade autenticada.';
   if (profile.active !== true) return 'O perfil existe, mas está inativo. Peça ao administrador para ativar a conta.';
   if (!ERP_ROLES.includes(profile.role)) {
-    return `O perfil existe, mas o role "${String(profile.role)}" não é reconhecido. Use admin_gerencial, venda_atendimento ou producao.`;
+    return `O perfil existe, mas o role "${String(profile.role)}" não é reconhecido pelo ERP.`;
   }
   if (typeof profile.username !== 'string' || !profile.username.trim()) {
     return 'O perfil existe, mas o campo username está vazio ou inválido.';

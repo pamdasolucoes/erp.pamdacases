@@ -10,7 +10,7 @@ export function pendingBackend(role='admin_gerencial'){
   let invalidSaveReturn=false;
   const client={
     auth:{getUser:async()=>({data:{user:user.active?{id:user.id}:null},error:null})},
-    async getOpenApiSpec(){return {data:(await backend.handle('/rest/v1/',new URL('https://synthetic.invalid/rest/v1/'),null))!.body,error:null};},
+    async getOpenApiSpec(){throw new Error('OpenAPI não faz parte do contrato de permissões');},
     async rpc(name:string,args:unknown){const result=await backend.handle('/rest/v1/rpc/'+name,new URL('https://synthetic.invalid/'),args);if(result?.abort)return {data:null,error:{code:'',message:'Failed to fetch'}};if((result?.status||200)>=400)return {data:null,error:result!.body};return {data:invalidSaveReturn&&name==='pamda_salvar_rascunho_venda'?uuid(999999):result!.body,error:null};},
     from(table:string){
       const url=new URL('https://synthetic.invalid/rest/v1/'+table);

@@ -4,7 +4,7 @@ import {pendingBackend} from './fixtures/pendingSalesBackend';
 import {uuid} from './fixtures/customerRows';
 import {emptySalePreparation} from '../src/services/salePreparation';
 import {pendingSaleArgs,pendingFingerprint,preparationFromSale} from '../src/services/pendingSaleMapping';
-import {permissionArgument} from '../src/services/pendingSales';
+
 import {PreparationStore} from '../src/services/preparationStore';
 import {PendingDraftSync} from '../src/services/pendingDraftSync';
 import {captureProductPricing} from '../src/services/salePricing';
@@ -55,8 +55,6 @@ test('permissões são consultadas no backend com o nome real do argumento OpenA
   const admin=pendingBackend();assert.equal(await admin.service.hasPermission(admin.user.id,'sales.cancel'),true);
   const seller=pendingBackend('venda_atendimento');assert.equal(await seller.service.hasPermission(seller.user.id,'sales.cancel'),false);
   seller.backend.permissions['sales.cancel']=true;assert.equal(await seller.service.hasPermission(seller.user.id,'sales.cancel'),true);
-  assert.equal(permissionArgument({paths:{'/rpc/pamda_has_permission':{post:{requestBody:{content:{'application/json':{schema:{$ref:'#/definitions/args'}}}}}}},definitions:{args:{properties:{actual_permission_name:{type:'string'}}}}}),'actual_permission_name');
-  assert.throws(()=>permissionArgument({}));
 });
 
 test('cancelamento exige permissão e motivo, preserva evento/registro e rejeita confirmadas',async()=>{

@@ -50,7 +50,8 @@ export class SaleWorkspace {
     const progress=await pendingSalesService.progress(this.userId,remote.saleId);
     this.store.update(current=>current.remote?.saleId===remote.saleId?
       {...current,remote:{...current.remote,...progress}}:current);
-    if(progress.firstProductAt!==null)return false;
+    // A legacy row without a number is reviewed manually by an administrator.
+    if(progress.orderNumber===null||progress.firstProductAt!==null)return false;
     const discarded=await pendingSalesService.discardEmpty(this.userId,remote.saleId);
     if(!discarded)throw new Error('O servidor não descartou a venda vazia. A pendência foi preservada para nova consulta.');
     return true;
@@ -58,11 +59,12 @@ export class SaleWorkspace {
   async leave(){
     if(!await this.flush())throw new Error('As alterações ainda não foram confirmadas. Tente salvar antes de sair.');
     await this.pause();
-    if(await this.discardIfNeverHadProducts())this.store.update(emptySalePreparation(this.userId));
+    try{if(await this.discardIfNeverHadProducts())this.store.update(emptySalePreparation(this.userId));}
+    catch(error){this.resume();throw error;}
   }
   async discardEmptyOnExit(){
     const draft=this.store.getSnapshot(),remote=draft.remote;
-    if(!remote?.saleId||remote.firstProductAt!==null||draft.pricing.items.length>0||this.getSyncState().status==='saving'||this.getSyncState().status==='error')return;
+    if(!remote?.saleId||remote.orderNumber===null||remote.firstProductAt!==null||draft.pricing.items.length>0||this.getSyncState().status==='saving'||this.getSyncState().status==='error')return;
     try{
       const discarded=await pendingSalesService.discardEmpty(this.userId,remote.saleId);
       if(discarded)this.store.update(emptySalePreparation(this.userId));
@@ -84,8 +86,13 @@ export class SaleWorkspace {
   async newDraft(){
     if(!await this.flush())throw new Error('Há alterações ainda não salvas. Tente salvar novamente antes de iniciar outra venda.');
     await this.pause();
-    await this.discardIfNeverHadProducts();
+    let discarded=false;
+    try{discarded=await this.discardIfNeverHadProducts();}catch(error){this.resume();throw error;}
     this.store.update(emptySalePreparation(this.userId));
+    return discarded;
+  }
+  acceptDiscarded(saleId:string){
+    if(this.store.getSnapshot().remote?.saleId===saleId)this.store.update(emptySalePreparation(this.userId));
   }
   dispose(){this.unsubscribeStore();this.unsubscribeSync?.();this.sync?.dispose();this.listeners.clear();}
 }

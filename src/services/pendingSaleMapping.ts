@@ -12,7 +12,8 @@ export function dbCents(value:unknown):number {
 }
 export const snapshotText=(snapshot:Record<string,unknown>,key:string)=>typeof snapshot?.[key]==='string'?snapshot[key] as string:'';
 export const saleCustomerName=(sale:PendingSaleRow)=>snapshotText(sale.customer_snapshot,'name')||'Cliente não informado';
-export const saleCustomerCode=(sale:PendingSaleRow)=>snapshotText(sale.customer_snapshot,'customer_code');
+// Preserve the original TEXT, including leading zeroes. Current snapshots use code.
+export const saleCustomerCode=(sale:PendingSaleRow)=>snapshotText(sale.customer_snapshot,'code')||snapshotText(sale.customer_snapshot,'customer_code');
 
 export function pendingSaleArgs(draft:SalePreparation,saleId:string):SavePendingSaleArgs {
   if(!isUuid(saleId)||!isUuid(draft.customerId)||!isUuid(draft.branchId)) throw new Error('Selecione cliente e unidade para salvar.');

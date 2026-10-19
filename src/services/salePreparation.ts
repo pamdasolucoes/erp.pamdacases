@@ -34,6 +34,7 @@ export function parseSalePreparation(raw:string|null,userId:string):SalePreparat
       !(remote.orderNumber===undefined||remote.orderNumber===null||Number.isSafeInteger(remote.orderNumber)&&remote.orderNumber>=10000)||
       !(remote.firstProductAt===undefined||remote.firstProductAt===null||text(remote.firstProductAt,100))))return null;
     return {version:1,userId,customerId:value.customerId,branchId:value.branchId,
+      ...(typeof value.commercialDefaultsPending==='boolean'?{commercialDefaultsPending:value.commercialDefaultsPending}:{}),
       ...(remote?{remote:{draftKey:remote.draftKey,saleId:remote.saleId,initialCustomerId:remote.initialCustomerId,initialBranchId:remote.initialBranchId,status:remote.status,savedFingerprint:remote.savedFingerprint,sellerName:typeof remote.sellerName==='string'?remote.sellerName:undefined,orderNumber:remote.orderNumber??null,firstProductAt:remote.firstProductAt??null}}:{}),
       paymentMethodId:typeof value.paymentMethodId==='string'?value.paymentMethodId:null,paymentTermId:typeof value.paymentTermId==='string'?value.paymentTermId:null,
       pricing:{items:p.items,discount:p.discount,discountReason:p.discountReason,notes:p.notes,freight:p.freight,freightReason:p.freightReason,manualFreight:p.manualFreight,events:[]}};

@@ -1,22 +1,13 @@
-import type { EmployeeInput, EmployeeUpdate, AuthEndpointResponse } from '../types/employees';
-import { supabase } from './supabase';
+import type { EmployeeInput, EmployeeUpdate } from '../types/employees';
 
-async function invoke(body: object): Promise<AuthEndpointResponse> {
-  if (!supabase) throw new Error('Supabase não configurado.');
-  const { data, error } = await supabase.functions.invoke<AuthEndpointResponse>('pamda-auth', { body });
-  if (error || data?.error) {
-    let message = data?.error;
-    if (!message && error && 'context' in error && error.context instanceof Response) {
-      try { message = (await error.context.json()).error; } catch {}
-    }
-    throw new Error(message || 'Não foi possível concluir a operação. Confira suas permissões e a conexão.');
-  }
-  return data || {};
+// The legacy pamda-auth function and erp_employees schema are not deployed.
+// Fail closed until the official administrative backend has been inspected and homologated.
+async function unavailable(): Promise<never> {
+  throw new Error('Administração de funcionários indisponível: integração oficial ainda não homologada.');
 }
-
 export const employeeService = {
-  async list() { return (await invoke({ action: 'list-employees' })).employees || []; },
-  async create(input: EmployeeInput) { return (await invoke({ action: 'create-employee', ...input })).employee; },
-  async update(id: string, input: EmployeeUpdate) { return (await invoke({ action: 'update-employee', id, ...input })).employee; },
-  async resetPassword(id: string, newPassword: string) { await invoke({ action: 'reset-password', id, newPassword }); },
+  list: unavailable,
+  create: (_input: EmployeeInput) => unavailable(),
+  update: (_id: string, _input: EmployeeUpdate) => unavailable(),
+  resetPassword: (_id: string, _newPassword: string) => unavailable(),
 };

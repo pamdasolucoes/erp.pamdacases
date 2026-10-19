@@ -15,24 +15,15 @@ export function saleError(error:{code?:string;message?:string}|null):Error {
   if(['P0001','22023','23514','40001'].includes(error?.code||'')&&error?.message) return new Error(error.message);
   return new Error('Não foi possível confirmar a operação no Supabase. Verifique a conexão e tente novamente.');
 }
-export function permissionArgument(spec:any):string {
-  const post=spec?.paths?.['/rpc/pamda_has_permission']?.post;
-  let schema=post?.parameters?.find((arg:any)=>arg.in==='body')?.schema||post?.requestBody?.content?.['application/json']?.schema;
-  if(schema?.$ref){const parts=String(schema.$ref).split('/').slice(1);schema=parts.reduce((value:any,key:string)=>value?.[key],spec);}
-  const entries=Object.entries(schema?.properties||{});
-  if(entries.length!==1||(entries[0][1] as any)?.type!=='string') throw new Error('Não foi possível verificar o contrato de permissões do servidor.');
-  return entries[0][0];
-}
 function validateSale(row:PendingSaleRow) {
   if(!row||![row.id,row.customer_id,row.branch_id,row.created_by].every(id=>typeof id==='string'&&isUuid(id))||
     !Number.isFinite(Date.parse(row.created_at))||!Number.isFinite(Date.parse(row.updated_at))||typeof row.seller_snapshot!=='string'||
-    !Number.isSafeInteger(row.order_number)||row.order_number<10000||
+    !(row.order_number===null||Number.isSafeInteger(row.order_number)&&row.order_number>=10000)||
     !(row.first_product_at===null||Number.isFinite(Date.parse(row.first_product_at)))||
     !row.customer_snapshot||!row.branch_snapshot||typeof row.shipping_confirmed!=='boolean') throw new Error('Dados de venda incompatíveis com o contrato oficial.');
   [row.subtotal,row.discount_amount,row.total].forEach(dbCents);if(row.shipping_charged!==null)dbCents(row.shipping_charged);
 }
 export class PendingSalesService {
-  private permissionName:Promise<string>|null=null;
   constructor(private client:SupabaseClient|null){}
   private async identity(userId:string){
     if(!this.client) throw new Error('Configure o Supabase PAMDA CORE.');
@@ -43,12 +34,9 @@ export class PendingSalesService {
     const name=`pamda-sale-write:${saleKey}`;
     return typeof navigator!=='undefined'&&navigator.locks?navigator.locks.request(name,write):write();
   }
-  async hasPermission(userId:string,permission:'sales.draft'|'sales.read'|'sales.cancel'):Promise<boolean>{
+  async hasPermission(userId:string,permission:string):Promise<boolean>{
     await this.identity(userId);
-    if(!this.permissionName)this.permissionName=this.client!.getOpenApiSpec().then(({data,error})=>{if(error)throw saleError(error);return permissionArgument(data);}).catch(error=>{this.permissionName=null;throw error;});
-    const argument=await this.permissionName;
-    await this.identity(userId);
-    const {data,error}=await this.client!.rpc('pamda_has_permission',{[argument]:permission});
+    const {data,error}=await this.client!.rpc('pamda_has_permission',{p_permission:permission});
     if(error)throw saleError(error);if(typeof data!=='boolean')throw new Error('Resposta de permissão inválida.');return data;
   }
   async start(userId:string,customerId:string,branchId:string,draftKey:string):Promise<string>{
@@ -59,7 +47,7 @@ export class PendingSalesService {
       if(error)throw saleError(error);if(typeof data!=='string'||!isUuid(data))throw new Error('O servidor não confirmou a venda iniciada.');return data;
     });
   }
-  async save(userId:string,args:SavePendingSaleArgs):Promise<{orderNumber:number;firstProductAt:string|null}>{
+  async save(userId:string,args:SavePendingSaleArgs):Promise<{orderNumber:number|null;firstProductAt:string|null}>{
     if(!isUuid(args.p_venda_id))throw new Error('A venda precisa ser iniciada antes de salvar.');
     return this.lock(args.p_venda_id,async()=>{
       await this.identity(userId);
@@ -78,12 +66,12 @@ export class PendingSalesService {
       return data;
     });
   }
-  async progress(userId:string,saleId:string):Promise<{orderNumber:number;firstProductAt:string|null}>{
+  async progress(userId:string,saleId:string):Promise<{orderNumber:number|null;firstProductAt:string|null}>{
     await this.identity(userId);
     if(!isUuid(saleId))throw new Error('Venda inválida para consultar numeração.');
-    const {data,error}=await this.client!.from('erp_sales').select('order_number,first_product_at').eq('id',saleId).returns<{order_number:number;first_product_at:string|null}[]>().maybeSingle();
+    const {data,error}=await this.client!.from('erp_sales').select('order_number,first_product_at').eq('id',saleId).returns<{order_number:number|null;first_product_at:string|null}[]>().maybeSingle();
     if(error)throw saleError(error);
-    if(!data||!Number.isSafeInteger(data.order_number)||data.order_number<10000||
+    if(!data||!(data.order_number===null||Number.isSafeInteger(data.order_number)&&data.order_number>=10000)||
       !(data.first_product_at===null||Number.isFinite(Date.parse(data.first_product_at))))throw new Error('O servidor retornou numeração de venda inválida.');
     return {orderNumber:data.order_number,firstProductAt:data.first_product_at};
   }

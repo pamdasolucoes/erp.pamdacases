@@ -15,6 +15,7 @@ export interface SalePreparation {
   userId: string;
   customerId: string;
   branchId: string;
+  commercialDefaultsPending?: boolean;
   pricing: PricingPreparation;
   paymentMethodId?:string|null;
   paymentTermId?:string|null;

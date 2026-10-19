@@ -4,9 +4,9 @@ import type { OfficialCustomer, CustomerContext } from '../../types/pamdaCore';
 import { searchCustomers } from '../../services/customerMapping';
 import { useCustomers } from '../../hooks/useCustomers';
 import { authService } from '../../services/auth';
-import { canEditCustomers } from '../../services/customerEdits';
+import { useCorePermission } from '../../hooks/useCorePermission';
+import { CustomerCommercialPanel } from './CustomerCommercialPanel';
 import { CustomerEditModal } from './CustomerEditModal';
-import { customerFreightLabel } from '../../services/freight';
 
 function Field({ label, value }: { label: string; value: string | null | undefined }) {
   return <div><dt className="text-[11px] font-bold uppercase text-slate-400">{label}</dt><dd className="mt-1 text-sm text-slate-800 break-words whitespace-pre-wrap">{value || 'Não informado'}</dd></div>;
@@ -29,7 +29,8 @@ export const CustomersView: React.FC<CustomersViewProps> = ({ initialCustomerId,
   const [selectedId, setSelectedId] = useState(initialCustomerId || '');
   const [editing, setEditing] = useState<OfficialCustomer | null>(null);
   const [notice, setNotice] = useState('');
-  const canEdit = canEditCustomers(authService.getCurrentUser());
+  const manage = useCorePermission(authService.getCurrentUser()!.id, 'customers.manage');
+  const canEdit = manage.allowed;
 
   const filtered = useMemo(() => searchCustomers(customers, query), [customers, query]);
   const selected = filtered.find(customer => customer.id === selectedId) || filtered[0];
@@ -50,7 +51,8 @@ export const CustomersView: React.FC<CustomersViewProps> = ({ initialCustomerId,
         <>
           {notice && <p role="status" className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">{notice}</p>}
           <div className="flex flex-wrap gap-3 text-xs text-slate-600" aria-live="polite"><span>{customers.length} clientes acessíveis</span><span>{units.length} unidades</span><span className="text-amber-800">{reviews} endereços sinalizados para revisão</span></div>
-          <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">Condição de pagamento não configurada. As unidades iniciais ainda aguardam conferência para classificação de redes e filiais.</div>
+          <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">As condições comerciais são consultadas no cadastro oficial de cada cliente e unidade. Não agrupe cadastros sem conferência.</div>
+          {manage.error&&<p role="alert" className="text-sm text-amber-800">{manage.error} A edição permanece indisponível até validar a permissão.</p>}
           <label className="block text-sm font-bold text-slate-700">Pesquisar por código comercial, nome ou documento
             <div className="relative mt-2"><Search className="absolute left-3 top-3 h-4 w-4 text-slate-400" /><input type="search" value={query} onChange={event => setQuery(event.target.value)} placeholder="Código, nome, razão social ou CPF/CNPJ" className="w-full rounded-xl border border-slate-300 bg-white py-2.5 pl-10 pr-3 text-sm font-normal" /></div>
           </label>
@@ -80,14 +82,14 @@ export const CustomersView: React.FC<CustomersViewProps> = ({ initialCustomerId,
                     <Field label="Contato" value={selected.contactName} /><Field label="Telefone" value={selected.phone} /><Field label="Celular" value={selected.mobilePhone} /><Field label="WhatsApp" value={selected.whatsappPhone} /><Field label="E-mail" value={selected.email} /><Field label="Referência" value={selected.referenceName} /><Field label="Telefone da referência" value={selected.referencePhone} />
                     <Field label="Cadastro no sistema anterior" value={dateLabel(selected.legacyRegisteredOn, selected.legacyRegisteredRaw)} /><Field label="Última compra no sistema anterior" value={dateLabel(selected.legacyLastPurchaseOn, selected.legacyLastPurchaseRaw)} />
                   </dl>
-                  <div className="mt-5 border-t border-slate-100 pt-4"><h3 className="text-sm font-bold">Condição de pagamento não configurada</h3><p className="text-xs text-slate-500 mt-1">Prazo e limite de crédito ainda não definidos.</p></div>
-                  <dl className="mt-4 space-y-4"><Field label="Frete padrão (R$)" value={customerFreightLabel(selected.defaultFreight)} /><Field label="Observações" value={selected.notes} /></dl>
+                  <CustomerCommercialPanel key={selected.id} customer={selected}/>
+                  <dl className="mt-4 space-y-4"><Field label="Observações" value={selected.notes} /></dl>
                 </section>
                 <section className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6 space-y-4">
                   <h3 className="font-bold text-slate-900">Unidades cadastradas ({selected.branches.length})</h3>
                   {!selected.branches.length && <p className="text-sm text-slate-500">Nenhuma unidade disponível para este cliente.</p>}
                   {selected.branches.map(branch => <div key={branch.id} className="rounded-xl border border-slate-200 p-4 space-y-4">
-                    <div className="flex flex-wrap items-center gap-2"><MapPin className="w-4 h-4 text-slate-400" /><h4 className="text-sm font-bold">{branch.name}</h4><span className="text-xs text-slate-500">{branch.active ? 'Ativa' : 'Inativa'}</span></div>
+                    <div className="flex flex-wrap items-center gap-2"><MapPin className="w-4 h-4 text-slate-400" /><h4 className="text-sm font-bold">{branch.name}</h4>{branch.isPrimary&&<span className="text-xs font-bold text-blue-700">Matriz</span>}<span className="text-xs text-slate-500">{branch.active ? 'Ativa' : 'Inativa'}</span></div>
                     {branch.addressNeedsReview && <p className="flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 p-2 text-xs font-semibold text-amber-900"><AlertTriangle className="w-4 h-4 shrink-0" />Endereço sinalizado para revisão. Confirme antes de entregar.</p>}
                     <dl className="grid grid-cols-1 sm:grid-cols-2 gap-4"><Field label="Nome fantasia" value={branch.tradeName} /><Field label="Endereço" value={branch.address} /><Field label="Número" value={branch.number} /><Field label="Complemento" value={branch.complement} /><Field label="Bairro" value={branch.neighborhood} /><Field label="Cidade" value={branch.city} /><Field label="Estado" value={branch.state} /><Field label="CEP" value={branch.zipCode} /><Field label="Telefone" value={branch.phone} /><Field label="Contato" value={branch.contactName} /><Field label="Código da importação" value={branch.importSourceCustomerCode} /><Field label="Observações da unidade" value={branch.notes} /></dl>
                   </div>)}

@@ -10,7 +10,7 @@ export async function selectCatalogProduct(page: Page, id: string) {
 }
 
 // API inteiramente sintetica e interceptada. Nenhuma chamada ao projeto real.
-export async function setup(page: Page, role: 'admin_gerencial' | 'venda_atendimento' = 'admin_gerencial', options:{reuseSession?:boolean;strictMode?:boolean;stayOnDashboard?:boolean}={}) {
+export async function setup(page: Page, role: 'admin_gerencial' | 'venda_atendimento' | 'producao' | 'financeiro' | 'estoque_expedicao' = 'admin_gerencial', options:{reuseSession?:boolean;strictMode?:boolean;stayOnDashboard?:boolean}={}) {
   const customers = Array.from({ length:384 }, (_,index) => customerRow(index + 1));
   customers[0] = customerRow(1,{ name:'Loja Árvore',company_name:'Comércio Teste',cpf:'123.456.789-01',notes:'  legado  ' });
   customers[349]=customerRow(350,{customer_code:'350',name:'Cristal Centro'});
@@ -18,7 +18,7 @@ export async function setup(page: Page, role: 'admin_gerencial' | 'venda_atendim
   customers[1].company_name='Loja que menciona 350'; customers[1].cnpj='35000000000100';
   const branches = Array.from({ length:384 }, (_,index) => branchRow(index + 1));
   const {products,components}=officialCatalogFixture();
-  const state = { listError:'', editError:'', productError:'', profileError:'', profileActive:true, identityRevoked:false, tokenRequests:0, refreshRequests:0, authLifetimeSeconds:3600, serverClockSeconds:0, emptyCatalog:false, authorizationError:'', authorizationDelay:0, writes:[] as { url:string;body:any }[], reads:0, productReads:0, pageErrors:[] as string[] };
+  const state = { listError:'', editError:'', productError:'', profileError:'', profileActive:true, identityRevoked:false, tokenRequests:0, refreshRequests:0, authLifetimeSeconds:3600, serverClockSeconds:0, emptyCatalog:false, coreError:'', customerShipping:{} as Record<string,number|null>, branchShipping:{} as Record<string,number|null>, financialPermission:false, authorizationError:'', authorizationDelay:0, writes:[] as { url:string;body:any }[], reads:0, productReads:0, pageErrors:[] as string[] };
   page.on('pageerror',error=>state.pageErrors.push(error.message));
   const employee = { id:uuid(9000),aud:'authenticated',role:'authenticated',email:'ui-test@example.invalid',email_confirmed_at:'2026-01-01T00:00:00Z',app_metadata:{provider:'email'},user_metadata:{},created_at:'2026-01-01T00:00:00Z' };
   const expires=()=>Math.floor(Date.now()/1000)+state.serverClockSeconds+state.authLifetimeSeconds;
@@ -42,7 +42,24 @@ export async function setup(page: Page, role: 'admin_gerencial' | 'venda_atendim
     if (url.pathname==='/rest/v1/erp_user_profiles') {
       if(state.profileError==='network') return route.abort('failed');
       if(state.profileError) return respond({code:state.profileError,message:'Profile denied'},403);
-      return respond([{ user_id:employee.id,username:'Teste isolado',role,active:state.profileActive,can_view_financial_metrics:false }]);
+      return respond([{ user_id:employee.id,username:'Teste isolado',role,active:state.profileActive,can_view_financial_metrics:state.financialPermission }]);
+    }
+    if (url.pathname==='/rest/v1/rpc/pamda_resumo_erp') {
+      if(state.coreError)return respond({code:state.coreError,message:'Resumo indisponível'},403);
+      return respond({as_of:'2026-10-19T12:00:00Z',pending_sales:sales.sales.filter(s=>s.status==='draft').length,pending_with_product_history:sales.sales.filter(s=>s.status==='draft'&&s.first_product_at!==null).length,pending_never_with_product:sales.sales.filter(s=>s.status==='draft'&&s.first_product_at===null).length,confirmed_sales:sales.sales.filter(s=>s.status==='confirmed').length,cancelled_sales:sales.sales.filter(s=>s.status==='cancelled').length,official_receipts:0,catalog_active:637,physical_items:316,physical_stock_verified:0,production_queue_count:null,confirmed_revenue_today:state.financialPermission?123.45:null,confirmed_revenue_month:state.financialPermission?234.56:null,receivables_balance:null});
+    }
+    if (url.pathname==='/rest/v1/rpc/pamda_contexto_comercial_cliente') {
+      const body=request.postDataJSON(), customer=customers.find(c=>c.id===body.p_customer_id), branch=branches.find(b=>b.id===body.p_branch_id&&b.customer_id===body.p_customer_id);
+      if(!customer||!branch)return respond({code:'22023',message:'Contexto inválido'},400);
+      const parent=state.customerShipping[customer.id]??null,override=state.branchShipping[branch.id]??null;
+      return respond({customer_id:customer.id,branch_id:branch.id,is_primary:branch.is_primary??false,customer_default_shipping_fee:parent,branch_shipping_fee_override:override,effective_shipping_fee:override??parent,freight_source:override!==null?'branch':parent!==null?'customer':null,payment_method_id:null,payment_term_id:null,credit_limit:null,billing_mode:null});
+    }
+    if (['/rest/v1/rpc/pamda_salvar_frete_padrao','/rest/v1/rpc/pamda_salvar_frete_filial'].includes(url.pathname)) {
+      const body=request.postDataJSON();
+      if(role!=='admin_gerencial')return respond({code:'42501',message:'Sem permissão'},403);
+      if(url.pathname.endsWith('pamda_salvar_frete_padrao'))state.customerShipping[body.p_customer_id]=body.p_amount;
+      else state.branchShipping[body.p_branch_id]=body.p_amount;
+      return respond(null);
     }
     const saleResult=await sales.handle(url.pathname,url,['POST','PUT','PATCH'].includes(request.method())?request.postDataJSON():null);
     if(saleResult){if(saleResult.abort)return route.abort('failed');return respond(saleResult.body,saleResult.status||200,saleResult.headers);}
@@ -101,7 +118,7 @@ export async function setup(page: Page, role: 'admin_gerencial' | 'venda_atendim
   await expect(page.getByText('Dashboard Geral',{exact:true})).toBeVisible();
   if(!options.stayOnDashboard){
     if (role === 'admin_gerencial') {
-      await page.getByRole('button',{name:'Clientes e Unidades',exact:true}).click();
+      await page.getByRole('main').getByRole('button',{name:'Clientes e Unidades',exact:true}).click();
       await expect(page.getByText('384 clientes acessíveis')).toBeVisible();
     } else {
       await expect(page.getByText('Teste isolado',{exact:true}).first()).toBeVisible();

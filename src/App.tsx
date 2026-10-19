@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { User, Sale } from './types/erp';
+import { User } from './types/erp';
 import type { CustomerContext } from './types/pamdaCore';
 import { authService } from './services/auth';
 import { canAccessTab } from './services/access';
 import { Sidebar, ActiveTab } from './components/layout/Sidebar';
 import { Header } from './components/layout/Header';
 import { LoginView } from './components/auth/LoginView';
-import { ReceiptModal } from './components/receipt/ReceiptModal';
+
 
 // Views
 import { DashboardView } from './views/DashboardView';
@@ -39,10 +39,7 @@ export function App() {
   const [newSaleCustomer, setNewSaleCustomer] = useState<CustomerContext | null>(null);
   const [navigationError,setNavigationError]=useState('');
   const authenticatedId = useRef<string | null>(null);
-
-  // Global Receipt Modal State
-  const [activeReceiptSale, setActiveReceiptSale] = useState<Sale | null>(null);
-  const [isReceiptModalOpen, setIsReceiptModalOpen] = useState(false);
+  const recoveringSession = useRef(true);
 
   useEffect(() => {
     const unsubscribeAuth = authService.subscribe((user, loading, error) => {
@@ -54,16 +51,18 @@ export function App() {
         setCustomerContext(null);
         setHistoryCustomer(null);
         setNewSaleCustomer(null);
-        setActiveReceiptSale(null);
-        setIsReceiptModalOpen(false);
-        setCurrentTab('dashboard');
+        let savedTab: string | null = null;
+        if (recoveringSession.current) {
+          try { savedTab = sessionStorage.getItem(`pamda_navigation:${import.meta.env.VITE_SUPABASE_URL}:${user.id}`); } catch {}
+        }
+        setCurrentTab(savedTab && canAccessTab(user, savedTab) ? savedTab as ActiveTab : 'dashboard');
+        recoveringSession.current = false;
       } else if (!user && !loading) {
+        recoveringSession.current = false;
         authenticatedId.current = null;
         setCustomerContext(null);
         setHistoryCustomer(null);
         setNewSaleCustomer(null);
-        setActiveReceiptSale(null);
-        setIsReceiptModalOpen(false);
         setMobileMenuOpen(false);
       }
     });
@@ -87,11 +86,6 @@ export function App() {
     try{sessionStorage.setItem(`pamda_navigation:${import.meta.env.VITE_SUPABASE_URL}:${currentUser.id}`,currentTab);}catch{}
   },[currentTab,currentUser?.id]);
 
-  const handleOpenReceipt = (sale: Sale) => {
-    setActiveReceiptSale(sale);
-    setIsReceiptModalOpen(true);
-  };
-
   const openNewSale = async(customer: CustomerContext | null = null) => {
     setNavigationError('');
     if(customer&&currentUser){
@@ -100,7 +94,7 @@ export function App() {
         try{await workspace.newDraft();}catch(error){setNavigationError(error instanceof Error?error.message:'Não foi possível abrir outra venda.');return;}
       }
       // Apply an explicit navigation intent once, outside mount effects/HMR.
-      workspace.store.update(previous=>previous.customerId===customer.id?previous:{...previous,customerId:customer.id,branchId:'',pricing:{...previous.pricing,freight:'',freightReason:'',manualFreight:false}});
+      workspace.store.update(previous=>previous.customerId===customer.id?previous:{...previous,customerId:customer.id,branchId:'',commercialDefaultsPending:true,paymentMethodId:null,paymentTermId:null,pricing:{...previous.pricing,freight:'',freightReason:'',manualFreight:false}});
     }
     setNewSaleCustomer(customer);
     if (customer) setCustomerContext(customer);
@@ -183,15 +177,9 @@ export function App() {
             <p role="alert" className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-rose-800">Acesso não autorizado a este módulo.</p>
           ) : (
           <>
-          {currentTab !== 'clientes' && currentTab !== 'usuarios' && currentTab !== 'nova_venda' && currentTab !== 'produtos' && currentTab !== 'kits' && currentTab !== 'vendas' && (
-            <p className="mb-5 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
-              Módulo de demonstração. Os dados desta tela são locais; os clientes oficiais do PAMDA CORE são consultados em Clientes e Unidades.
-            </p>
-          )}
           {currentTab === 'dashboard' && (
             <DashboardView
               onNavigate={navigate}
-              onViewReceipt={handleOpenReceipt}
             />
           )}
 
@@ -201,7 +189,6 @@ export function App() {
 
           {currentTab === 'vendas' && (
             <SalesListView
-              onViewReceipt={handleOpenReceipt}
               customerContext={historyCustomer}
               onBackToCustomer={() => setCurrentTab('clientes')}
               onNewSaleClick={() => openNewSale(historyCustomer)}
@@ -217,11 +204,11 @@ export function App() {
           {currentTab === 'estoque' && <InventoryView />}
 
           {currentTab === 'producao' && (
-            <ProductionView onViewReceipt={handleOpenReceipt} />
+            <ProductionView />
           )}
 
           {currentTab === 'contas_receber' && (
-            <ReceivablesView onViewReceipt={handleOpenReceipt} />
+            <ReceivablesView />
           )}
 
           {currentTab === 'fechamentos' && <ClosingsView />}
@@ -231,7 +218,7 @@ export function App() {
           {currentTab === 'despesas' && <ExpensesView />}
 
           {(currentTab === 'compras' || currentTab === 'fornecedores') && (
-            <PurchasesView />
+            <PurchasesView suppliers={currentTab === 'fornecedores'} />
           )}
 
           {(currentTab === 'relatorio_vendas' || currentTab === 'relatorio_clientes') && (
@@ -239,7 +226,7 @@ export function App() {
           )}
 
           {currentTab === 'lucratividade' && (
-            <ProfitabilityView onViewReceipt={handleOpenReceipt} />
+            <ProfitabilityView />
           )}
 
           {currentTab === 'custo_estoque' && <InventoryView />}
@@ -254,12 +241,6 @@ export function App() {
         </main>
       </div>
 
-      {/* Global Receipt Modal */}
-      <ReceiptModal
-        sale={activeReceiptSale}
-        isOpen={isReceiptModalOpen}
-        onClose={() => setIsReceiptModalOpen(false)}
-      />
     </div>
     </React.Fragment>
   );

@@ -19,7 +19,7 @@ export interface CustomerBranchRow {
   city: string; state: string; zip_code: string; phone: string; contact_name: string;
   notes: string | null; active: boolean; address_needs_review: boolean;
   import_source_customer_code: string | null; created_at: string; updated_at: string;
-  is_primary?: boolean; // Opt-in only after the reviewed column is installed.
+  is_primary?: boolean; // Always requested from the official schema; optional for old fixtures.
 }
 
 export interface OfficialCustomerBranch {
@@ -62,6 +62,7 @@ export type BranchChanges = Editable<Pick<OfficialCustomerBranch,
   'city' | 'state' | 'zipCode' | 'phone' | 'contactName' | 'notes' | 'active' | 'addressNeedsReview'>>;
 export interface CustomerUpdate {
   readonly id: string;
+  readonly expectedCustomerCode?: string; // Local response check; never sent as an editable field.
   readonly expectedUpdatedAt: string;
   readonly changes: CustomerChanges;
   readonly branches: readonly {

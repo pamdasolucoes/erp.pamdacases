@@ -1,23 +1,27 @@
 # PAMDA ERP - Sistema B2B Pamda Cases
 
+Estado atual: [sincronização ERP + Supabase, integrações entregues e pendências de contrato](./docs/SINCRONIZACAO_CORE.md). O Supabase existente é a única fonte oficial. Os módulos sem backend homologado ficam indisponíveis; dados locais demonstrativos não são utilizados pelo aplicativo.
+
 Vendas pendentes oficiais: [início automático, salvamento serial, retomada e cancelamento autorizado](./docs/VENDAS_PENDENTES.md). A confirmação e as movimentações de estoque/financeiro continuam bloqueadas nesta etapa.
 
 Sessão, unidade automática e recuperação temporária da Nova Venda: [comportamento e verificação no localhost](./docs/SESSAO_E_RASCUNHO.md).
 
 Buscas integradas na Nova Venda e prévia de recibo A4/80 mm: veja [configuração, comportamento e testes](./docs/BUSCAS_E_PREVIA_RECIBO.md). A confirmação oficial de vendas permanece bloqueada.
 
-**Etapa atual: autenticação e consulta de clientes no Supabase PAMDA CORE.**
+**Etapa atual: sincronização com o Supabase PAMDA CORE.**
 O login usa e-mail e senha do Supabase Auth; o perfil ativo é consultado em `public.erp_user_profiles` pelo `user_id`.
-Clientes e unidades usam as tabelas oficiais existentes e são somente leitura.
-Os demais módulos continuam demonstrativos, com dados locais e indicação na interface.
+Clientes e unidades usam as tabelas oficiais existentes, com edição cadastral protegida por RPC. O dashboard consulta o resumo oficial; o contexto comercial e os fretes usam as funções oficiais informadas pelo administrador.
+Criação de cliente/filiais e seletores de pagamento aguardam os contratos completos. Os módulos sem integração homologada não efetuam consultas ou gravações demonstrativas.
 
-Consulte [INTEGRACAO_PAMDA_CORE.md](./docs/INTEGRACAO_PAMDA_CORE.md) para conferir os requisitos de RLS, autenticação, leitura do catálogo oficial e validação local. O aplicativo e o build não executam SQL.
+Consulte [SINCRONIZACAO_CORE.md](./docs/SINCRONIZACAO_CORE.md) para requisitos atuais de RLS, autenticação, contratos e validação. Os documentos das etapas anteriores são históricos. O aplicativo e o build não executam SQL. **Não aplicar a migration geral antiga nem reaplicar os scripts de `supabase/review` no banco existente.**
 
 ERP B2B sob medida para a **PAMDA CASES**, projetado para substituir o legado REIN e permitir a gestão integral de clientes, redes com filiais, políticas comerciais, produtos físicos, serviços de estamparia DTF UV, kits personalizados com cálculo de custo composto, clonagem inteligente de produtos/kits, emissão de recibos com numeração sequencial (a partir de 10000) e Pix dinâmico, esteira de produção e controle de lucratividade gerencial com snapshot histórico de custos.
 
 ---
 
-## 🚀 Funcionalidades Principais
+## Escopo histórico do projeto
+
+A lista abaixo descreve o desenho original, incluindo recursos ainda indisponíveis. Não é uma declaração de funcionalidades homologadas. Para uso atual, prevalece a documentação de sincronização acima. O login atual usa e-mail/senha do Supabase Auth; administração de funcionários, confirmações, pagamentos e movimentos reais continuam indisponíveis até a integração correspondente.
 
 1. **Autenticação Direta e Segura por Níveis (RBAC)**
    - Login por **Usuário** e **Senha** (sem exigir e-mail do operador).

@@ -5,10 +5,10 @@ import { readAllPages } from './readPages';
 import { mapCustomerCatalog } from './customerMapping';
 
 export const CUSTOMER_COLUMNS = 'id,customer_code,name,company_name,cnpj,cpf,cpf_cnpj_original,state_registration,legacy_person_type,phone,mobile_phone,whatsapp_phone,email,contact_name,reference_name,reference_phone,legacy_registered_on,legacy_last_purchase_on,legacy_registered_raw,legacy_last_purchase_raw,notes,active,is_chain,customer_kind,billing_mode,created_at,updated_at';
-export const BRANCH_COLUMNS = 'id,customer_id,name,trade_name,address,number,complement,neighborhood,city,state,zip_code,phone,contact_name,notes,active,address_needs_review,import_source_customer_code,created_at,updated_at';
+export const BRANCH_COLUMNS = 'id,customer_id,name,trade_name,address,number,complement,neighborhood,city,state,zip_code,phone,contact_name,notes,active,address_needs_review,import_source_customer_code,created_at,updated_at,is_primary';
 
 export class CustomersService {
-  constructor(private client: SupabaseClient | null,private options:{branchPrimaryEnabled?:boolean}={}) {}
+  constructor(private client: SupabaseClient | null) {}
 
   public async update(update: CustomerUpdate): Promise<OfficialCustomer> {
     const payload = toCustomerUpdateRpc(update);
@@ -20,7 +20,13 @@ export class CustomersService {
     if (error?.code === '42501') throw new Error('Você não tem permissão para editar este cadastro.');
     if (error?.code === '40001') throw new Error('O cadastro foi alterado por outra pessoa. Atualize a lista antes de editar novamente.');
     if (error) throw new Error('Não foi possível confirmar a alteração no Supabase. Confira a conexão e atualize o cadastro antes de tentar novamente.');
-    if (!data?.customer || !Array.isArray(data.branches) || data.customer.id !== update.id) throw new Error('O servidor não confirmou o cadastro esperado. Atualize a lista.');
+    if (!data?.customer || !Array.isArray(data.branches) || data.customer.id !== update.id ||
+        update.expectedCustomerCode !== undefined && data.customer.customer_code !== update.expectedCustomerCode ||
+        !Number.isFinite(Date.parse(data.customer.updated_at)) ||
+        data.branches.some((branch: CustomerBranchRow) => branch.customer_id !== update.id) ||
+        update.branches.some(edit => !data.branches.some((branch: CustomerBranchRow) => branch.id === edit.id && Number.isFinite(Date.parse(branch.updated_at))))) {
+      throw new Error('O servidor não confirmou o cadastro esperado e suas unidades. Atualize a lista.');
+    }
     return mapCustomerCatalog([data.customer as CustomerRow], data.branches as CustomerBranchRow[])[0];
   }
 
@@ -43,7 +49,7 @@ export class CustomersService {
     // O JWT da sessão Auth é autorizado exclusivamente pelas políticas RLS.
     const [customers, branches] = await Promise.all([
       load<CustomerRow>('customers', CUSTOMER_COLUMNS),
-      load<CustomerBranchRow>('customer_branches', BRANCH_COLUMNS + (this.options.branchPrimaryEnabled ? ',is_primary' : '')),
+      load<CustomerBranchRow>('customer_branches', BRANCH_COLUMNS),
     ]);
     signal?.throwIfAborted();
     return mapCustomerCatalog(customers, branches);
