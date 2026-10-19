@@ -12,6 +12,7 @@ export interface OfficialSaleRow extends PendingSaleRow {
   status:OfficialSaleStatus; confirmed_at:string|null; payment_method_id:string|null;
   payment_term_id:string|null; discount_reason:string|null; shipping_actual_cost:DbNumeric|null;
   draft_key:string|null; cancelled_at:string|null; cancelled_by:string|null; cancellation_reason:string|null;
+  is_test:boolean|null;
 }
 export interface OfficialSaleItemRow {
   id:string; sale_id:string; product_id:string; product_code_snapshot:string;

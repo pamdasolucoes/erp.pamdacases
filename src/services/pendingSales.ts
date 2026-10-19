@@ -5,7 +5,7 @@ import { dbCents } from './pendingSaleMapping';
 import { readAllPages } from './readPages';
 
 export const PENDING_COLUMNS='id,order_number,first_product_at,customer_id,branch_id,created_by,created_at,updated_at,customer_snapshot,branch_snapshot,seller_snapshot,subtotal,discount_amount,shipping_charged,shipping_confirmed,total,notes';
-export const SALE_COLUMNS=PENDING_COLUMNS+',status,confirmed_at,payment_method_id,payment_term_id,discount_reason,shipping_actual_cost,draft_key,cancelled_at,cancelled_by,cancellation_reason';
+export const SALE_COLUMNS=PENDING_COLUMNS+',status,confirmed_at,payment_method_id,payment_term_id,discount_reason,shipping_actual_cost,draft_key,cancelled_at,cancelled_by,cancellation_reason,is_test';
 export const ITEM_COLUMNS='id,sale_id,product_id,product_code_snapshot,product_sku_snapshot,description_snapshot,quantity,negotiated_unit_price,line_subtotal,customization,created_at';
 export const EVENT_COLUMNS='id,sale_id,actor_user_id,event_type,details,occurred_at';
 export class SaleAccessError extends Error {}
@@ -82,7 +82,7 @@ export class PendingSalesService {
     });
     if(new Set(rows.map((row:any)=>row.id)).size!==rows.length)throw new Error('A consulta retornou registros repetidos. Atualize a lista.');return rows;
   }
-  async list(userId:string,history=false,customerId?:string):Promise<(PendingSaleRow&{status:'draft'|'confirmed'|'cancelled'})[]>{
+  async list(userId:string,history=false,customerId?:string):Promise<(PendingSaleRow&{status:'draft'|'confirmed'|'cancelled';is_test?:boolean|null})[]>{
     await this.identity(userId);
     const rows=await this.rows<OfficialSaleRow>(history?'erp_sales':'erp_pending_sales',history?SALE_COLUMNS:PENDING_COLUMNS,query=>{
       if(history)query=query.in('status',['confirmed','cancelled']);if(customerId)query=query.eq('customer_id',customerId);return query;
@@ -95,6 +95,7 @@ export class PendingSalesService {
     const {data:sale,error}=await this.client!.from('erp_sales').select(SALE_COLUMNS).eq('id',saleId).returns<OfficialSaleRow[]>().maybeSingle();
     if(error)throw saleError(error);if(!sale||sale.id!==saleId)throw new SaleAccessError('Venda não encontrada ou sem permissão de leitura.');
     validateSale(sale);if(!['draft','confirmed','cancelled'].includes(sale.status))throw new Error('Situação da venda incompatível.');
+    if(!(sale.is_test===null||typeof sale.is_test==='boolean'))throw new Error('Indicador de venda de teste incompatível.');
     const [items,events]=await Promise.all([
       this.rows<OfficialSaleItemRow>('erp_sale_items',ITEM_COLUMNS,q=>q.eq('sale_id',saleId)),
       this.rows<OfficialSaleEventRow>('erp_sale_events',EVENT_COLUMNS,q=>q.eq('sale_id',saleId)),

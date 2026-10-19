@@ -14,6 +14,7 @@ export const receiptStyles = `
 .receipt-company-details{margin-top:3px}
 .receipt-heading{margin-top:8px}
 .receipt-heading strong{display:block;font-size:22px;line-height:1.2;font-weight:800}
+.receipt-test-notice{margin:4px 0!important;font-size:10px;font-weight:800;letter-spacing:.04em}
 .receipt-date{margin-top:4px}
 .receipt-section{padding:12px 0;border-bottom:1px solid #bbb}
 .receipt-meta{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px}
@@ -93,7 +94,7 @@ export function ReceiptDocument({ data }: { data: ReceiptDocumentData }) {
   const datePart = (type: Intl.DateTimeFormatPartTypes) =>
     dateParts.find(part => part.type === type)?.value || '';
   const date = `${datePart('day')}/${datePart('month')}/${datePart('year')} ${datePart('hour')}:${datePart('minute')}:${datePart('second')}`;
-  const showPayment = data.kind === 'confirmed' && data.payment !== null;
+  const showPayment = (data.kind === 'confirmed' || data.kind === 'test_confirmed') && data.payment !== null;
   const customerContact = data.customerContact?.trim();
   const hasCompanyDetails = data.company.cnpj || data.company.phone;
 
@@ -106,6 +107,7 @@ export function ReceiptDocument({ data }: { data: ReceiptDocumentData }) {
       <style>{receiptStyles}</style>
       <header className="receipt-header">
         <PamdaLogo className="receipt-logo" size="xl" showSubtitle={false} />
+        {data.kind === 'test_confirmed' && <p className="receipt-test-notice"><strong>DOCUMENTO DE TESTE - SEM VALOR FISCAL</strong></p>}
         {hasCompanyDetails && (
           <div className="receipt-company-details">
             {data.company.cnpj && <p>CNPJ: {data.company.cnpj}</p>}

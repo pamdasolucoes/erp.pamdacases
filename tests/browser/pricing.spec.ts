@@ -50,7 +50,7 @@ test('rejeita precos e fretes invalidos e permite zero explicito',async({page})=
   const freight=page.getByLabel('Frete cobrado (R$)',{exact:true});
   for(const value of ['-1','abc','1,001','']) { await freight.fill(value); await expect(page.getByTestId('pricing-total')).toHaveText('Informe um frete válido'); }
   await freight.fill('0,00'); await expect(page.getByTestId('pricing-total')).toHaveText(/0,00/);
-  await expect(page.getByRole('button',{name:'Concluir venda'})).toBeDisabled();
+  await expect(page.getByRole('button',{name:'Finalizar venda - TESTE',exact:true})).toBeVisible();
 });
 test('catalogo oficial nao usa autorizacao de demonstracao nem permite confirmar vendas',async({page})=>{
   const {state}=await openPricing(page);
@@ -58,7 +58,7 @@ test('catalogo oficial nao usa autorizacao de demonstracao nem permite confirmar
   await expect(page.getByRole('button',{name:'Simular autorização gerencial'})).toHaveCount(0);
   await expect(page.getByText(/custo|margem|autorização simulada/i)).toHaveCount(0);
   await page.locator('form').evaluate(form=>(form as HTMLFormElement).requestSubmit());
-  await expect(page.getByRole('alert')).toContainText('finalização de vendas');
+  await expect(page.getByRole('alert')).toContainText('Aguarde o Supabase iniciar a venda');
   expect(state.writes).toEqual([]);
 });
 test('perfil vendedor prepara preco e frete sem obter custos restritos na interface',async({page})=>{

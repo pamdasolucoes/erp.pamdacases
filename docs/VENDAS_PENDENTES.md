@@ -64,6 +64,12 @@ Validação local concluída: 123 testes de lógica/serviços/banco isolado e 36
 
 O contrato atual não oferece versão esperada de atualização. A fila evita concorrência na instância do aplicativo e, com Web Locks, serializa chamadas entre abas; não implementa controle transacional de conflitos entre computadores diferentes. A decisão final e os snapshots permanecem no servidor. A interface de quantidade existente utiliza inteiros positivos: itens fracionados externos são mantidos para consulta e não são arredondados silenciosamente para autosave.
 
+## Finalização de homologação
+
+Vendas de teste são finalizadas somente pela RPC `pamda_finalizar_venda_teste`. A venda, os pagamentos e o recibo são relidos do PAMDA CORE antes da confirmação na interface; o histórico marca o estado **Concluída - TESTE** e permite consultar pagamentos e recibo. O browser não grava pagamentos ou recibos diretamente, não movimenta estoque/financeiro real e não inclui esses valores no faturamento oficial. A confirmação manual de pagamento ERP usa `pamda_confirmar_pagamento_teste` com justificativa; pagamentos do site permanecem pendentes/agendados até confirmação futura validada pelo webhook do provedor.
+
+Ao fechar ou recarregar uma aba, o evento `pagehide` tenta descartar pela RPC uma venda que nunca teve produto salvo. Navegadores não garantem que essa requisição seja entregue. Como melhoria futura, o servidor pode oferecer uma rotina administrativa de reconciliação de rascunhos abandonados, usando `first_product_at IS NULL`, presença/ausência de itens e proteção contra atualizações concorrentes; a rotina deve chamar a lógica segura de descarte e nunca inferir um prazo de expiração até que a Pamda defina formalmente esse prazo.
+
 ## Arquivos
 
 - `src/types/pendingSales.ts`, `src/services/pendingSales.ts`: contratos oficiais, consultas paginadas, identidade, permissões, RPCs e leitura dos eventos.

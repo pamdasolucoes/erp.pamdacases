@@ -8,6 +8,9 @@ export class MockSales {
   writes:{name:string;body:any}[]=[];
   permissions:Record<string,boolean>={};startDelay=0;saveDelay=0;failStartAfterCommit=false;failSave=false;
   concurrent=0;maxConcurrent=0;inventoryWrites=0;financialWrites=0;
+  testPayments:Record<string,unknown>[]=[];testReceipts:Record<string,unknown>[]=[];
+  customerTestCredit=new Map<string,number>();private creditRequests=new Map<string,string>();private finalizationRequests=new Map<string,unknown>();
+  private nextTestRecord=800000;
   private sequence=300000;
   private nextOrderNumber=10000;
   private availableOrderNumbers:number[]=[];
@@ -24,16 +27,57 @@ export class MockSales {
       if(Object.keys(body).join(',')!=='p_permission')return this.error('Wrong permission argument');
       return {body:this.allowed(body.p_permission)};
     }
-    if(['erp_pending_sales','erp_sales','erp_sale_items','erp_sale_events'].includes(name)){
+    if(['erp_pending_sales','erp_sales','erp_sale_items','erp_sale_events','erp_sale_test_payments','erp_sale_test_receipts'].includes(name)){
       let rows:any[]=name==='erp_pending_sales'?this.sales.filter(row=>row.status==='draft'&&this.readAllowed(row)):name==='erp_sales'?this.sales.filter(row=>this.readAllowed(row)):name==='erp_sale_items'?this.items.filter(item=>this.sales.some(s=>s.id===item.sale_id&&this.readAllowed(s))):this.events.filter(event=>this.sales.some(s=>s.id===event.sale_id&&this.readAllowed(s)));
+      if(name==='erp_sale_test_payments')rows=this.testPayments.filter(row=>this.sales.some(sale=>sale.id===row.sale_id&&this.readAllowed(sale)));
+      if(name==='erp_sale_test_receipts')rows=this.testReceipts.filter(row=>this.sales.some(sale=>sale.id===row.sale_id&&this.readAllowed(sale)));
       for(const key of ['id','customer_id','sale_id']){const filter=url.searchParams.get(key);if(filter?.startsWith('eq.'))rows=rows.filter(row=>row[key]===filter.slice(3));}
       const status=url.searchParams.get('status');if(status?.startsWith('in.'))rows=rows.filter(row=>status.includes(row.status));
       rows=[...rows].sort((a,b)=>a.id.localeCompare(b.id));const count=rows.length;
       const from=Number(url.searchParams.get('offset')||0);const limit=Math.min(37,Number(url.searchParams.get('limit')||100));
       return {body:rows.slice(from,from+limit),headers:{'content-range':`${from}-${Math.min(count,from+limit)-1}/${count}`}};
     }
-    if(!['pamda_iniciar_venda','pamda_salvar_rascunho_venda','pamda_cancelar_venda','pamda_descartar_venda_vazia'].includes(name))return null;
+    if(name==='pamda_saldo_credito_teste')return {body:(this.customerTestCredit.get(body.p_customer_id)||0)/100};
+    if(!['pamda_iniciar_venda','pamda_salvar_rascunho_venda','pamda_cancelar_venda','pamda_descartar_venda_vazia','pamda_conceder_credito_teste','pamda_finalizar_venda_teste','pamda_confirmar_pagamento_teste'].includes(name))return null;
     this.writes.push({name,body:structuredClone(body)});
+    if(name==='pamda_conceder_credito_teste'){
+      if(this.identity().role!=='admin_gerencial')return this.error('Apenas administradores','42501',403);
+      const existing=this.creditRequests.get(body.p_request_key);if(existing)return {body:existing};
+      if(!Number.isFinite(body.p_amount)||body.p_amount<=0||!body.p_reason?.trim())return this.error('Crédito inválido');
+      const creditId=this.id();this.creditRequests.set(body.p_request_key,creditId);
+      this.customerTestCredit.set(body.p_customer_id,(this.customerTestCredit.get(body.p_customer_id)||0)+Math.round(body.p_amount*100));return {body:creditId};
+    }
+    if(name==='pamda_finalizar_venda_teste'){
+      if(this.identity().role!=='admin_gerencial')return this.error('Apenas administradores','42501',403);
+      const prior=this.finalizationRequests.get(body.p_request_key);if(prior)return {body:prior};
+      const row=this.sales.find(sale=>sale.id===body.p_sale_id);
+      if(!row||row.status!=='draft'||row.order_number===null||row.first_product_at===null||!row.shipping_confirmed||!this.items.some(item=>item.sale_id===row.id))return this.error('Venda não elegível para finalização de teste');
+      if(!Array.isArray(body.p_payments)||!body.p_payments.length)return this.error('Pagamentos ausentes');
+      const sum=body.p_payments.reduce((total:number,payment:any)=>total+Math.round(payment.amount*100),0);
+      if(sum!==Math.round(Number(row.total)*100))return this.error('Total dos pagamentos divergente');
+      for(const payment of body.p_payments){
+        if(payment.channel==='site'&&payment.status==='paid')return this.error('Pagamento do site não pode ser confirmado no navegador');
+        if(payment.status==='scheduled'&&!payment.scheduled_for)return this.error('Agendamento exige data');
+        if(payment.method_code==='credito_cliente'){
+          const cents=Math.round(payment.amount*100),available=this.customerTestCredit.get(row.customer_id)||0;
+          if(payment.status!=='paid'||payment.channel!=='erp'||cents>available)return this.error('Crédito de teste insuficiente ou inválido');
+        }
+      }
+      for(const payment of body.p_payments){
+        if(payment.method_code==='credito_cliente')this.customerTestCredit.set(row.customer_id,(this.customerTestCredit.get(row.customer_id)||0)-Math.round(payment.amount*100));
+        this.testPayments.push({id:this.id(),sale_id:row.id,method_code:payment.method_code,amount:payment.amount,status:payment.status,channel:payment.channel,scheduled_for:payment.scheduled_for||null,reference:null});
+      }
+      Object.assign(row,{status:'confirmed',confirmed_at:new Date().toISOString(),is_test:true,updated_at:new Date().toISOString()});
+      this.event(row.id,'test_sale_finalized',{request_key:body.p_request_key});
+      this.testReceipts.push({receipt_number:row.order_number,sale_id:row.id,receipt_snapshot:{order_number:row.order_number,customer:row.customer_snapshot,branch:row.branch_snapshot},issued_at:new Date().toISOString()});
+      const response={sale_id:row.id,receipt_number:row.order_number,is_test:true};this.finalizationRequests.set(body.p_request_key,response);return {body:response};
+    }
+    if(name==='pamda_confirmar_pagamento_teste'){
+      if(this.identity().role!=='admin_gerencial')return this.error('Apenas administradores','42501',403);
+      const payment=this.testPayments.find(row=>row.id===body.p_payment_id);
+      if(!payment||payment.channel!=='erp'||payment.status==='paid'||!body.p_reference?.trim())return this.error('Pagamento não elegível ou referência ausente');
+      Object.assign(payment,{status:'paid',reference:body.p_reference.trim()});return {body:null};
+    }
     if(name==='pamda_iniciar_venda'){
       if(!this.allowed('sales.draft'))return this.error('Sem permissão','42501',403);
       if(this.startDelay)await new Promise(resolve=>setTimeout(resolve,this.startDelay));
@@ -41,7 +85,7 @@ export class MockSales {
       if(!customer||!branch)return this.error('Cliente e unidade inválidos');
       const existing=this.sales.find(s=>s.created_by===user.id&&s.draft_key===body.p_draft_key);
       if(existing){if(existing.customer_id!==customer.id||existing.branch_id!==branch.id||existing.status!=='draft')return this.error('Chave de início incompatível');return {body:existing.id};}
-      const row:OfficialSaleRow={id:this.id(),order_number:this.availableOrderNumbers.shift()??this.nextOrderNumber++,first_product_at:null,customer_id:customer.id,branch_id:branch.id,created_by:user.id,status:'draft',created_at:new Date().toISOString(),updated_at:new Date().toISOString(),confirmed_at:null,payment_method_id:null,payment_term_id:null,customer_snapshot:{...structuredClone(customer),code:customer.customer_code} as any,branch_snapshot:structuredClone(branch) as any,seller_snapshot:'Teste isolado',notes:null,discount_reason:null,subtotal:0,discount_amount:0,shipping_charged:0,shipping_actual_cost:null,total:0,draft_key:body.p_draft_key,shipping_confirmed:false,cancelled_at:null,cancelled_by:null,cancellation_reason:null};
+      const row:OfficialSaleRow={id:this.id(),order_number:this.availableOrderNumbers.shift()??this.nextOrderNumber++,first_product_at:null,customer_id:customer.id,branch_id:branch.id,created_by:user.id,status:'draft',created_at:new Date().toISOString(),updated_at:new Date().toISOString(),confirmed_at:null,payment_method_id:null,payment_term_id:null,customer_snapshot:{...structuredClone(customer),code:customer.customer_code} as any,branch_snapshot:structuredClone(branch) as any,seller_snapshot:'Teste isolado',notes:null,discount_reason:null,subtotal:0,discount_amount:0,shipping_charged:0,shipping_actual_cost:null,total:0,draft_key:body.p_draft_key, cancelled_at:null,cancelled_by:null,cancellation_reason:null,is_test:false,shipping_confirmed:false};
       this.sales.push(row);this.event(row.id,'sale_started');
       if(this.failStartAfterCommit){this.failStartAfterCommit=false;return {abort:true};}return {body:row.id};
     }

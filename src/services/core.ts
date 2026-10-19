@@ -49,7 +49,8 @@ export function mapErpSummary(value: unknown, canViewFinancials: boolean): ErpSu
     asOf: row.as_of,
     pending_sales: count('pending_sales'), pending_with_product_history: count('pending_with_product_history'),
     pending_never_with_product: count('pending_never_with_product'), confirmed_sales: count('confirmed_sales'),
-    cancelled_sales: count('cancelled_sales'), official_receipts: count('official_receipts'),
+    test_confirmed_sales: count('test_confirmed_sales'), cancelled_sales: count('cancelled_sales'),
+    official_receipts: count('official_receipts'), test_receipts: count('test_receipts'),
     catalog_active: count('catalog_active'), physical_items: count('physical_items'),
     physical_stock_verified: count('physical_stock_verified'), production_queue_count: count('production_queue_count'),
     // Do not retain financial values without the server's finance.read authorization.
@@ -106,5 +107,10 @@ export class CoreService {
       throw new Error('O servidor não confirmou o frete esperado. Atualize a consulta antes de tentar novamente.');
     }
     return context;
+  }
+  async suggestFreight(userId:string,city:string,neighborhood:string):Promise<number|null>{
+    if(!city.trim()||!neighborhood.trim())throw new Error('Cidade e bairro são necessários para consultar uma sugestão.');
+    const value=await this.rpc(userId,'pamda_sugerir_frete_endereco',{p_city:city.trim(),p_neighborhood:neighborhood.trim()});
+    return optionalCents(value);
   }
 }

@@ -48,7 +48,7 @@ export async function setup(page: Page, role: 'admin_gerencial' | 'venda_atendim
     }
     if (url.pathname==='/rest/v1/rpc/pamda_resumo_erp') {
       if(state.coreError)return respond({code:state.coreError,message:'Resumo indisponível'},403);
-      return respond({as_of:'2026-10-19T12:00:00Z',pending_sales:sales.sales.filter(s=>s.status==='draft').length,pending_with_product_history:sales.sales.filter(s=>s.status==='draft'&&s.first_product_at!==null).length,pending_never_with_product:sales.sales.filter(s=>s.status==='draft'&&s.first_product_at===null).length,confirmed_sales:sales.sales.filter(s=>s.status==='confirmed').length,cancelled_sales:sales.sales.filter(s=>s.status==='cancelled').length,official_receipts:0,catalog_active:637,physical_items:316,physical_stock_verified:0,production_queue_count:null,confirmed_revenue_today:state.financialPermission?123.45:null,confirmed_revenue_month:state.financialPermission?234.56:null,receivables_balance:null});
+      return respond({as_of:'2026-10-19T12:00:00Z',pending_sales:sales.sales.filter(s=>s.status==='draft').length,pending_with_product_history:sales.sales.filter(s=>s.status==='draft'&&s.first_product_at!==null).length,pending_never_with_product:sales.sales.filter(s=>s.status==='draft'&&s.first_product_at===null).length,confirmed_sales:sales.sales.filter(s=>s.status==='confirmed'&&s.is_test!==true).length,test_confirmed_sales:sales.sales.filter(s=>s.status==='confirmed'&&s.is_test===true).length,cancelled_sales:sales.sales.filter(s=>s.status==='cancelled').length,official_receipts:0,test_receipts:sales.testReceipts.length,catalog_active:637,physical_items:316,physical_stock_verified:0,production_queue_count:null,confirmed_revenue_today:state.financialPermission?123.45:null,confirmed_revenue_month:state.financialPermission?234.56:null,receivables_balance:null});
     }
     if (url.pathname === '/rest/v1/rpc/pamda_has_permission' && request.postDataJSON().p_permission === 'finance.read') return respond(state.financialPermission);
     const adminResult = admin.handle(url.pathname, url, ['POST','PUT','PATCH'].includes(request.method()) ? request.postDataJSON() : null);
@@ -67,6 +67,18 @@ export async function setup(page: Page, role: 'admin_gerencial' | 'venda_atendim
       else state.branchShipping[body.p_branch_id]=body.p_amount;
       return respond(null);
     }
+    if(url.pathname==='/rest/v1/rpc/pamda_sugerir_frete_endereco'){
+      const body=request.postDataJSON(),city=String(body.p_city||'').trim().toLocaleLowerCase('pt-BR'),neighborhood=String(body.p_neighborhood||'').trim().toLocaleLowerCase('pt-BR');
+      if(city==='curitiba')return respond(neighborhood==='centro'?0:5);
+      if(['são josé dos pinhais','sao jose dos pinhais','pinhais','colombo','araucária','fazenda rio grande','campo largo'].includes(city))return respond(10);
+      return respond(null);
+    }
+    if(url.pathname==='/rest/v1/erp_payment_methods'){
+      const rows=[['pix','Pix'],['dinheiro','Dinheiro'],['cartao_debito','Cartão de débito'],['cartao_credito','Cartão de crédito'],['boleto','Boleto'],['credito_cliente','Crédito do cliente']].map(([code,name],index)=>({id:uuid(5500+index),code,name,active:true,created_at:'2026-01-01T00:00:00Z'}));
+      return respond(rows,200,{'content-range':`0-${rows.length-1}/${rows.length}`});
+    }
+    if(url.pathname==='/rest/v1/erp_payment_terms')return respond([],200,{'content-range':'*/0'});
+    if(['/rest/v1/erp_customer_payment_settings','/rest/v1/erp_branch_payment_settings'].includes(url.pathname))return respond([]);
     const saleResult=await sales.handle(url.pathname,url,['POST','PUT','PATCH'].includes(request.method())?request.postDataJSON():null);
     if(saleResult){if(saleResult.abort)return route.abort('failed');return respond(saleResult.body,saleResult.status||200,saleResult.headers);}
     if (url.pathname==='/rest/v1/products' || url.pathname==='/rest/v1/kit_components') {

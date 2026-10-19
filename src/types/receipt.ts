@@ -1,5 +1,5 @@
 export interface ReceiptDocumentData {
-  readonly kind: 'preview' | 'demo' | 'confirmed';
+  readonly kind: 'preview' | 'demo' | 'confirmed' | 'test_confirmed';
   readonly receiptNumber: string | null;
   readonly generatedAt: string;
   readonly company: { name: string; cnpj: string | null; phone: string | null };

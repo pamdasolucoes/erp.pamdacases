@@ -17,6 +17,11 @@ import { centsInput } from '../../services/salePricing';
 import { usePaymentCatalog } from '../../hooks/usePaymentCatalog';
 import { PaymentSelect } from '../../components/common/PaymentSelect';
 import { paymentCondition } from '../../services/payments';
+import {pendingSalesService} from '../../services/saleWorkspace';
+import type {SaleDetails} from '../../types/pendingSales';
+import type {ReceiptDocumentData} from '../../types/receipt';
+import {ReceiptPreviewModal} from '../../components/receipt/ReceiptPreviewModal';
+import {TestSaleFinalizationModal} from './TestSaleFinalizationModal';
 
 interface NewSaleViewProps {
   initialCustomer?: CustomerContext | null;
@@ -43,6 +48,8 @@ export const NewSaleView: React.FC<NewSaleViewProps> = ({ initialCustomer, onDis
     source: commercial.data.branchShippingCents !== null ? 'branch_override' as const : 'customer_default' as const } : pendingCustomerFreight, [commercial.data]);
   const [query, setQuery] = useState('');
   const [notice, setNotice] = useState('');
+  const [finalizing,setFinalizing]=useState<SaleDetails|null>(null);
+  const [testReceipt,setTestReceipt]=useState<ReceiptDocumentData|null>(null);
   const locked=sync.status==='closed'||!!draft.remote&&draft.remote.status!=='draft';
   const setPricing = useCallback<React.Dispatch<React.SetStateAction<PricingPreparation>>>(
     value => setDraft(previous => ({
@@ -85,20 +92,37 @@ export const NewSaleView: React.FC<NewSaleViewProps> = ({ initialCustomer, onDis
   const confirmFirstProduct=useCallback(async()=>{
     if(!await workspace.flush())throw new Error('O primeiro produto ainda não foi confirmado pelo Supabase. Tente novamente antes de continuar.');
   },[workspace]);
+  const openTestFinalization=async()=>{
+    setNotice('');
+    try{
+      const currentUser=authService.getCurrentUser();
+      if(userId!==currentUser?.id||currentUser.active!==true||currentUser.role!=='admin_gerencial')throw new Error('A finalização de teste está disponível somente para administrador ativo.');
+      if(!paymentCatalog.data)throw new Error('Aguarde o carregamento do catálogo oficial de pagamentos antes de finalizar.');
+      if(!draft.remote?.saleId)throw new Error('Aguarde o Supabase iniciar a venda antes de finalizar.');
+      if(!await workspace.flush())throw new Error('Há alterações não salvas. Corrija o erro ou tente salvar novamente antes de finalizar.');
+      const details=await pendingSalesService.details(userId,draft.remote.saleId);
+      if(details.sale.status!=='draft'||details.sale.order_number===null||!details.items.length||
+        details.sale.first_product_at===null||!details.sale.shipping_confirmed||details.sale.shipping_charged===null)
+        throw new Error('A venda precisa ter número confirmado, produto salvo e frete confirmado (inclusive R$ 0,00).');
+      setFinalizing(details);
+    }catch(reason){setNotice(reason instanceof Error?reason.message:'Não foi possível preparar a finalização de teste.');}
+  };
+  const completeTestFinalization=(details:SaleDetails,receipt:ReceiptDocumentData)=>{
+    workspace.acceptClosed(details);setFinalizing(null);setTestReceipt(receipt);
+    setNotice('Venda concluída em modo TESTE. Estoque e financeiro reais não foram movimentados.');
+  };
+  const numberLabel=draft.remote?.orderNumber!==null&&draft.remote?.orderNumber!==undefined
+    ? `Nº ${draft.remote.orderNumber.toLocaleString('pt-BR')}`
+    : draft.remote?.saleId&&sync.status==='saved'?'Sem número':'Iniciando…';
+  const admin=authService.getCurrentUser()?.active===true&&authService.getCurrentUser()?.role==='admin_gerencial';
 
   return (
     <div className="space-y-5">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <h1 className="text-2xl font-black tracking-tight text-slate-900">NOVA VENDA</h1>
+        <h1 className="text-2xl font-black tracking-tight text-slate-900">NOVA VENDA <span className="whitespace-nowrap">| {numberLabel}</span>{draft.remote?.orderNumber!==null&&draft.remote?.orderNumber!==undefined&&draft.remote.firstProductAt===null&&<span className="ml-2 text-xs font-bold text-amber-800">PROVISÓRIO</span>}</h1>
         <div className="text-right">
-          <button
-            disabled
-            title="A finalização oficial requer integração de vendas no backend."
-            className="rounded-xl bg-slate-200 px-5 py-3 font-bold text-slate-500 cursor-not-allowed"
-          >
-            Concluir venda
-          </button>
-          <p className="mt-1 text-xs text-slate-500">Finalização indisponível no momento</p>
+          {admin&&<button type="button" onClick={()=>void openTestFinalization()} disabled={!draft.remote?.saleId||draft.remote.orderNumber===null||sync.status!=='saved'||locked||!paymentCatalog.data} className="rounded-xl bg-amber-700 px-5 py-3 font-bold text-white disabled:opacity-50">Finalizar venda - TESTE</button>}
+          <p className="mt-1 text-xs text-slate-500">{admin?'Homologação · sem movimentação real':'Finalização restrita à administração'}</p>
         </div>
       </div>
 
@@ -127,7 +151,8 @@ export const NewSaleView: React.FC<NewSaleViewProps> = ({ initialCustomer, onDis
       <form
         onSubmit={event => {
           event.preventDefault();
-          setNotice('A finalização de vendas ainda não está disponível.');
+          if(admin)void openTestFinalization();
+          else setNotice('A finalização de vendas está disponível somente para administradores ativos durante a homologação.');
         }}
         className="space-y-4"
       >
@@ -267,6 +292,8 @@ export const NewSaleView: React.FC<NewSaleViewProps> = ({ initialCustomer, onDis
             )}
         </fieldset>
       </form>
+      {finalizing&&paymentCatalog.data&&<TestSaleFinalizationModal userId={userId} details={finalizing} catalog={paymentCatalog.data} onClose={()=>setFinalizing(null)} onCompleted={completeTestFinalization}/>}
+      {testReceipt&&<ReceiptPreviewModal data={testReceipt} onClose={()=>setTestReceipt(null)}/>}
     </div>
   );
 };

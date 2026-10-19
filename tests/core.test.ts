@@ -27,6 +27,13 @@ test('resumo mantém NULL como não configurado e descarta receitas sem permiss�
   assert.throws(() => mapErpSummary({ ...row, as_of: 'invalido' }, false));
 });
 
+test('resumo mantém vendas e recibos de teste separados dos indicadores oficiais',()=>{
+  const summary=mapErpSummary({as_of:'2026-10-19T12:00:00Z',confirmed_sales:8,test_confirmed_sales:3,official_receipts:7,test_receipts:2,confirmed_revenue_month:120},true);
+  assert.equal(summary.confirmed_sales,8);assert.equal(summary.test_confirmed_sales,3);
+  assert.equal(summary.official_receipts,7);assert.equal(summary.test_receipts,2);
+  assert.equal(summary.confirmed_revenue_month,12000);
+});
+
 test('contexto conserva zero explícito da filial, herança, NULL e UUIDs sem inventar políticas', () => {
   const inherited = mapCommercialContext(context(), uuid(1), uuid(1001));
   assert.equal(inherited.effectiveShippingCents, 1250); assert.equal(inherited.branchShippingCents, null);
@@ -35,6 +42,23 @@ test('contexto conserva zero explícito da filial, herança, NULL e UUIDs sem in
   const missing = mapCommercialContext(context({ customer_default_shipping_fee: null, effective_shipping_fee: null }), uuid(1), uuid(1001));
   assert.equal(missing.effectiveShippingCents, null); assert.equal(missing.paymentMethodId, null); assert.equal(missing.creditLimitCents, null);
   assert.throws(() => mapCommercialContext(context(), uuid(2), uuid(1001)), /outro cliente/);
+});
+
+test('sugestão de frete usa RPC do endereço e preserva R$ 0 e classificação NULL',async()=>{
+  const calls:{name:string;args:Record<string,unknown>}[]=[];
+  const client={auth:{getUser:async()=>({data:{user:{id:uuid(9000)}},error:null})},rpc:async(name:string,args:Record<string,unknown>)=>{
+    calls.push({name,args});
+    const city=String(args.p_city),neighborhood=String(args.p_neighborhood);
+    const value=city==='Curitiba'?(neighborhood==='Centro'?0:5):city==='Pinhais'?10:null;
+    return {data:value,error:null};
+  }} as unknown as SupabaseClient;
+  const service=new CoreService(client);
+  assert.equal(await service.suggestFreight(uuid(9000),'Curitiba','Centro'),0);
+  assert.equal(await service.suggestFreight(uuid(9000),'Curitiba','Batel'),500);
+  assert.equal(await service.suggestFreight(uuid(9000),'Pinhais','Centro'),1000);
+  assert.equal(await service.suggestFreight(uuid(9000),'Município sem classificação','Centro'),null);
+  assert.deepEqual(calls[0],{name:'pamda_sugerir_frete_endereco',args:{p_city:'Curitiba',p_neighborhood:'Centro'}});
+  await assert.rejects(()=>service.suggestFreight(uuid(9000),'','Centro'),/Cidade e bairro/);
 });
 
 test('frete só anuncia sucesso após reler o valor salvo; RPC usa identidade e argumentos oficiais', async () => {

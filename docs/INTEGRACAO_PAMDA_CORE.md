@@ -46,3 +46,20 @@ npm run build
 ```
 
 Os testes usam mocks e fixtures locais; não autenticam no projeto remoto nem modificam seus dados. A confirmação final das políticas e dos 384 registros depende do acesso ao projeto Supabase.
+
+## Vendas, pagamentos e créditos de homologação
+
+O fluxo de finalização é exclusivo de homologação e não substitui a confirmação oficial. A interface só oferece **Finalizar venda - TESTE** a um administrador ativo, com catálogo de pagamentos carregado e rascunho salvo. A RPC `pamda_finalizar_venda_teste` é a autoridade para verificar autorização, número, itens, frete confirmado, soma dos pagamentos, crédito disponível e idempotência. O frontend relê venda, pagamentos e recibo antes de apresentar sucesso.
+
+- O número apresentado vem de `erp_sales.order_number`; o navegador não gera números.
+- Crédito é consultado por `pamda_saldo_credito_teste` e concedido apenas por `pamda_conceder_credito_teste`, com motivo, confirmação e chave UUID. O navegador não escreve em `erp_customer_credit_test_ledger`.
+- Pagamentos combinados são enviados somente a `pamda_finalizar_venda_teste`. Pagamentos do canal `site` não podem ser enviados como `paid`; o browser não confirma recebimento de site. Confirmação manual ERP usa `pamda_confirmar_pagamento_teste` e exige justificativa.
+- O histórico consulta `erp_sale_test_payments` e `erp_sale_test_receipts`; o recibo de homologação deve corresponder ao número da venda e é identificado como **DOCUMENTO DE TESTE - SEM VALOR FISCAL**. Não é gravado em `erp_sale_receipts`.
+- O resumo separa `test_confirmed_sales` e `test_receipts` das métricas oficiais. Os valores de teste não entram no faturamento. O fluxo não chama operações de estoque, cobrança ou financeiro real.
+- A sugestão de frete usa `pamda_sugerir_frete_endereco` apenas como informação. O frete efetivo continua vindo de `pamda_contexto_comercial_cliente`. Aplicar uma sugestão é explícito; salvar um ajuste requer permissão e motivo, e nenhum valor manual é recalculado silenciosamente.
+
+O projeto remoto precisa manter autorização no servidor para as RPCs, com execução das RPCs de crédito/finalização/confirmação restrita ao papel administrativo ativo. Para consultas de pagamentos e recibos, conceda somente `SELECT` a `authenticated` e mantenha RLS limitada a identidades autorizadas conforme a política do projeto. Não exponha o ledger de crédito ao browser; sua leitura/mutação deve continuar mediada pelas RPCs. Uma resposta `42501` ou `PGRST...` deve ser resolvida corrigindo grants, políticas ou assinatura do contrato, sem desativar RLS ou criar tabelas/funções pelo frontend.
+
+O frontend espera em `erp_sale_test_payments` as colunas `id`, `sale_id`, `method_code`, `amount`, `status`, `channel`, `scheduled_for` e `reference`. O formato interno de `receipt_snapshot` não foi especificado neste contrato; o recibo visual usa os snapshots persistidos da venda/itens e valida o número, a venda e a data do registro de recibo. Confirmar com a equipe do PAMDA CORE se o snapshot deve ser a fonte visual canônica antes de homologar divergências históricas.
+
+Os testes locais usam apenas Supabase sintético interceptado e não comprovam as políticas, o esquema ou as regras SQL do projeto remoto. Não foram executadas migrations nem escritas comerciais reais. A validação definitiva dos caminhos RLS/RPC e das regras de frete requer ambiente isolado do PAMDA CORE.

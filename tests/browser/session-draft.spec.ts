@@ -18,7 +18,7 @@ async function refresh(page:Page){
 }
 async function reopenSale(page:Page){
   await page.getByRole('button',{name:'Nova Venda',exact:true}).first().click();
-  await expect(page.getByRole('heading',{name:'NOVA VENDA',exact:true})).toBeVisible();
+  await expect(page.getByRole('heading',{name:/NOVA VENDA \|/})).toBeVisible();
 }
 async function prepare(page:Page){
   await page.getByRole('button',{name:'+ NOVA VENDA',exact:true}).click();
@@ -34,7 +34,7 @@ async function prepare(page:Page){
   await page.getByLabel('Modelo informado do item 1').fill('Modelo especial');
 }
 async function preserved(page:Page){
-  await expect(page.getByRole('heading',{name:'NOVA VENDA',exact:true})).toBeVisible();
+  await expect(page.getByRole('heading',{name:/NOVA VENDA \|/})).toBeVisible();
   await expect(page.getByRole('combobox',{name:'Cliente',exact:true})).toHaveValue('000001 - Loja Árvore');
   await expect(page.getByRole('combobox',{name:'Unidade / Filial',exact:true})).toHaveValue(uuid(1001));
   await expect(page.getByLabel('Valor unitário do item 1')).toHaveValue('19,99');
@@ -73,7 +73,7 @@ test('recarga, navegação e Nova Venda repetida preservam toda a preparação',
   await page.getByRole('button',{name:'Produtos & Serviços',exact:true}).click();
   await reopenSale(page); await preserved(page);
   await page.reload(); await reopenSale(page); await preserved(page);
-  await expect(page.getByRole('button',{name:'Concluir venda',exact:true})).toBeDisabled();
+  await expect(page.getByRole('button',{name:'Finalizar venda - TESTE',exact:true})).toBeVisible();
   expect(state.writes).toEqual([]);expect(state.pageErrors).toEqual([]);
 });
 

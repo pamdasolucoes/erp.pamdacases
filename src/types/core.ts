@@ -19,8 +19,10 @@ export interface ErpSummary {
   pending_with_product_history: number | null;
   pending_never_with_product: number | null;
   confirmed_sales: number | null;
+  test_confirmed_sales: number | null;
   cancelled_sales: number | null;
   official_receipts: number | null;
+  test_receipts: number | null;
   catalog_active: number | null;
   physical_items: number | null;
   physical_stock_verified: number | null;
