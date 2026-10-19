@@ -3,6 +3,8 @@ import type { CustomerCommercialContext, ErpSummary } from '../types/core';
 import { isUuid } from './customerEdits';
 import { dbCents } from './pendingSaleMapping';
 import { saleError } from './pendingSales';
+import { customerCatalogChanged } from './catalogEvents';
+import { CustomersService } from './customers';
 
 const record = (value: unknown): Record<string, unknown> => {
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('Resposta incompatível do PAMDA CORE.');
@@ -105,6 +107,14 @@ export class CoreService {
     const context = await this.context(userId, customerId, branchId);
     if ((target === 'customer' ? context.customerShippingCents : context.branchShippingCents) !== cents) {
       throw new Error('O servidor não confirmou o frete esperado. Atualize a consulta antes de tentar novamente.');
+    }
+    // Refresh just the affected canonical record, including its optimistic-edit version.
+    try {
+      const customer = await new CustomersService(this.client).get(customerId, userId);
+      customerCatalogChanged({ client: this.client, userId, customer });
+    } catch {
+      customerCatalogChanged({ client: this.client, userId });
+      throw new UnconfirmedWriteError('O frete foi enviado, mas não foi possível reler o cadastro. Atualize a consulta antes de repetir.');
     }
     return context;
   }

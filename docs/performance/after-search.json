@@ -1,0 +1,9 @@
+{
+  "phase": "after",
+  "synthetic": true,
+  "searchesPerFunction": 400,
+  "customerMs": 24.4,
+  "productMs": 34.63,
+  "saleProductMs": 72.11,
+  "checksum": 44450
+}

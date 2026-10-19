@@ -1,0 +1,318 @@
+{
+  "phase": "after",
+  "commit": "uncommitted working tree based on 5e399e7c1b1390c63084e85c08a92f3ee0186173",
+  "fixture": {
+    "customers": 384,
+    "products": 637,
+    "kitComponents": 634,
+    "serverMaxRows": 37,
+    "latencyPerDataRequestMs": 20
+  },
+  "environment": "Chrome headless / Windows / Vite production preview; synthetic intercepted API; no production latency measurement",
+  "bundle": {
+    "files": [
+      {
+        "name": "AuditLogsView-CCJSYbLu.js",
+        "bytes": 188,
+        "gzip": 175
+      },
+      {
+        "name": "circle-alert-DdA9-M4A.js",
+        "bytes": 239,
+        "gzip": 180
+      },
+      {
+        "name": "ClosingsView-FRobSQVo.js",
+        "bytes": 194,
+        "gzip": 178
+      },
+      {
+        "name": "coreService-Dmu7UHbn.js",
+        "bytes": 4606,
+        "gzip": 1951
+      },
+      {
+        "name": "customers-CoF7r-Xe.js",
+        "bytes": 7183,
+        "gzip": 2724
+      },
+      {
+        "name": "CustomersView-DoD-K5Wx.js",
+        "bytes": 45304,
+        "gzip": 11738
+      },
+      {
+        "name": "DashboardView-C974CpKT.js",
+        "bytes": 6961,
+        "gzip": 2609
+      },
+      {
+        "name": "DeliveriesView-DUmof8ST.js",
+        "bytes": 193,
+        "gzip": 177
+      },
+      {
+        "name": "ExpensesView-DE1uuNBM.js",
+        "bytes": 191,
+        "gzip": 176
+      },
+      {
+        "name": "index-BHOsR-79.js",
+        "bytes": 481487,
+        "gzip": 135232
+      },
+      {
+        "name": "InventoryView-CmLt8sF_.js",
+        "bytes": 191,
+        "gzip": 176
+      },
+      {
+        "name": "NewSaleView-DXdUFS3w.js",
+        "bytes": 42852,
+        "gzip": 12811
+      },
+      {
+        "name": "PaymentSelect-9SCl6Ll-.js",
+        "bytes": 7809,
+        "gzip": 3040
+      },
+      {
+        "name": "pendingSales-DpnQ7BWe.js",
+        "bytes": 6696,
+        "gzip": 2462
+      },
+      {
+        "name": "ProductionView-DC23IIRe.js",
+        "bytes": 194,
+        "gzip": 176
+      },
+      {
+        "name": "ProductsView-BtnooMZ-.js",
+        "bytes": 10253,
+        "gzip": 3241
+      },
+      {
+        "name": "ProductThumbnail-Cz-Qm7rt.js",
+        "bytes": 551,
+        "gzip": 376
+      },
+      {
+        "name": "ProfitabilityView-BkvnEndU.js",
+        "bytes": 202,
+        "gzip": 183
+      },
+      {
+        "name": "PurchasesView-CK7ETAeT.js",
+        "bytes": 224,
+        "gzip": 203
+      },
+      {
+        "name": "readPages-C79EvZIG.js",
+        "bytes": 13609,
+        "gzip": 4819
+      },
+      {
+        "name": "ReceivablesView-DaL4Qzf3.js",
+        "bytes": 201,
+        "gzip": 181
+      },
+      {
+        "name": "refresh-cw-aC_1TlOu.js",
+        "bytes": 310,
+        "gzip": 216
+      },
+      {
+        "name": "SalesListView-DbHLQn1-.js",
+        "bytes": 17382,
+        "gzip": 4938
+      },
+      {
+        "name": "SalesReportView-DGHEI3JP.js",
+        "bytes": 196,
+        "gzip": 178
+      },
+      {
+        "name": "saleWorkspace-BbfbPHwT.js",
+        "bytes": 13126,
+        "gzip": 3644
+      },
+      {
+        "name": "search-C_MON4VT.js",
+        "bytes": 163,
+        "gzip": 160
+      },
+      {
+        "name": "SettingsView-CkRqlapB.js",
+        "bytes": 196,
+        "gzip": 179
+      },
+      {
+        "name": "testReceipt-ChMBQiLD.js",
+        "bytes": 17103,
+        "gzip": 5549
+      },
+      {
+        "name": "testSales-D11wpROv.js",
+        "bytes": 4994,
+        "gzip": 1909
+      },
+      {
+        "name": "UnavailableModule-CKWL4omT.js",
+        "bytes": 4744,
+        "gzip": 1775
+      },
+      {
+        "name": "useCatalog-BfqhC5Xf.js",
+        "bytes": 7062,
+        "gzip": 2933
+      },
+      {
+        "name": "useProgressiveRows-g0G66ufC.js",
+        "bytes": 243,
+        "gzip": 209
+      },
+      {
+        "name": "UsersView-BIzFLBoE.js",
+        "bytes": 188,
+        "gzip": 173
+      }
+    ],
+    "loginBytes": 520852,
+    "totalBytes": 695035,
+    "totalGzipBytes": 204671
+  },
+  "observations": [
+    {
+      "cycle": 0,
+      "screen": "customers",
+      "elapsedMs": 963.5,
+      "customerRequests": 22,
+      "productRequests": 0,
+      "scriptMs": 44.6,
+      "layoutMs": 44.3,
+      "domNodes": 558,
+      "listRows": 80
+    },
+    {
+      "cycle": 0,
+      "screen": "products",
+      "elapsedMs": 1423.4,
+      "customerRequests": 0,
+      "productRequests": 36,
+      "scriptMs": 25.9,
+      "layoutMs": 48.5,
+      "domNodes": 2224,
+      "listRows": 80
+    },
+    {
+      "cycle": 0,
+      "screen": "sale",
+      "elapsedMs": 464.8,
+      "customerRequests": 0,
+      "productRequests": 0,
+      "scriptMs": 31.4,
+      "layoutMs": 23.6,
+      "domNodes": 80,
+      "listRows": null
+    },
+    {
+      "cycle": 1,
+      "screen": "customers",
+      "elapsedMs": 146.1,
+      "customerRequests": 0,
+      "productRequests": 0,
+      "scriptMs": 18.6,
+      "layoutMs": 21.1,
+      "domNodes": 560,
+      "listRows": 80
+    },
+    {
+      "cycle": 1,
+      "screen": "products",
+      "elapsedMs": 179.1,
+      "customerRequests": 0,
+      "productRequests": 0,
+      "scriptMs": 22.3,
+      "layoutMs": 32.9,
+      "domNodes": 2224,
+      "listRows": 80
+    },
+    {
+      "cycle": 1,
+      "screen": "sale",
+      "elapsedMs": 125.2,
+      "customerRequests": 0,
+      "productRequests": 0,
+      "scriptMs": 15.6,
+      "layoutMs": 10.3,
+      "domNodes": 80,
+      "listRows": null
+    },
+    {
+      "cycle": 2,
+      "screen": "customers",
+      "elapsedMs": 182.6,
+      "customerRequests": 0,
+      "productRequests": 0,
+      "scriptMs": 14.2,
+      "layoutMs": 22.2,
+      "domNodes": 560,
+      "listRows": 80
+    },
+    {
+      "cycle": 2,
+      "screen": "products",
+      "elapsedMs": 146.7,
+      "customerRequests": 0,
+      "productRequests": 0,
+      "scriptMs": 19,
+      "layoutMs": 24.8,
+      "domNodes": 2224,
+      "listRows": 80
+    },
+    {
+      "cycle": 2,
+      "screen": "sale",
+      "elapsedMs": 108.8,
+      "customerRequests": 0,
+      "productRequests": 0,
+      "scriptMs": 11.3,
+      "layoutMs": 9.9,
+      "domNodes": 80,
+      "listRows": null
+    },
+    {
+      "cycle": 3,
+      "screen": "customers",
+      "elapsedMs": 189.8,
+      "customerRequests": 0,
+      "productRequests": 0,
+      "scriptMs": 10.2,
+      "layoutMs": 18.8,
+      "domNodes": 558,
+      "listRows": 80
+    },
+    {
+      "cycle": 3,
+      "screen": "products",
+      "elapsedMs": 164.1,
+      "customerRequests": 0,
+      "productRequests": 0,
+      "scriptMs": 19.8,
+      "layoutMs": 28.6,
+      "domNodes": 2224,
+      "listRows": 80
+    },
+    {
+      "cycle": 3,
+      "screen": "sale",
+      "elapsedMs": 125,
+      "customerRequests": 0,
+      "productRequests": 0,
+      "scriptMs": 12.1,
+      "layoutMs": 11.6,
+      "domNodes": 80,
+      "listRows": null
+    }
+  ]
+}

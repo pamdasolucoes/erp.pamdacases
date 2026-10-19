@@ -1,5 +1,6 @@
 import type { CustomerRow, CustomerBranchRow, OfficialCustomer, OfficialCustomerBranch } from '../types/pamdaCore';
 import { dbCents } from './pendingSaleMapping';
+import { normalizeSearch, customerSearchIndex } from './searchIndex';
 
 export function mapBranch(row: CustomerBranchRow): OfficialCustomerBranch {
   if (typeof row.id !== 'string' || typeof row.customer_id !== 'string' || typeof row.address_needs_review !== 'boolean') {
@@ -58,16 +59,15 @@ export function mapCustomerCatalog(customers: CustomerRow[], units: CustomerBran
   });
 }
 
-const normalizeSearch = (value: string) => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('pt-BR');
 export function searchCustomers(customers: readonly OfficialCustomer[], query: string): readonly OfficialCustomer[] {
   const search = normalizeSearch(query.trim());
   if (!search) return customers;
   const documentSearch = query.replace(/\D/g, '');
   return customers.filter(customer => {
-    const textMatch = [customer.customerCode, customer.name, customer.companyName || '', customer.cpf || '', customer.cnpj || '', customer.cpfCnpjOriginal || '']
-      .some(value => normalizeSearch(value).includes(search));
+    const index = customerSearchIndex(customer);
+    const textMatch = index.fields.some(value => value.includes(search));
     const documentMatch = /^[\d.\s/()-]+$/.test(query) && !!documentSearch &&
-      [customer.cpf, customer.cnpj, customer.cpfCnpjOriginal].some(value => value?.replace(/\D/g, '').includes(documentSearch));
+      index.documents.some(value => value.includes(documentSearch));
     return textMatch || documentMatch;
   });
 }

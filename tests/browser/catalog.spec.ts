@@ -9,7 +9,7 @@ test('catalogo oficial preserva layout, tipos, precos NULL, componentes e miniat
   const before=structuredClone(products);
   await openCatalog(page);
   await expect(page.getByText(/637 itens oficiais · 316 físicos · 4 serviços · 317 kits · 0 insumos · 634 vínculos/)).toBeVisible();
-  await expect(page.getByRole('table').getByRole('row')).toHaveCount(638);
+  await expect(page.getByRole('table').getByRole('row')).toHaveCount(81);
   for(const name of ['Novo Produto','Novo Kit Composto','Duplicar Produto + Kit']) await expect(page.getByRole('button',{name,exact:true})).toBeDisabled();
   const physical=page.getByTestId(`product-${productId(1)}`);
   await expect(physical).toContainText('SKU-CAPA-201'); await expect(physical).toContainText('Não conferido');
@@ -17,9 +17,9 @@ test('catalogo oficial preserva layout, tipos, precos NULL, componentes e miniat
   const unknown=page.getByTestId(`product-${productId(2)}`);
   await expect(unknown.locator('td').nth(3)).toHaveText('Não informado'); await expect(unknown.locator('td').nth(4)).toContainText('0,00');
   await expect(page.getByTestId(`product-${productId(3)}`).locator('td').nth(5)).toHaveText('Não informado');
-  await page.getByRole('button',{name:'Produtos Físicos',exact:true}).click(); await expect(page.getByRole('table').getByRole('row')).toHaveCount(317);
+  await page.getByRole('button',{name:'Produtos Físicos',exact:true}).click(); await expect(page.getByRole('table').getByRole('row')).toHaveCount(81);
   await page.getByRole('button',{name:'Serviços (DTF UV)',exact:true}).click(); await expect(page.getByRole('table').getByRole('row')).toHaveCount(5);
-  await page.getByRole('button',{name:'Kits Compostos',exact:true}).last().click(); await expect(page.getByRole('table').getByRole('row')).toHaveCount(318);
+  await page.getByRole('button',{name:'Kits Compostos',exact:true}).last().click(); await expect(page.getByRole('table').getByRole('row')).toHaveCount(81);
   const search=page.getByRole('textbox',{name:'Buscar produtos por nome, SKU ou código'});
   await search.fill('20201'); await expect(page.getByRole('table').getByRole('row')).toHaveCount(2);
   const kit=page.getByTestId(`product-${kitId(1)}`);
@@ -50,7 +50,7 @@ test('erro de permissao ou rede nao mostra produtos locais e nova consulta usa d
 test('catálogo vazio não usa dados fictícios e frete é gerenciado em operações oficiais próprias',async({page})=>{
   const {state}=await setup(page);
   await expect(page.getByRole('region',{name:'Condições comerciais oficiais'})).toContainText('Condição de pagamento não configurada');
-  await page.getByRole('button',{name:'EDITAR',exact:true}).click();
+  await page.getByRole('button',{name:'Editar cadastro',exact:true}).click();
   await expect(page.getByText(/Frete e condições comerciais são gerenciados na ficha/)).toBeVisible();
   await page.getByRole('button',{name:'Salvar alterações',exact:true}).click();
   await expect(page.getByRole('alert')).toContainText('Nenhuma alteração');

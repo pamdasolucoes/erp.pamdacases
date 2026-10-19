@@ -3,14 +3,16 @@ import { Layers, Plus, Copy, Sparkles, Edit2, Search, RefreshCw } from 'lucide-r
 import { useProducts } from '../../hooks/useProducts';
 import { searchProducts } from '../../services/productMapping';
 import { ProductThumbnail } from '../../components/common/ProductThumbnail';
+import { useProgressiveRows } from '../../hooks/useProgressiveRows';
 
 const money = (value: number | null) => value === null ? 'Não informado' : value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 const writePending = 'Operação indisponível nesta etapa de leitura. Aguarda integração e testes das funções protegidas.';
 export const ProductsView: React.FC = () => {
-  const { products, loading, error, reload } = useProducts();
+  const { products, loading, refreshing, error, reload } = useProducts();
   const [filterType, setFilterType] = useState('todos');
   const [searchQuery, setSearchQuery] = useState('');
   const filteredProducts = useMemo(() => searchProducts(products, searchQuery).filter(product => filterType === 'todos' || product.type === filterType), [products, filterType, searchQuery]);
+  const list = useProgressiveRows(filteredProducts, `${filterType}:${searchQuery}`);
   const countType = (type: string) => products.filter(product => product.type === type).length;
   return (
     <div className="space-y-6">
@@ -27,6 +29,7 @@ export const ProductsView: React.FC = () => {
         </div>
       </div>
       <p className="text-xs text-slate-500">PAMDA CORE · Somente leitura. Cadastro, edição, clonagem e alteração de status aguardam integração segura.</p>
+      {refreshing && <p role="status" className="text-xs text-slate-500">Atualizando catálogo oficial...</p>}
       {!loading && !error && <p aria-live="polite" className="text-xs text-slate-600">{products.length} itens oficiais · {countType('fisico')} físicos · {countType('servico')} serviços · {countType('kit')} kits · {countType('insumo')} insumos · {products.reduce((sum, product) => sum + product.components.length, 0)} vínculos de componentes</p>}
       <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0">
@@ -40,7 +43,7 @@ export const ProductsView: React.FC = () => {
           <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 uppercase text-[11px] font-bold"><tr><th className="py-3 px-5">Código / SKU</th><th className="py-3 px-4">Nome do Item</th><th className="py-3 px-4">Tipo</th><th className="py-3 px-4 text-right">Custo Direto</th><th className="py-3 px-4 text-right">Custo Gerencial</th><th className="py-3 px-4 text-right">Preço Venda</th><th className="py-3 px-4 text-center">Estoque</th><th className="py-3 px-4 text-center">Status</th><th className="py-3 px-5 text-right">Ações</th></tr></thead>
           <tbody className="divide-y divide-slate-100 text-slate-700">
             {!filteredProducts.length && <tr><td colSpan={9} className="p-8 text-center text-slate-500">{products.length ? 'Nenhum produto encontrado para esta pesquisa.' : 'Nenhum produto disponível para esta conta.'}</td></tr>}
-            {filteredProducts.map(product => <tr key={product.id} data-testid={`product-${product.id}`} className="hover:bg-slate-50/80 transition-colors">
+            {list.visible.map(product => <tr key={product.id} data-testid={`product-${product.id}`} className="hover:bg-slate-50/80 transition-colors">
               <td className="py-3 px-5 font-mono"><span className="font-bold text-slate-900 whitespace-pre-wrap">{product.code}</span><span className="block text-[10px] text-slate-400 whitespace-pre-wrap">{product.sku}</span></td>
               <td className="py-3 px-4"><div className="flex items-start gap-2"><ProductThumbnail url={product.imageUrl} /><div><div className="font-bold text-slate-900 text-sm">{product.name}</div>{product.modelPhone && <span className="inline-block mt-0.5 text-[10px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded font-medium">{product.modelPhone}</span>}{product.type === 'kit' && <div className="text-[10px] text-slate-400 mt-0.5">{product.components.length} componentes ({product.components.map(component => `${component.quantity} × ${component.componentName}`).join(', ')})</div>}</div></div></td>
               <td className="py-3 px-4"><span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${product.type === 'fisico' ? 'bg-blue-100 text-blue-800' : product.type === 'servico' ? 'bg-purple-100 text-purple-800' : product.type === 'kit' ? 'bg-indigo-100 text-indigo-800' : 'bg-slate-100 text-slate-700'}`}>{product.type}</span></td>
@@ -51,6 +54,7 @@ export const ProductsView: React.FC = () => {
             </tr>)}
           </tbody>
         </table></div>
+        {list.hasMore && <button type="button" onClick={list.showMore} className="w-full border-t p-3 text-xs font-bold text-blue-700">Mostrar mais produtos ({list.visible.length} de {filteredProducts.length})</button>}
       </div>}
     </div>
   );

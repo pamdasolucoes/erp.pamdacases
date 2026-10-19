@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, lazy, Suspense } from 'react';
 import { User } from './types/erp';
 import type { CustomerContext } from './types/pamdaCore';
 import { authService } from './services/auth';
@@ -9,24 +9,24 @@ import { LoginView } from './components/auth/LoginView';
 
 
 // Views
-import { DashboardView } from './views/DashboardView';
-import { CustomersView } from './views/customers/CustomersView';
-import { ProductsView } from './views/products/ProductsView';
-import { NewSaleView } from './views/sales/NewSaleView';
-import { SalesListView } from './views/sales/SalesListView';
-import { ProductionView } from './views/production/ProductionView';
-import { ReceivablesView } from './views/financial/ReceivablesView';
-import { ClosingsView } from './views/financial/ClosingsView';
-import { DeliveriesView } from './views/financial/DeliveriesView';
-import { ExpensesView } from './views/financial/ExpensesView';
-import { PurchasesView } from './views/purchases/PurchasesView';
-import { SalesReportView } from './views/reports/SalesReportView';
-import { ProfitabilityView } from './views/managerial/ProfitabilityView';
-import { UsersView } from './views/managerial/UsersView';
-import { AuditLogsView } from './views/managerial/AuditLogsView';
-import { SettingsView } from './views/managerial/SettingsView';
-import { InventoryView } from './views/inventory/InventoryView';
-import {saleWorkspace} from './services/saleWorkspace';
+const DashboardView = lazy(() => import('./views/DashboardView').then(module => ({ default: module.DashboardView })));
+const CustomersView = lazy(() => import('./views/customers/CustomersView').then(module => ({ default: module.CustomersView })));
+const ProductsView = lazy(() => import('./views/products/ProductsView').then(module => ({ default: module.ProductsView })));
+const NewSaleView = lazy(() => import('./views/sales/NewSaleView').then(module => ({ default: module.NewSaleView })));
+const SalesListView = lazy(() => import('./views/sales/SalesListView').then(module => ({ default: module.SalesListView })));
+const ProductionView = lazy(() => import('./views/production/ProductionView').then(module => ({ default: module.ProductionView })));
+const ReceivablesView = lazy(() => import('./views/financial/ReceivablesView').then(module => ({ default: module.ReceivablesView })));
+const ClosingsView = lazy(() => import('./views/financial/ClosingsView').then(module => ({ default: module.ClosingsView })));
+const DeliveriesView = lazy(() => import('./views/financial/DeliveriesView').then(module => ({ default: module.DeliveriesView })));
+const ExpensesView = lazy(() => import('./views/financial/ExpensesView').then(module => ({ default: module.ExpensesView })));
+const PurchasesView = lazy(() => import('./views/purchases/PurchasesView').then(module => ({ default: module.PurchasesView })));
+const SalesReportView = lazy(() => import('./views/reports/SalesReportView').then(module => ({ default: module.SalesReportView })));
+const ProfitabilityView = lazy(() => import('./views/managerial/ProfitabilityView').then(module => ({ default: module.ProfitabilityView })));
+const UsersView = lazy(() => import('./views/managerial/UsersView').then(module => ({ default: module.UsersView })));
+const AuditLogsView = lazy(() => import('./views/managerial/AuditLogsView').then(module => ({ default: module.AuditLogsView })));
+const SettingsView = lazy(() => import('./views/managerial/SettingsView').then(module => ({ default: module.SettingsView })));
+const InventoryView = lazy(() => import('./views/inventory/InventoryView').then(module => ({ default: module.InventoryView })));
+import { ViewBoundary } from './components/common/ViewBoundary';
 
 export function App() {
   const [currentUser, setCurrentUser] = useState<User | null>(authService.getCurrentUser());
@@ -89,6 +89,7 @@ export function App() {
   const openNewSale = async(customer: CustomerContext | null = null) => {
     setNavigationError('');
     if(customer&&currentUser){
+      const {saleWorkspace}=await import('./services/saleWorkspace');
       const workspace=saleWorkspace(currentUser.id);
       if(workspace.store.getSnapshot().remote?.status&&workspace.store.getSnapshot().remote?.status!=='draft'){
         try{await workspace.newDraft();}catch(error){setNavigationError(error instanceof Error?error.message:'Não foi possível abrir outra venda.');return;}
@@ -108,7 +109,7 @@ export function App() {
   const navigate = async(tab: ActiveTab) => {
     if(currentTab==='nova_venda'&&tab!=='nova_venda'&&currentUser){
       setNavigationError('');
-      try{await saleWorkspace(currentUser.id).leave();}
+      try{const {saleWorkspace}=await import('./services/saleWorkspace');await saleWorkspace(currentUser.id).leave();}
       catch(error){setNavigationError(error instanceof Error?error.message:'Não foi possível concluir a saída da venda.');return;}
     }
     if (tab === 'nova_venda') { openNewSale(); return; }
@@ -176,7 +177,7 @@ export function App() {
           {!canAccessTab(currentUser, currentTab) ? (
             <p role="alert" className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-rose-800">Acesso não autorizado a este módulo.</p>
           ) : (
-          <>
+          <ViewBoundary key={currentTab}><Suspense fallback={<p role="status" className="rounded-xl border bg-white p-6 text-slate-600">Carregando tela...</p>}>
           {currentTab === 'dashboard' && (
             <DashboardView
               onNavigate={navigate}
@@ -236,7 +237,7 @@ export function App() {
           {currentTab === 'logs' && <AuditLogsView />}
 
           {currentTab === 'configuracoes' && <SettingsView />}
-          </>
+          </Suspense></ViewBoundary>
           )}
         </main>
       </div>

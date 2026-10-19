@@ -18,7 +18,8 @@ function setup() {
     requests.push({ path: url.pathname, method, args });
     let result = backend.handle(url.pathname, url, args);
     if (!result && ['customers', 'customer_branches'].includes(url.pathname.split('/').pop()!)) {
-      const rows = url.pathname.endsWith('/customers') ? backend.customers : backend.branches;
+      let rows: any[] = url.pathname.endsWith('/customers') ? backend.customers : backend.branches;
+      for (const key of ['id', 'customer_id']) if (url.searchParams.has(key)) rows = rows.filter(row => row[key] === url.searchParams.get(key)!.slice(3));
       const from = Number(url.searchParams.get('offset') || 0), limit = Number(url.searchParams.get('limit') || 100);
       result = { body: rows.slice(from, from + limit), headers: { 'content-range': `${from}-${rows.length - 1}/${rows.length}` } };
     }
@@ -43,12 +44,21 @@ test('filial é criada, editada e definida como matriz sem trocar FK ou código 
   const fake = setup(); let customer = await fake.customers.createBranch(userId, fake.customer(), input);
   const branch = customer.branches.find(row => row.name === input.name)!;
   assert.equal(branch.customerId, customer.id); assert.equal(branch.isPrimary, false);
+  assert.equal(customer.branches.find(row => row.id === uuid(1001))?.isPrimary, true);
+  const creationReads = fake.requests.filter(row => !row.path.includes('/rpc/'));
+  assert.equal(creationReads.length, 2);
   customer = await fake.customers.updateBranch(userId, customer, branch, { ...input, phone: 'novo', number: '' });
   assert.equal(customer.branches.find(row => row.id === branch.id)?.phone, 'novo');
   customer = await fake.customers.setPrimary(userId, customer, branch.id);
   assert.deepEqual(customer.branches.filter(row => row.isPrimary).map(row => row.id), [branch.id]);
   assert.equal(customer.customerCode, '000001'); assert.equal(customer.id, uuid(1));
   await assert.rejects(() => fake.customers.updateBranch(userId, customer, branch, input), /foi alterada/);
+});
+test('filial exige os quatro campos do backend e não cria outro cliente', async () => {
+  for (const key of ['name', 'address', 'city', 'state']) {
+    const fake = setup(); await assert.rejects(() => fake.customers.createBranch(userId, fake.customer(), { ...input, [key]: ' ' }), /nome da filial/);
+    assert.equal(fake.backend.writes.length, 0);
+  }
 });
 test('RLS/autorização do backend e troca de identidade negam escritas sem sucesso local', async () => {
   const fake = setup(); fake.deny();

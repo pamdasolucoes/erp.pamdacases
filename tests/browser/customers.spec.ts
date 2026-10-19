@@ -35,7 +35,7 @@ test('busca central, unidades reais, historico pendente e nova venda vazia com c
 
 test('edita telefone e endereco, exige revisao explicita e confirma valores apos recarga', async ({ page }) => {
   const { state,customers,branches }=await setup(page);
-  await page.getByRole('button',{ name:'EDITAR',exact:true }).click();
+  await page.getByRole('button',{ name:'Editar cadastro',exact:true }).click();
   const form=page.locator('form');
   await expect(form.getByLabel('Código comercial',{exact:true})).toHaveAttribute('readonly','');
   await expect(form.getByLabel('UUID interno',{exact:true})).toHaveAttribute('readonly','');
@@ -60,7 +60,7 @@ test('edita telefone e endereco, exige revisao explicita e confirma valores apos
 
 test('erro de rede e negacao do servidor mantem formulario sem anunciar sucesso', async ({ page }) => {
   const { state,customers }=await setup(page);
-  await page.getByRole('button',{ name:'EDITAR',exact:true }).click();
+  await page.getByRole('button',{ name:'Editar cadastro',exact:true }).click();
   await page.locator('form').getByLabel('Telefone',{exact:true}).fill('9999');
   state.editError='42501';
   await page.getByRole('button',{name:'Salvar alterações'}).click();
@@ -86,7 +86,7 @@ test('erro de rede e negacao do servidor mantem formulario sem anunciar sucesso'
 test('botoes do cliente permanecem utilizaveis no celular', async ({ page }, testInfo) => {
   await page.setViewportSize({width:390,height:844});
   await setup(page);
-  for (const name of ['EDITAR','CONSULTAR VENDAS','+ NOVA VENDA']) {
+  for (const name of ['Editar cadastro','CONSULTAR VENDAS','+ NOVA VENDA']) {
     const button=page.getByRole('button',{name,exact:true});
     await button.scrollIntoViewIfNeeded();
     const bounds=await button.boundingBox();

@@ -3,6 +3,8 @@ import type { CustomerRow, CustomerBranchRow, OfficialCustomer, CustomerUpdate }
 import { toCustomerUpdateRpc } from './customerEdits';
 import { readAllPages } from './readPages';
 import { mapCustomerCatalog } from './customerMapping';
+import { isUuid } from './customerEdits';
+import { customerCatalogChanged } from './catalogEvents';
 
 export const CUSTOMER_COLUMNS = 'id,customer_code,name,company_name,cnpj,cpf,cpf_cnpj_original,state_registration,legacy_person_type,phone,mobile_phone,whatsapp_phone,email,contact_name,reference_name,reference_phone,legacy_registered_on,legacy_last_purchase_on,legacy_registered_raw,legacy_last_purchase_raw,notes,active,is_chain,customer_kind,billing_mode,default_shipping_fee,created_at,updated_at';
 export const BRANCH_COLUMNS = 'id,customer_id,name,trade_name,address,number,complement,neighborhood,city,state,zip_code,phone,contact_name,notes,active,address_needs_review,import_source_customer_code,created_at,updated_at,shipping_fee_override,is_primary';
@@ -10,11 +12,22 @@ export const BRANCH_COLUMNS = 'id,customer_id,name,trade_name,address,number,com
 export class CustomersService {
   constructor(private client: SupabaseClient | null) {}
 
-  public async get(id: string): Promise<OfficialCustomer> {
-    // Reread the canonical RLS-filtered catalog after a write; never synthesize a successful record.
-    const customer = (await this.list()).find(row => row.id === id);
-    if (!customer) throw new Error('Cadastro não retornado pelo servidor. Atualize a lista e confira sua permissão.');
-    return customer;
+  public async get(id: string, expectedUserId?: string): Promise<OfficialCustomer> {
+    if (!isUuid(id) || !this.client) throw new Error('Selecione um cadastro válido e configure o Supabase.');
+    const identity = await this.client.auth.getUser();
+    if (identity.error || !identity.data.user || expectedUserId && identity.data.user.id !== expectedUserId) throw new Error('Sessão inválida. Entre novamente.');
+    // Always bypass the cache for write confirmation; only reread this customer and its real units.
+    const [result, branches] = await Promise.all([
+      this.client.from('customers').select(CUSTOMER_COLUMNS).eq('id', id).maybeSingle(),
+      readAllPages<CustomerBranchRow>(async (from, to) => {
+        const { data, error, count } = await this.client!.from('customer_branches').select(BRANCH_COLUMNS, { count: 'exact' }).eq('customer_id', id).order('id').range(from, to);
+        if (error || !data || count === null) throw new Error('Não foi possível confirmar as unidades deste cliente. Confira sua permissão.');
+        return { rows: data as unknown as CustomerBranchRow[], total: count };
+      }),
+    ]);
+    const row = result.data as unknown as CustomerRow | null;
+    if (result.error || row?.id !== id || branches.some(branch => branch.customer_id !== id)) throw new Error('Cadastro não retornado pelo servidor. Atualize a lista e confira sua permissão.');
+    return mapCustomerCatalog([row], branches)[0];
   }
 
   public async update(update: CustomerUpdate): Promise<OfficialCustomer> {
@@ -34,14 +47,16 @@ export class CustomersService {
         update.branches.some(edit => !data.branches.some((branch: CustomerBranchRow) => branch.id === edit.id && Number.isFinite(Date.parse(branch.updated_at))))) {
       throw new Error('O servidor não confirmou o cadastro esperado e suas unidades. Atualize a lista.');
     }
-    return mapCustomerCatalog([data.customer as CustomerRow], data.branches as CustomerBranchRow[])[0];
+    const updated = mapCustomerCatalog([data.customer as CustomerRow], data.branches as CustomerBranchRow[])[0];
+    customerCatalogChanged({ client: this.client, userId: identity.data.user.id, customer: updated });
+    return updated;
   }
 
-  public async list(signal?: AbortSignal): Promise<OfficialCustomer[]> {
+  public async list(signal?: AbortSignal, expectedUserId?: string): Promise<OfficialCustomer[]> {
     if (!this.client) throw new Error('Configure a conexão com o Supabase PAMDA CORE.');
     signal?.throwIfAborted();
     const identity = await this.client.auth.getUser();
-    if (identity.error || !identity.data.user) throw new Error('Sessão inválida. Entre novamente.');
+    if (identity.error || !identity.data.user || expectedUserId && identity.data.user.id !== expectedUserId) throw new Error('Sessão inválida. Entre novamente.');
     const load = async <T,>(table: 'customers' | 'customer_branches', columns: string): Promise<T[]> => readAllPages<T>(async (from, to) => {
       let request = this.client!.from(table).select(columns, { count: 'exact' }).order('id', { ascending: true }).range(from, to);
       if (signal) request = request.abortSignal(signal);

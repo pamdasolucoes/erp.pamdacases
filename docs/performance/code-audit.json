@@ -1,0 +1,31 @@
+{
+  "entry": "src/main.tsx",
+  "reachableModules": 89,
+  "legacyDatabaseInBundle": false,
+  "unreachableCandidates": [
+    "src/vite-env.d.ts",
+    "src/services/csvExport.ts",
+    "src/services/customerSalesHistory.ts",
+    "src/services/customerSalesHistoryService.ts",
+    "src/services/db.ts",
+    "src/services/employees.ts",
+    "src/services/legacyReceipt.ts",
+    "src/services/payment.ts",
+    "src/services/priceAuthorization.ts",
+    "src/services/priceAuthorizationService.ts",
+    "src/components/receipt/ReceiptModal.tsx",
+    "src/views/products/KitFormModal.tsx",
+    "src/views/products/ProductFormModal.tsx",
+    "src/views/products/SuperCloneModal.tsx",
+    "src/views/sales/CustomerSalesHistoryView.tsx"
+  ],
+  "removedDirectDependencies": [
+    "@google/genai",
+    "express",
+    "motion",
+    "@types/express"
+  ],
+  "retainedScriptDependency": "dotenv (scripts/bootstrap-admin.mjs and scripts/recover-admin.mjs)",
+  "lockPackageEntriesBefore": 313,
+  "lockPackageEntriesAfter": 192
+}

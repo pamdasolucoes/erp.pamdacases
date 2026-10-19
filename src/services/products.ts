@@ -7,11 +7,11 @@ export const PRODUCT_COLUMNS = 'id,code,sku,name,description,category,brand,mode
 export const KIT_COMPONENT_COLUMNS = 'id,kit_product_id,component_product_id,quantity,sort_order,created_at';
 export class ProductsService {
   constructor(private client: SupabaseClient | null) {}
-  async list(signal?: AbortSignal): Promise<OfficialProduct[]> {
+  async list(signal?: AbortSignal, expectedUserId?: string): Promise<OfficialProduct[]> {
     if (!this.client) throw new Error('Configure a conexão com o Supabase PAMDA CORE.');
     signal?.throwIfAborted();
     const identity = await this.client.auth.getUser();
-    if (identity.error || !identity.data.user) throw new Error('Sessão inválida. Entre novamente.');
+    if (identity.error || !identity.data.user || expectedUserId && identity.data.user.id !== expectedUserId) throw new Error('Sessão inválida. Entre novamente.');
     const load = async <T,>(table: 'products' | 'kit_components', columns: string): Promise<T[]> => readAllPages(async (from, to) => {
       let request = this.client!.from(table).select(columns, { count: 'exact' }).order('id', { ascending: true }).range(from, to);
       if (signal) request = request.abortSignal(signal);

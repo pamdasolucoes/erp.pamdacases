@@ -54,6 +54,8 @@ async function preserved(page:Page){
 test('unidade única automática, várias sem marcador exigem escolha e escolha manual sobrevive recarga',async({page})=>{
   const {branches,state}=await setup(page);
   branches.push(branchRow(900,{customer_id:uuid(350),name:'Matriz sem marcador',import_source_customer_code:null}));
+  await page.getByRole('button',{name:'Atualizar lista',exact:true}).click();
+  await expect(page.getByText('385 unidades',{exact:true})).toBeVisible();
   await page.getByRole('button',{name:'+ NOVA VENDA',exact:true}).click();
   const branch=page.getByRole('combobox',{name:'Unidade / Filial',exact:true});
   await expect(branch).toHaveValue(uuid(1001));

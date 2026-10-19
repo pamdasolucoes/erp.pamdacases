@@ -53,6 +53,8 @@ test('matriz marcada fora da primeira posição herda frete; zero da filial prev
   const { state, branches, sales } = await setup(page);
   branches.push(branchRow(800, { customer_id: uuid(1), name: 'Matriz oficial', is_primary: true, import_source_customer_code: null }));
   state.customerShipping[uuid(1)] = 12.5; state.branchShipping[uuid(1800)] = 0;
+  await page.getByRole('button', { name: 'Atualizar lista', exact: true }).click();
+  await expect(page.getByText('385 unidades', { exact: true })).toBeVisible();
   await page.getByRole('button', { name: '+ NOVA VENDA', exact: true }).click();
   await expect(page.getByRole('combobox', { name: 'Unidade / Filial', exact: true })).toHaveValue(uuid(1800));
   await expect(page.getByLabel('Frete cobrado (R$)', { exact: true })).toHaveValue('0,00');

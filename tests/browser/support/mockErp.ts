@@ -11,7 +11,7 @@ export async function selectCatalogProduct(page: Page, id: string) {
 }
 
 // API inteiramente sintetica e interceptada. Nenhuma chamada ao projeto real.
-export async function setup(page: Page, role: 'admin_gerencial' | 'venda_atendimento' | 'producao' | 'financeiro' | 'estoque_expedicao' = 'admin_gerencial', options:{reuseSession?:boolean;strictMode?:boolean;stayOnDashboard?:boolean}={}) {
+export async function setup(page: Page, role: 'admin_gerencial' | 'venda_atendimento' | 'producao' | 'financeiro' | 'estoque_expedicao' = 'admin_gerencial', options:{reuseSession?:boolean;strictMode?:boolean;stayOnDashboard?:boolean;dataDelayMs?:number}={}) {
   const customers = Array.from({ length:384 }, (_,index) => customerRow(index + 1));
   customers[0] = customerRow(1,{ name:'Loja Árvore',company_name:'Comércio Teste',cpf:'123.456.789-01',notes:'  legado  ' });
   customers[349]=customerRow(350,{customer_code:'350',name:'Cristal Centro'});
@@ -37,6 +37,7 @@ export async function setup(page: Page, role: 'admin_gerencial' | 'venda_atendim
     }
     if (url.origin === 'https://images.pamda-test.invalid') return route.fulfill({status:200,contentType:'image/png',body:Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/l9sAAAAASUVORK5CYII=','base64')});
     if (url.origin !== 'https://pamda-test.invalid') return route.abort();
+    if (options.dataDelayMs && /^\/rest\/v1\/(customers|customer_branches|products|kit_components)$/.test(url.pathname)) await new Promise(resolve => setTimeout(resolve, options.dataDelayMs));
     const respond=(body:unknown,status=200,headers:Record<string,string>={}) => route.fulfill({ status,contentType:'application/json',headers:{ 'access-control-allow-origin':'*', 'access-control-expose-headers':'content-range', ...headers },body:JSON.stringify(body) });
     if (url.pathname==='/auth/v1/token') {state.tokenRequests++;if(url.searchParams.get('grant_type')==='refresh_token') state.refreshRequests++;return respond({ access_token:token(),token_type:'bearer',expires_in:state.authLifetimeSeconds,expires_at:expires(),refresh_token:'synthetic-refresh-token',user:employee });}
     if (url.pathname==='/auth/v1/logout') return respond({});
@@ -63,8 +64,8 @@ export async function setup(page: Page, role: 'admin_gerencial' | 'venda_atendim
     if (['/rest/v1/rpc/pamda_salvar_frete_padrao','/rest/v1/rpc/pamda_salvar_frete_filial'].includes(url.pathname)) {
       const body=request.postDataJSON();
       if(role!=='admin_gerencial')return respond({code:'42501',message:'Sem permissão'},403);
-      if(url.pathname.endsWith('pamda_salvar_frete_padrao'))state.customerShipping[body.p_customer_id]=body.p_amount;
-      else state.branchShipping[body.p_branch_id]=body.p_amount;
+      if(url.pathname.endsWith('pamda_salvar_frete_padrao')) { state.customerShipping[body.p_customer_id]=body.p_amount; Object.assign(customers.find(row=>row.id===body.p_customer_id)!,{default_shipping_fee:body.p_amount,updated_at:new Date().toISOString()}); }
+      else { state.branchShipping[body.p_branch_id]=body.p_amount; Object.assign(branches.find(row=>row.id===body.p_branch_id)!,{shipping_fee_override:body.p_amount,updated_at:new Date().toISOString()}); }
       return respond(null);
     }
     if(url.pathname==='/rest/v1/rpc/pamda_sugerir_frete_endereco'){
@@ -94,7 +95,8 @@ export async function setup(page: Page, role: 'admin_gerencial' | 'venda_atendim
       expect(request.method()).toBe('GET'); state.reads++;
       if (state.listError==='network') return route.abort('failed');
       if (state.listError) return respond({ code:state.listError,message:'Acesso negado' },403);
-      const rows=url.pathname.endsWith('/customers') ? customers : branches;
+      let rows: any[]=url.pathname.endsWith('/customers') ? customers : branches;
+      for (const key of ['id','customer_id']) if (url.searchParams.has(key)) rows=rows.filter(row=>row[key]===url.searchParams.get(key)!.slice(3));
       const from=Number(url.searchParams.get('offset') || request.headers()['range']?.split('-')[0] || 0);
       const requested=Number(url.searchParams.get('limit') || 100);
       const pageRows=rows.slice(from,from+Math.min(37,requested));

@@ -63,7 +63,11 @@ test('sugestão de frete usa RPC do endereço e preserva R$ 0 e classificação 
 
 test('frete só anuncia sucesso após reler o valor salvo; RPC usa identidade e argumentos oficiais', async () => {
   const calls: { name: string; args: any }[] = []; let current = context(); let denied = false;
-  const client = { auth: { getUser: async () => ({ data: { user: { id: uuid(9000) } } }) }, rpc: async (name: string, args: any) => {
+  const client = { from: (table: string) => {
+    const request = { select: () => request, eq: () => request, order: () => request,
+      maybeSingle: async () => ({ data: customerRow(), error: null }), range: async () => ({ data: table === 'customer_branches' ? [branchRow()] : [], error: null, count: 1 }) };
+    return request;
+  }, auth: { getUser: async () => ({ data: { user: { id: uuid(9000) } } }) }, rpc: async (name: string, args: any) => {
     calls.push({ name, args });
     if (denied) return { data: null, error: { code: '42501' } };
     if (name === 'pamda_salvar_frete_filial') current = context({ branch_shipping_fee_override: args.p_amount, effective_shipping_fee: args.p_amount });

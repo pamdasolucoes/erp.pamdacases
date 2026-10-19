@@ -51,8 +51,8 @@ export function mapProductCatalog(rows: readonly ProductRow[], links: readonly K
   }
   return [...byId.values()].map(product => ({ ...product, components: (grouped.get(product.id) || []).sort((left, right) => left.sortOrder - right.sortOrder || left.id.localeCompare(right.id)) }));
 }
-const normalize = (value: string) => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('pt-BR');
+import { normalizeSearch as normalize, productSearchIndex } from './searchIndex';
 export function searchProducts(products: readonly OfficialProduct[], query: string): readonly OfficialProduct[] {
   const normalized = normalize(query.trim());
-  return normalized ? products.filter(product => [product.code, product.sku, product.name, product.modelPhone || ''].some(value => normalize(value).includes(normalized))) : products;
+  return normalized ? products.filter(product => productSearchIndex(product).fields.some(value => value.includes(normalized))) : products;
 }

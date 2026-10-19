@@ -23,11 +23,13 @@ test('cria cliente com matriz, preserva código TEXT e relê após atualizar a p
 
 test('cria e edita filial, confirma matriz e Nova Venda usa a unidade marcada', async ({ page }) => {
   const { admin, branches } = await setup(page);
-  await page.getByRole('button', { name: 'Nova filial', exact: true }).click();
-  let form = page.getByRole('form', { name: 'Nova filial' });
-  await form.getByLabel('Nome da unidade', { exact: true }).fill('Unidade Norte');
+  await page.getByRole('button', { name: '+ Adicionar filial', exact: true }).first().click();
+  let form = page.getByRole('form', { name: 'Adicionar filial' });
+  await form.getByLabel('Nome da filial', { exact: true }).fill('Unidade Norte');
   await form.getByLabel('Endereço', { exact: true }).fill('Rua Norte');
-  await form.getByRole('button', { name: 'Salvar cadastro' }).click();
+  await form.getByLabel('Cidade', { exact: true }).fill('Curitiba');
+  await form.getByLabel('Estado', { exact: true }).fill('PR');
+  await form.getByRole('button', { name: 'Cadastrar filial' }).click();
   const card = page.locator('div.rounded-xl').filter({ has: page.getByRole('heading', { name: 'Unidade Norte', exact: true }) }).last();
   await card.getByRole('button', { name: 'Editar unidade', exact: true }).click();
   form = page.getByRole('form', { name: 'Editar unidade' });

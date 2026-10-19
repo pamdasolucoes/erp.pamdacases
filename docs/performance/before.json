@@ -1,0 +1,158 @@
+{
+  "phase": "before",
+  "commit": "5e399e7c1b1390c63084e85c08a92f3ee0186173",
+  "fixture": {
+    "customers": 384,
+    "products": 637,
+    "kitComponents": 634,
+    "serverMaxRows": 37,
+    "latencyPerDataRequestMs": 20
+  },
+  "environment": "Chrome headless / Windows / Vite production preview; synthetic intercepted API; no production latency measurement",
+  "bundle": {
+    "files": [
+      {
+        "name": "index-OxHe-rvz.js",
+        "bytes": 677380,
+        "gzip": 184603
+      }
+    ],
+    "loginBytes": 677380,
+    "totalBytes": 677380,
+    "totalGzipBytes": 184603
+  },
+  "observations": [
+    {
+      "cycle": 0,
+      "screen": "customers",
+      "elapsedMs": 1080,
+      "customerRequests": 22,
+      "productRequests": 0,
+      "scriptMs": 51.4,
+      "layoutMs": 53.4,
+      "domNodes": 1772,
+      "listRows": 384
+    },
+    {
+      "cycle": 0,
+      "screen": "products",
+      "elapsedMs": 1282.8,
+      "customerRequests": 0,
+      "productRequests": 36,
+      "scriptMs": 148.7,
+      "layoutMs": 237.5,
+      "domNodes": 17264,
+      "listRows": 637
+    },
+    {
+      "cycle": 0,
+      "screen": "sale",
+      "elapsedMs": 1053.5,
+      "customerRequests": 22,
+      "productRequests": 36,
+      "scriptMs": 55.2,
+      "layoutMs": 21,
+      "domNodes": 80,
+      "listRows": null
+    },
+    {
+      "cycle": 1,
+      "screen": "customers",
+      "elapsedMs": 927.6,
+      "customerRequests": 22,
+      "productRequests": 0,
+      "scriptMs": 22.6,
+      "layoutMs": 30.5,
+      "domNodes": 1772,
+      "listRows": 384
+    },
+    {
+      "cycle": 1,
+      "screen": "products",
+      "elapsedMs": 1071,
+      "customerRequests": 0,
+      "productRequests": 36,
+      "scriptMs": 145.4,
+      "layoutMs": 196.5,
+      "domNodes": 17264,
+      "listRows": 637
+    },
+    {
+      "cycle": 1,
+      "screen": "sale",
+      "elapsedMs": 968.3,
+      "customerRequests": 22,
+      "productRequests": 36,
+      "scriptMs": 34.3,
+      "layoutMs": 9.9,
+      "domNodes": 80,
+      "listRows": null
+    },
+    {
+      "cycle": 2,
+      "screen": "customers",
+      "elapsedMs": 896.2,
+      "customerRequests": 22,
+      "productRequests": 0,
+      "scriptMs": 17.2,
+      "layoutMs": 25.3,
+      "domNodes": 1772,
+      "listRows": 384
+    },
+    {
+      "cycle": 2,
+      "screen": "products",
+      "elapsedMs": 954.4,
+      "customerRequests": 0,
+      "productRequests": 36,
+      "scriptMs": 110.4,
+      "layoutMs": 144.5,
+      "domNodes": 17264,
+      "listRows": 637
+    },
+    {
+      "cycle": 2,
+      "screen": "sale",
+      "elapsedMs": 998.3,
+      "customerRequests": 22,
+      "productRequests": 36,
+      "scriptMs": 32.6,
+      "layoutMs": 8.2,
+      "domNodes": 80,
+      "listRows": null
+    },
+    {
+      "cycle": 3,
+      "screen": "customers",
+      "elapsedMs": 895.5,
+      "customerRequests": 22,
+      "productRequests": 0,
+      "scriptMs": 14.4,
+      "layoutMs": 21.9,
+      "domNodes": 1772,
+      "listRows": 384
+    },
+    {
+      "cycle": 3,
+      "screen": "products",
+      "elapsedMs": 937.2,
+      "customerRequests": 0,
+      "productRequests": 36,
+      "scriptMs": 100.2,
+      "layoutMs": 139.2,
+      "domNodes": 17264,
+      "listRows": 637
+    },
+    {
+      "cycle": 3,
+      "screen": "sale",
+      "elapsedMs": 965.4,
+      "customerRequests": 22,
+      "productRequests": 36,
+      "scriptMs": 34.8,
+      "layoutMs": 7.9,
+      "domNodes": 80,
+      "listRows": null
+    }
+  ]
+}
