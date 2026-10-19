@@ -1,53 +1,66 @@
 # Sincronização ERP + PAMDA CORE
 
-Referência funcional recebida em 19/10/2026. O projeto existente `erp-pamda` é a única fonte oficial. Não foram aplicadas migrations, alterados cadastros ou criados registros reais para teste.
+Contrato confirmado pelo administrador em 19/10/2026, diretamente no projeto existente **erp-pamda**, ID `onorqcdauhxumbznosxf`. O aplicativo usa esse banco como única fonte oficial. Não foram executados SQL, migrations, mudanças de RLS ou testes com gravação em produção.
 
 ## Integrações entregues
 
 | Área | Fonte e comportamento |
 | --- | --- |
-| Autenticação | Supabase Auth e perfil ativo em `erp_user_profiles`. Reconhece `admin_gerencial`, `venda_atendimento`, `producao`, `financeiro` e `estoque_expedicao`. Nenhum perfil ganha a flag financeira automaticamente. |
-| Login e navegação | Login novo abre o dashboard. Recuperação de sessão já válida pode restaurar a navegação da mesma aba/usuário. Renovação e revalidação não reiniciam a tela. |
-| Dashboard | `pamda_resumo_erp()`; mostra a data `as_of`, estados de carregamento/erro e os indicadores informados. NULL é “Não configurado”; zero só aparece quando retornado pelo servidor. Receitas dependem da flag financeira validada e da autorização da própria RPC. Sem gráficos, datas fixas, exemplos ou comandos de zerar dados. |
-| Clientes | Leitura paginada de `customers` e `customer_branches`, sempre incluindo `is_primary`. Edição por `pamda_update_customer`, com versões esperadas de cliente e unidades, confirmação humana da revisão de endereço e validação do retorno. UUID, FK e código comercial original são protegidos também na resposta. |
-| Permissões | `pamda_has_permission({ p_permission })`, sem descoberta OpenAPI. A edição cadastral consulta `customers.manage`; preço/frete e cancelamento continuam sujeitos às verificações do backend. |
-| Contexto comercial | `pamda_contexto_comercial_cliente({ p_customer_id, p_branch_id })`. A resposta precisa corresponder exatamente à seleção atual. Zero da filial prevalece; NULL não é presumido gratuito. IDs de forma/prazo e limite existentes não são inventados. |
-| Frete padrão | Ficha do cliente: `pamda_salvar_frete_padrao({ p_customer_id, p_amount, p_reason })` e `pamda_salvar_frete_filial({ p_branch_id, p_amount, p_reason })`. Sucesso só após reler e conferir o valor persistido. O controle visual requer `customers.manage`; a autorização específica continua no servidor. Confirmar as regras particulares das duas RPCs na inspeção. |
-| Nova Venda | Matriz ativa identificada por `is_primary`; uma única unidade ativa é escolhida automaticamente. Ambiguidade exige escolha manual. Contexto comercial novo limpa os valores herdados da seleção anterior; frete negociado de pendência recuperada é preservado. `sales.shipping.override` controla a edição do frete. Custo real de entrega não é inferido. |
-| Pendências | Consulta `first_product_at` e `order_number`, aceita o registro legado com número NULL e preserva `customer_snapshot.code` como TEXT; aceita `customer_code` de snapshots antigos. Não converte ou fabrica códigos. |
-| Numeração e descarte | Numeração vem exclusivamente do servidor. Registro legado sem número nunca é descartado automaticamente. Administração pode revisar e confirmar descarte por `pamda_descartar_venda_vazia({ p_venda_id })`, após reler itens/histórico e confirmar a resposta. Vendas usadas só têm cancelamento protegido, com motivo e `sales.cancel`. |
-| Catálogo | Mantém `products` e `kit_components` oficiais e paginados. Escritas/clonagens continuam indisponíveis até homologação. Estoque provisório permanece explicitamente não conferido. |
+| Autenticação | Supabase Auth e perfil ativo em `erp_user_profiles`. Preserva o login atual por e-mail/senha e os cinco perfis oficiais. Não utiliza a Edge Function antiga `pamda-auth`, credenciais de demonstração ou login automático. |
+| Sessão | Login novo abre Dashboard; sessão válida pode restaurar a navegação da mesma aba/usuário. Renovação e revalidação não reiniciam a tela nem a preparação. Erro transitório bloqueia acesso até validação; logout real e perfil negado continuam encerrando o acesso. |
+| Dashboard | `pamda_resumo_erp()`, com data de referência. NULL permanece “Não configurado”; zero depende da resposta. Receitas exigem `pamda_has_permission('finance.read')` e a filtragem da RPC. Revalidação de perfil e foco atualizam permissões. |
+| Clientes | Leitura paginada de `customers` e `customer_branches`, incluindo `is_primary`, `default_shipping_fee` e `shipping_fee_override`. Código comercial TEXT preservado exatamente; UUIDs e vínculos não são substituídos. |
+| Edição cadastral | `pamda_update_customer` com versões esperadas, campos permitidos, confirmação humana de endereço revisado e validação do retorno `{customer, branches}`. Código, UUIDs e FKs protegidos. |
+| Cliente novo | `pamda_admin_cadastrar_cliente_com_matriz`, código informado explicitamente, campos vazios sem políticas fictícias. Retorno TABLE validado e cadastro relido antes de mostrar sucesso. |
+| Filiais | Criar por `pamda_admin_cadastrar_filial`, editar por `pamda_admin_atualizar_filial`, trocar matriz por `pamda_admin_definir_matriz` com confirmação. Releitura valida unidade, cliente e matriz. Nenhum agrupamento por nome. |
+| Frete | Contexto por `pamda_contexto_comercial_cliente`. Filial prevalece sobre cliente, inclusive zero. NULL é não configurado. Escrita pelas duas RPCs de frete, motivo obrigatório e releitura. Interface consulta `customers.shipping.manage`; backend mantém autoridade. Custo real da entrega é independente. |
+| Pagamentos | Catálogos paginados `erp_payment_methods`/`erp_payment_terms`. Seletores operacionais mostram somente opções ativas reais, sem selecionar automaticamente à vista. Vínculo salvo ausente/inativo permanece preservado e identificado como indisponível. |
+| Condições do cadastro | Leitura de `erp_customer_payment_settings`/`erp_branch_payment_settings`; escrita pelas RPCs administrativas. NULL não vira limite zero. Edição/visualização de crédito exige `finance.read`; edição dos demais campos preserva o limite anterior. |
+| Catálogo de pagamentos | Administração cria/atualiza formas e prazos pelas duas RPCs `pamda_admin_salvar_*`. Formulário novo começa vazio; código existente é somente leitura. Nenhuma condição é criada automaticamente. |
+| Nova Venda | Matriz ativa oficial ou unidade ativa única automática; ambiguidade exige seleção manual. Contexto fornece frete e IDs de pagamento. Troca de cliente/unidade limpa herança anterior e aguarda o servidor. Negociação de pendência retomada é preservada. |
+| Pendências | Início idempotente, salvamento serial e retomada oficial. Preserva `first_product_at`, `order_number` e snapshots `code`/legado `customer_code`, além de forma/prazo selecionados. Confirmação oficial permanece bloqueada. |
+| Numeração/descarte | Controlados pelo servidor. Legado sem número nunca é descartado automaticamente; revisão administrativa chama descarte protegido. Histórico com produtos exige cancelamento autorizado, com motivo. Fechar aba não garante conclusão de RPC. |
+| Recibo | Layout aprovado A4/80 mm preservado, sem adicionar blocos ao documento. O modelo de dados da prévia acompanha a condição nominal consultada do catálogo; os seletores e o resumo da Nova Venda exibem os nomes. Continua identificado como teste, sem recibo definitivo ou baixa financeira. |
+| Produtos | Catálogo oficial `products`/`kit_components`, sem fallback local. Escritas/clonagens/ajustes bloqueados até homologação. Estoque não conferido não representa saldo físico validado. |
 
-O salvamento de pendências permanece serializado e idempotente no início. Uma troca de cliente/unidade aguarda a consulta comercial antes de enviar novo frete/condição. A indicação de consulta pendente também é preservada na recuperação auxiliar por usuário. Falha no descarte não apaga a preparação e permite retomar a sincronização.
+Ações administrativas de cadastro/pagamento exigem perfil administrativo e `customers.manage` na interface; RPCs e RLS validam a autorização real no servidor. Não há INSERT/UPDATE/DELETE diretos para substituir RPCs.
 
-Fechar a aba não garante conclusão de uma RPC assíncrona. O aplicativo só limpa uma preparação após resposta de descarte confirmada; caso contrário, a pendência permanece consultável. Confirmação de venda, recibos definitivos e movimentos de estoque/financeiro continuam bloqueados.
+Gravações administrativas não são repetidas automaticamente pelo cliente Supabase. Criação de cliente/filial não possui chave de idempotência no contrato: resposta perdida ou retorno incompatível exige revisar a lista antes de repetir, e o formulário bloqueia novo envio naquela tentativa. Sucesso depende de resposta e releitura oficiais, sem atualização otimista que simule gravação.
 
-## Operações indisponíveis
+A RPC administrativa de atualização de filial não recebe versão esperada. Há conferência prévia de `updated_at`, mas ela não garante atomicidade entre leitura e gravação. Para edição concorrente com controle transacional, use **EDITAR** do cliente, que mantém `pamda_update_customer`. CAS na RPC administrativa depende de futura revisão do backend.
 
-Produção, ajustes de estoque, financeiro, contas a receber, fechamentos, compras/fornecedores, entregas, despesas, relatórios, lucratividade, auditoria geral e configurações não possuem contrato homologado disponível nesta integração. Mantêm navegação, identidade visual, cabeçalhos e estrutura de consulta, com ações desabilitadas e aviso de integração pendente. Não exibem valores locais ou zeros financeiros para substituir uma consulta inexistente.
+## Verificar no localhost
 
-`erp_sale_events` continua sendo consultado no histórico oficial de cada venda; isso não habilita o módulo de auditoria geral.
+1. Em `.env.local`, manter a URL do projeto existente e chave pública publishable/anon. Nunca usar `service_role`/secret. Reiniciar `npm run dev` se as variáveis mudarem.
+2. Entrar com conta Auth existente e perfil ativo. Conferir Dashboard no login e ausência de reinício durante renovação.
+3. Consultar clientes, código com zeros à esquerda, nome, matriz e endereço. Quantidades são retornadas pela RLS, sem lista fictícia alternativa.
+4. Conferir frete NULL como não configurado. Após autorização administrativa, homologar alterações somente em registros/ambiente aprovados. Zero e vazio são distintos.
+5. Abrir Nova Venda, conferir matriz, herança comercial, opções ativas e prévia. Navegar, atualizar e retomar a pendência. Não concluir a venda.
+6. Com contas representativas, verificar recusa de administração/frete/dados financeiros sem permissão. Conferir autorização/grants/RLS no servidor; não desabilitar RLS.
 
-Funcionários: a tela não invoca `pamda-auth`. O serviço antigo falha explicitamente antes de chamar a rede. Os arquivos de Edge Function e bootstrap foram preservados como referência histórica; não devem ser implantados/executados contra o schema atual sem revisão. O login operacional continua independente deles.
+Segundo o contrato confirmado, não há configuração nova de banco necessária. Não executar a inspeção 10 para prosseguir: as assinaturas já foram fornecidas. Homologação autenticada de produção depende de contas autorizadas e não foi realizada pelos testes automatizados.
 
-O ponto de entrada do aplicativo não importa `dbService`, os formulários de produtos demonstrativos ou a administração antiga. Há uma verificação do grafo real do bundle em `tests/official-entry.test.ts`. Dados empresariais locais antigos não são apagados nem reaproveitados como fallback.
+## Operações ainda indisponíveis
 
-## Contratos ainda necessários (por prioridade)
+Produção, ajustes de estoque, financeiro/recebíveis/fechamentos, compras/fornecedores, entregas, despesas, relatórios, lucratividade, auditoria geral e configurações mantêm navegação/estrutura visual com ações desabilitadas. Não foram fornecidos contratos homologados para operação oficial. `erp_sale_events` permanece no histórico individual de vendas.
 
-1. Retorno da inspeção somente leitura `supabase/review/10_INSPECAO_SINCRONIZACAO_SOMENTE_LEITURA.sql`: assinaturas/corpos das RPCs administrativas, colunas/constraints dos catálogos de pagamento, políticas e histórico das migrations.
-2. Integrar criação de cliente com matriz, criação/atualização de filial e definição de matriz usando os parâmetros reais de `pamda_admin_cadastrar_cliente_com_matriz`, `pamda_admin_cadastrar_filial`, `pamda_admin_atualizar_filial` e `pamda_admin_definir_matriz`. As ações não foram ligadas a parâmetros presumidos.
-3. Conectar os seletores de `erp_payment_methods` e `erp_payment_terms` e a gravação das configurações específicas. Seus campos/contratos de gravação ainda não foram fornecidos. A RPC comercial já fornece/preserva os IDs, mas não se inventam nomes ou condições. A prévia ainda depende desse catálogo para apresentar uma condição comercial nominal verificada.
-4. Homologação autenticada das leituras/RPCs existentes, inclusive permissões individuais, fretes e conflitos cadastrais, por contas representativas. Nenhum teste automatizado cria dados no projeto real.
-5. Versionar o dump/contrato real e as versões efetivamente registradas no banco. O repositório não deve alegar possuir um baseline sincronizado antes dessa inspeção.
-6. Definir/homologar os contratos dos módulos operacionais indisponíveis e da administração de Auth. Qualquer operação com Auth Admin deve permanecer em serviço seguro; nunca utilizar credencial secreta no navegador.
+Administração de funcionários continua indisponível: o antigo serviço não chama `pamda-auth`. Login/perfil oficiais são independentes desse serviço. Futura administração de Auth exige backend seguro.
 
-## Diferença de schema e migrations
+O bundle não importa `dbService`, formulários demonstrativos de catálogo ou administração legada. Dados empresariais locais antigos não são apagados nem usados como alternativa. Preparação auxiliar continua isolada por usuário/projeto e não equivale a venda oficial.
 
-A migration `supabase/migrations/20261006000000_init_pamda_erp.sql` é histórica e não representa o banco oficial atual. Os scripts de `supabase/review` são referências/propostas/inspeções, não uma sequência de instalação automática. Não executar `db push`, reset, migration geral ou reaplicar os scripts de revisão no ambiente existente.
+## Banco e migrations
 
-O administrador informou como já aplicadas: `pamda_erp_pending_view_add_first_product_at`, `pamda_erp_customer_atomic_edit_rpc` e `pamda_erp_official_commercial_context_and_summary`. Seus SQLs, versões completas e o restante do histórico ainda aguardam inspeção real. Ver `supabase/contracts/README.md`.
+O administrador confirmou **18 migrations registradas**. Mais recentes:
 
-## Verificação
+| Versão | Nome |
+| --- | --- |
+| 20261019154725 | pamda_erp_pending_view_add_first_product_at |
+| 20261019154834 | pamda_erp_customer_atomic_edit_rpc |
+| 20261019155051 | pamda_erp_official_commercial_context_and_summary |
+
+Já aplicadas; não executar novamente. Histórico completo/corpos SQL não foram fornecidos: não foram inventados dump ou migrations equivalentes. Migration geral antiga e scripts de revisão são históricos/propostas. Veja [contratos versionados](../supabase/contracts/README.md).
+
+## Testes
 
 ```sh
 npm test
@@ -56,21 +69,26 @@ npm run lint
 npm run build
 ```
 
-Os testes de serviços/navegador usam backend sintético; os testes de SQL existentes executam propostas locais somente em PostgreSQL PGlite em memória. Eles não provam o corpo ou a RLS das funções atualmente instaladas. Os novos cenários cobrem resumo sem dados fictícios, NULL versus zero, receitas restritas/revogadas, herança de frete, matriz fora da primeira posição, pendência sem número, snapshots `code`, resposta cadastral divergente, espera do contexto comercial, permissões e ausência do banco local no bundle.
+Serviços/navegador usam contratos sintéticos e rede interceptada. SQL usa propostas locais em PostgreSQL PGlite em memória, sem validar os corpos/RLS instalados. Cenários cobrem autorização, códigos, paginação, concorrência, NULL/zero, matriz, ausência do banco demonstrativo, resposta perdida sem repetição, pagamentos e retomada/recibo.
 
-A única consulta real realizada nesta etapa foi `pamda_resumo_erp()` **sem sessão**, usando a chave pública: HTTP 401 / código 42501, nenhum dado retornado. Isso confirma a recusa desse acesso anônimo naquele momento, não substitui homologação autenticada nem auditoria de todas as políticas.
+Consulta real anterior de resumo sem sessão foi recusada (HTTP 401/42501). Isso não substitui homologação autenticada nem auditoria de todas as políticas. Nenhum teste atual cria registros reais.
 
-Resultado local: **132 testes de lógica/serviços/SQL isolado e 46 cenários de navegador aprovados**; TypeScript (`npm run lint`) e build aprovados. O build mantém um aviso de bundle acima de 500 kB, sem erro. A captura sintética do dashboard foi inspecionada visualmente. Nenhum resultado sintético deve ser interpretado como contagem ou homologação do banco real.
+Resultado local: **140 testes de lógica/serviços/SQL isolado e 53 cenários de navegador aprovados**, TypeScript e build sem erros. O build mantém aviso de bundle acima de 500 kB (aproximadamente 652 kB antes de gzip). A captura sintética da Nova Venda/prévia foi inspecionada visualmente.
 
-Não foi possível obter metadados administrativos via conexão local; não há token administrativo nem conexão Postgres configurados. A tentativa de inventariar uma sessão de navegador também falhou na inicialização da automação. A consulta de inspeção foi solicitada ao administrador, sem pedir senha ou chave privada.
+Erros corrigidos nesta conclusão: frete cadastral usava a permissão genérica em vez de `customers.shipping.manage`; financeiro dependia somente da flag do perfil em vez de `finance.read`; revalidações próximas podiam manter um resumo financeiro anterior. Cadastros administrativos e pagamentos estavam sem os contratos completos e agora usam as assinaturas confirmadas. Retornos perdidos/incompatíveis não simulam sucesso nem disparam criação repetida automática.
 
 ## Arquivos principais
 
-- `src/services/core.ts`, `coreService.ts`, `src/types/core.ts`: RPCs de resumo/contexto/frete e validação das respostas.
-- `src/hooks/useCommercialContext.ts`, `useCorePermission.ts`: consultas por identidade/seleção, proteção contra respostas atrasadas e bloqueio enquanto a permissão não for validada.
-- `src/views/OfficialDashboard.tsx`, `DashboardView.tsx`: painel oficial.
-- `src/views/customers/CustomerCommercialPanel.tsx`, `CustomersView.tsx`, `CustomerEditModal.tsx`, `customerForm.ts`; serviços/tipos de clientes: cadastro e fretes oficiais.
-- Serviços de pendências/workspace e telas de Nova Venda/lista: snapshots, nulabilidade, matriz, frete, retomada e descarte protegido.
-- `src/components/common/UnavailableModule.tsx` e telas operacionais: retirada das fontes/gravações fictícias.
-- Auth/tipos, `App.tsx`, Header e Sidebar: cinco perfis e navegação após login/recuperação.
-- `tests/core.test.ts`, `tests/official-entry.test.ts`, `tests/browser/core-sync.spec.ts` e ajustes nos cenários existentes.
+- `src/services/core.ts`, `src/views/OfficialDashboard.tsx`, `src/hooks/useCorePermission.ts`: resumo, contexto e autorizações.
+- `src/services/customers.ts`, `customerMapping.ts`, `customerAdmin.ts`, `src/views/customers/CustomersView.tsx`, `CustomerRegistrationModal.tsx`: cadastro/filiais/matriz. `CustomerEditModal.tsx` preserva edição atômica.
+- `src/services/payments.ts`, `src/types/payments.ts`, `src/hooks/usePaymentCatalog.ts`, `src/components/common/PaymentSelect.tsx`: contratos/catálogos.
+- `src/views/customers/CustomerCommercialPanel.tsx`, `CustomerPaymentPanel.tsx`, `PaymentCatalogModal.tsx`: fretes e condições oficiais.
+- `src/views/sales/NewSaleView.tsx`, `SalePricingPanel.tsx`, `src/services/receiptPreview.ts`: seleção e prévia nominal de pagamento.
+- `tests/core-admin.test.ts`, `tests/browser/core-admin.spec.ts`, `tests/fixtures/coreAdminBackend.ts`: novos cenários isolados.
+
+## Pendências por prioridade
+
+1. Homologação autenticada com contas/perfis representativos, incluindo permissões individuais, frete, condições, retomada e conflitos. Não usar produção para testes automatizados.
+2. Exportar/revisar dump e histórico completo das 18 migrations por conexão administrativa autorizada. Isso não bloqueia os contratos confirmados nem autoriza execução de SQL.
+3. Homologar confirmação, recibos definitivos e operações de estoque/financeiro/produção; manter ações bloqueadas.
+4. Integrar administração de Auth e gravações do catálogo após fornecimento/homologação dos contratos.

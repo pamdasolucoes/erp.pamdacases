@@ -4,11 +4,18 @@ import { toCustomerUpdateRpc } from './customerEdits';
 import { readAllPages } from './readPages';
 import { mapCustomerCatalog } from './customerMapping';
 
-export const CUSTOMER_COLUMNS = 'id,customer_code,name,company_name,cnpj,cpf,cpf_cnpj_original,state_registration,legacy_person_type,phone,mobile_phone,whatsapp_phone,email,contact_name,reference_name,reference_phone,legacy_registered_on,legacy_last_purchase_on,legacy_registered_raw,legacy_last_purchase_raw,notes,active,is_chain,customer_kind,billing_mode,created_at,updated_at';
-export const BRANCH_COLUMNS = 'id,customer_id,name,trade_name,address,number,complement,neighborhood,city,state,zip_code,phone,contact_name,notes,active,address_needs_review,import_source_customer_code,created_at,updated_at,is_primary';
+export const CUSTOMER_COLUMNS = 'id,customer_code,name,company_name,cnpj,cpf,cpf_cnpj_original,state_registration,legacy_person_type,phone,mobile_phone,whatsapp_phone,email,contact_name,reference_name,reference_phone,legacy_registered_on,legacy_last_purchase_on,legacy_registered_raw,legacy_last_purchase_raw,notes,active,is_chain,customer_kind,billing_mode,default_shipping_fee,created_at,updated_at';
+export const BRANCH_COLUMNS = 'id,customer_id,name,trade_name,address,number,complement,neighborhood,city,state,zip_code,phone,contact_name,notes,active,address_needs_review,import_source_customer_code,created_at,updated_at,shipping_fee_override,is_primary';
 
 export class CustomersService {
   constructor(private client: SupabaseClient | null) {}
+
+  public async get(id: string): Promise<OfficialCustomer> {
+    // Reread the canonical RLS-filtered catalog after a write; never synthesize a successful record.
+    const customer = (await this.list()).find(row => row.id === id);
+    if (!customer) throw new Error('Cadastro não retornado pelo servidor. Atualize a lista e confira sua permissão.');
+    return customer;
+  }
 
   public async update(update: CustomerUpdate): Promise<OfficialCustomer> {
     const payload = toCustomerUpdateRpc(update);

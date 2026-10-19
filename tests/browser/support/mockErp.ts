@@ -2,6 +2,7 @@
 import { customerRow, branchRow, uuid } from '../../fixtures/customerRows';
 import { officialCatalogFixture } from '../../fixtures/officialProducts';
 import { MockSales } from './mockSales';
+import { CoreAdminBackend } from '../../fixtures/coreAdminBackend';
 
 export async function selectCatalogProduct(page: Page, id: string) {
   const product=officialCatalogFixture().products.find(row=>row.id===id)!;
@@ -24,6 +25,7 @@ export async function setup(page: Page, role: 'admin_gerencial' | 'venda_atendim
   const expires=()=>Math.floor(Date.now()/1000)+state.serverClockSeconds+state.authLifetimeSeconds;
   const token = ()=>`${Buffer.from(JSON.stringify({alg:'HS256',typ:'JWT'})).toString('base64url')}.${Buffer.from(JSON.stringify({sub:employee.id,aud:'authenticated',role:'authenticated',exp:expires()})).toString('base64url')}.test`;
   const sales=new MockSales(()=>({id:employee.id,active:state.profileActive,role}),customers,branches,products);
+  const admin = new CoreAdminBackend(customers, branches, () => role === 'admin_gerencial' && state.profileActive);
   await page.route('**/*', async route => {
     const request=route.request(); const url=new URL(request.url());
     if (url.origin === 'http://127.0.0.1:4317') {
@@ -48,11 +50,15 @@ export async function setup(page: Page, role: 'admin_gerencial' | 'venda_atendim
       if(state.coreError)return respond({code:state.coreError,message:'Resumo indisponível'},403);
       return respond({as_of:'2026-10-19T12:00:00Z',pending_sales:sales.sales.filter(s=>s.status==='draft').length,pending_with_product_history:sales.sales.filter(s=>s.status==='draft'&&s.first_product_at!==null).length,pending_never_with_product:sales.sales.filter(s=>s.status==='draft'&&s.first_product_at===null).length,confirmed_sales:sales.sales.filter(s=>s.status==='confirmed').length,cancelled_sales:sales.sales.filter(s=>s.status==='cancelled').length,official_receipts:0,catalog_active:637,physical_items:316,physical_stock_verified:0,production_queue_count:null,confirmed_revenue_today:state.financialPermission?123.45:null,confirmed_revenue_month:state.financialPermission?234.56:null,receivables_balance:null});
     }
+    if (url.pathname === '/rest/v1/rpc/pamda_has_permission' && request.postDataJSON().p_permission === 'finance.read') return respond(state.financialPermission);
+    const adminResult = admin.handle(url.pathname, url, ['POST','PUT','PATCH'].includes(request.method()) ? request.postDataJSON() : null);
+    if (adminResult) { if (adminResult.abort) return route.abort('failed'); return respond(adminResult.body, adminResult.status || 200, adminResult.headers); }
     if (url.pathname==='/rest/v1/rpc/pamda_contexto_comercial_cliente') {
       const body=request.postDataJSON(), customer=customers.find(c=>c.id===body.p_customer_id), branch=branches.find(b=>b.id===body.p_branch_id&&b.customer_id===body.p_customer_id);
       if(!customer||!branch)return respond({code:'22023',message:'Contexto inválido'},400);
       const parent=state.customerShipping[customer.id]??null,override=state.branchShipping[branch.id]??null;
-      return respond({customer_id:customer.id,branch_id:branch.id,is_primary:branch.is_primary??false,customer_default_shipping_fee:parent,branch_shipping_fee_override:override,effective_shipping_fee:override??parent,freight_source:override!==null?'branch':parent!==null?'customer':null,payment_method_id:null,payment_term_id:null,credit_limit:null,billing_mode:null});
+      const settings=admin.customerSettings[customer.id], unitSettings=admin.branchSettings[branch.id];
+      return respond({customer_id:customer.id,branch_id:branch.id,is_primary:branch.is_primary??false,customer_default_shipping_fee:parent,branch_shipping_fee_override:override,effective_shipping_fee:override??parent,freight_source:override!==null?'branch':parent!==null?'customer':null,payment_method_id:unitSettings?.default_method_id??settings?.default_method_id??null,payment_term_id:unitSettings?.default_term_id??settings?.default_term_id??null,credit_limit:settings?.credit_limit??null,billing_mode:null});
     }
     if (['/rest/v1/rpc/pamda_salvar_frete_padrao','/rest/v1/rpc/pamda_salvar_frete_filial'].includes(url.pathname)) {
       const body=request.postDataJSON();
@@ -124,5 +130,5 @@ export async function setup(page: Page, role: 'admin_gerencial' | 'venda_atendim
       await expect(page.getByText('Teste isolado',{exact:true}).first()).toBeVisible();
     }
   }
-  return { state,customers,branches,products,components,employee,sales };
+  return { state,customers,branches,products,components,employee,sales,admin };
 }

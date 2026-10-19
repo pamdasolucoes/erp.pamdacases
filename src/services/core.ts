@@ -15,6 +15,8 @@ const optionalId = (value: unknown) => {
   return value;
 };
 
+export class UnconfirmedWriteError extends Error {}
+
 export function mapCommercialContext(value: unknown, customerId: string, branchId: string): CustomerCommercialContext {
   const row = record(value);
   if (row.customer_id !== customerId || row.branch_id !== branchId ||
@@ -43,13 +45,14 @@ export function mapErpSummary(value: unknown, canViewFinancials: boolean): ErpSu
     return value;
   };
   return {
+    financialAuthorized: canViewFinancials,
     asOf: row.as_of,
     pending_sales: count('pending_sales'), pending_with_product_history: count('pending_with_product_history'),
     pending_never_with_product: count('pending_never_with_product'), confirmed_sales: count('confirmed_sales'),
     cancelled_sales: count('cancelled_sales'), official_receipts: count('official_receipts'),
     catalog_active: count('catalog_active'), physical_items: count('physical_items'),
     physical_stock_verified: count('physical_stock_verified'), production_queue_count: count('production_queue_count'),
-    // Do not retain financial values in the view model without the validated profile permission.
+    // Do not retain financial values without the server's finance.read authorization.
     confirmed_revenue_today: canViewFinancials ? optionalCents(row.confirmed_revenue_today) : null,
     confirmed_revenue_month: canViewFinancials ? optionalCents(row.confirmed_revenue_month) : null,
     receivables_balance: canViewFinancials ? optionalCents(row.receivables_balance) : null,
@@ -58,11 +61,18 @@ export function mapErpSummary(value: unknown, canViewFinancials: boolean): ErpSu
 
 export class CoreService {
   constructor(private client: SupabaseClient | null) {}
-  async rpc(userId: string, name: string, args: Record<string, unknown> = {}): Promise<unknown> {
+  async rpc(userId: string, name: string, args: Record<string, unknown> = {}, mutation = false): Promise<unknown> {
     if (!this.client) throw new Error('Configure o Supabase PAMDA CORE.');
     const identity = await this.client.auth.getUser();
     if (identity.error || identity.data.user?.id !== userId) throw new Error('A sessão mudou. Valide seu acesso.');
-    const { data, error } = await this.client.rpc(name, args);
+    const request = this.client.rpc(name, args);
+    // In particular, creation RPCs have no idempotency argument. Never repeat a write automatically.
+    if (mutation) request.retry?.(false);
+    const { data, error } = await request;
+    if (mutation && error && (!error.code || /fetch|network/i.test(error.message || ''))) {
+      throw new UnconfirmedWriteError('Resultado não confirmado. Consulte o cadastro no servidor antes de repetir a operação.');
+    }
+    if (error?.code === '23505') throw new Error('Já existe um registro com estes identificadores. Atualize a consulta.');
     if (error && ['PGRST202', 'PGRST205', '42P01'].includes(error.code)) throw new Error('Esta integração oficial ainda não está disponível no servidor. Solicite a conferência do contrato.');
     if (error) throw saleError(error);
     return data;
@@ -72,8 +82,9 @@ export class CoreService {
     if (typeof result !== 'boolean') throw new Error('O servidor não confirmou suas permissões.');
     return result;
   }
-  async summary(userId: string, canViewFinancials: boolean): Promise<ErpSummary> {
-    return mapErpSummary(await this.rpc(userId, 'pamda_resumo_erp'), canViewFinancials);
+  async summary(userId: string): Promise<ErpSummary> {
+    const [allowed, value] = await Promise.all([this.hasPermission(userId, 'finance.read'), this.rpc(userId, 'pamda_resumo_erp')]);
+    return mapErpSummary(value, allowed);
   }
   async context(userId: string, customerId: string, branchId: string): Promise<CustomerCommercialContext> {
     if (![customerId, branchId].every(isUuid)) throw new Error('Selecione um cliente e uma unidade válidos.');
@@ -88,8 +99,8 @@ export class CoreService {
     await this.rpc(userId, target === 'customer' ? 'pamda_salvar_frete_padrao' : 'pamda_salvar_frete_filial', {
       ...(target === 'customer' ? { p_customer_id: customerId } : { p_branch_id: branchId }),
       p_amount: cents === null ? null : cents / 100, p_reason: reason.trim(),
-    });
-    // RPC return types were not supplied. Confirm the persisted value using the official read RPC.
+    }, true);
+    // These writes return void. Confirm the persisted value using the official read RPC.
     const context = await this.context(userId, customerId, branchId);
     if ((target === 'customer' ? context.customerShippingCents : context.branchShippingCents) !== cents) {
       throw new Error('O servidor não confirmou o frete esperado. Atualize a consulta antes de tentar novamente.');

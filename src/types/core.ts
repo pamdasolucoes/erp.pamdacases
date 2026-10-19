@@ -13,6 +13,7 @@ export interface CustomerCommercialContext {
 }
 
 export interface ErpSummary {
+  financialAuthorized: boolean;
   asOf: string;
   pending_sales: number | null;
   pending_with_product_history: number | null;

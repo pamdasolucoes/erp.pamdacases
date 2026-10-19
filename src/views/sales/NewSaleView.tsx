@@ -14,6 +14,9 @@ import type { PricingPreparation } from '../../types/salePreparation';
 import { useCommercialContext } from '../../hooks/useCommercialContext';
 import { useCorePermission } from '../../hooks/useCorePermission';
 import { centsInput } from '../../services/salePricing';
+import { usePaymentCatalog } from '../../hooks/usePaymentCatalog';
+import { PaymentSelect } from '../../components/common/PaymentSelect';
+import { paymentCondition } from '../../services/payments';
 
 interface NewSaleViewProps {
   initialCustomer?: CustomerContext | null;
@@ -35,6 +38,7 @@ export const NewSaleView: React.FC<NewSaleViewProps> = ({ initialCustomer, onDis
   const { customerId, branchId } = draft;
   const commercial = useCommercialContext(userId, customerId, branchId);
   const shippingPermission = useCorePermission(userId, 'sales.shipping.override');
+  const paymentCatalog = usePaymentCatalog(userId);
   const customerFreight = useMemo(() => commercial.data ? { status: 'available' as const, amountCents: commercial.data.effectiveShippingCents,
     source: commercial.data.branchShippingCents !== null ? 'branch_override' as const : 'customer_default' as const } : pendingCustomerFreight, [commercial.data]);
   const [query, setQuery] = useState('');
@@ -226,7 +230,15 @@ export const NewSaleView: React.FC<NewSaleViewProps> = ({ initialCustomer, onDis
         {commercial.loading&&<p role="status" className="text-sm text-slate-500">Consultando frete e condições comerciais…</p>}
         {commercial.error&&<p role="alert" className="text-sm text-rose-800">{commercial.error} <button type="button" onClick={commercial.reload} className="underline">Atualizar condições comerciais</button></p>}
         {shippingPermission.error&&<p role="alert" className="text-sm text-amber-800">{shippingPermission.error} A alteração do frete está bloqueada até validar a permissão.</p>}
-        <p className="text-xs text-slate-500">{draft.paymentMethodId||draft.paymentTermId?'Condição de pagamento cadastrada preservada nesta venda.':'Condição de pagamento não configurada'}</p>
+        <section className="rounded-2xl border border-slate-200 bg-white p-5 space-y-3" aria-label="Pagamento da venda">
+          <p className="text-xs text-slate-500">{paymentCondition(paymentCatalog.data,draft.paymentMethodId,draft.paymentTermId)}</p>
+          {paymentCatalog.loading && <p role="status" className="text-sm text-slate-500">Consultando pagamentos…</p>}
+          {paymentCatalog.error && <p role="alert" className="text-sm text-rose-800">{paymentCatalog.error} <button type="button" onClick={paymentCatalog.reload} className="underline">Atualizar pagamentos</button></p>}
+          <div className="grid sm:grid-cols-2 gap-3">
+            <PaymentSelect label="Forma de pagamento da venda" value={draft.paymentMethodId} rows={paymentCatalog.data?.methods || []} disabled={!paymentCatalog.data || commercial.loading || draft.commercialDefaultsPending} onChange={id => setDraft(previous => ({ ...previous, paymentMethodId: id }))} />
+            <PaymentSelect label="Prazo de pagamento da venda" value={draft.paymentTermId} rows={paymentCatalog.data?.terms || []} disabled={!paymentCatalog.data || commercial.loading || draft.commercialDefaultsPending} onChange={id => setDraft(previous => ({ ...previous, paymentTermId: id }))} />
+          </div>
+        </section>
 
         {productsLoading
           ? <p role="status" className="rounded-xl border bg-white p-5">Carregando produtos…</p>
@@ -249,6 +261,7 @@ export const NewSaleView: React.FC<NewSaleViewProps> = ({ initialCustomer, onDis
                 selectedCustomer={contextMismatch ? null : selected || null}
                 selectedBranch={branch || null}
                 sellerName={draft.remote?.sellerName}
+                paymentCondition={paymentCondition(paymentCatalog.data,draft.paymentMethodId,draft.paymentTermId)}
                 onFirstProductAdded={confirmFirstProduct}
               />
             )}

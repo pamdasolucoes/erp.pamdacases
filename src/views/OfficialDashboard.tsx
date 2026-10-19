@@ -14,16 +14,16 @@ export function OfficialDashboard({ onNavigate }: { onNavigate(tab: ActiveTab): 
   const [error, setError] = useState('');
   const [attempt, setAttempt] = useState(0);
   const reload = useCallback(() => setAttempt(value => value + 1), []);
-  const financial = user.canViewFinancialMetrics === true;
+  const financial = summary?.financialAuthorized === true;
   useEffect(() => {
     let alive = true;
     setLoading(true); setError(''); setSummary(null);
-    void coreService.summary(user.id, financial).then(
+    void coreService.summary(user.id).then(
       value => { if (alive) setSummary(value); },
       reason => { if (alive) setError(reason instanceof Error ? reason.message : 'Não foi possível consultar o resumo oficial.'); },
     ).finally(() => { if (alive) setLoading(false); });
     return () => { alive = false; };
-  }, [user.id, financial, attempt]);
+  }, [user, attempt]);
   useEffect(() => { window.addEventListener('focus', reload); return () => window.removeEventListener('focus', reload); }, [reload]);
   const metric = (key: keyof ErpSummary, currency = false) => {
     if (loading) return 'Carregando…';

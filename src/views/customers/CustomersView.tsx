@@ -7,6 +7,9 @@ import { authService } from '../../services/auth';
 import { useCorePermission } from '../../hooks/useCorePermission';
 import { CustomerCommercialPanel } from './CustomerCommercialPanel';
 import { CustomerEditModal } from './CustomerEditModal';
+import { CustomerRegistrationModal } from './CustomerRegistrationModal';
+import { customerAdminService } from '../../services/customerAdminService';
+import type { OfficialCustomerBranch } from '../../types/pamdaCore';
 
 function Field({ label, value }: { label: string; value: string | null | undefined }) {
   return <div><dt className="text-[11px] font-bold uppercase text-slate-400">{label}</dt><dd className="mt-1 text-sm text-slate-800 break-words whitespace-pre-wrap">{value || 'Não informado'}</dd></div>;
@@ -29,8 +32,12 @@ export const CustomersView: React.FC<CustomersViewProps> = ({ initialCustomerId,
   const [selectedId, setSelectedId] = useState(initialCustomerId || '');
   const [editing, setEditing] = useState<OfficialCustomer | null>(null);
   const [notice, setNotice] = useState('');
+  const [registration, setRegistration] = useState<{ customer?: OfficialCustomer; branch?: OfficialCustomerBranch } | null>(null);
+  const [primaryBusy, setPrimaryBusy] = useState(false);
   const manage = useCorePermission(authService.getCurrentUser()!.id, 'customers.manage');
   const canEdit = manage.allowed;
+  const canAdmin = canEdit && authService.getCurrentUser()!.role === 'admin_gerencial';
+  const saved = (updated: OfficialCustomer) => { acceptUpdated(updated); setSelectedId(updated.id); setQuery(''); setRegistration(null); setNotice('Cadastro confirmado pelo PAMDA CORE.'); };
 
   const filtered = useMemo(() => searchCustomers(customers, query), [customers, query]);
   const selected = filtered.find(customer => customer.id === selectedId) || filtered[0];
@@ -43,7 +50,7 @@ export const CustomersView: React.FC<CustomersViewProps> = ({ initialCustomerId,
     <div className="space-y-5">
       <div className="flex flex-col sm:flex-row justify-between gap-3 sm:items-center">
         <div><h1 className="text-2xl font-black text-slate-900">Clientes e Unidades</h1><p className="text-sm text-slate-500">Cadastro oficial PAMDA CORE · Consulta</p></div>
-        <button disabled={loading} onClick={reload} className="inline-flex justify-center items-center gap-2 rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold bg-white disabled:opacity-50"><RefreshCw className="w-4 h-4" />Atualizar lista</button>
+        <div className="flex gap-2">{canAdmin && <button onClick={() => setRegistration({})} className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-bold text-white">Novo cliente</button>}<button disabled={loading} onClick={reload} className="inline-flex justify-center items-center gap-2 rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold bg-white disabled:opacity-50"><RefreshCw className="w-4 h-4" />Atualizar lista</button></div>
       </div>
       {loading ? <p role="status" className="rounded-xl border border-slate-200 bg-white p-8 text-slate-600">Carregando clientes e unidades...</p> : error ? (
         <div role="alert" className="rounded-xl border border-rose-200 bg-rose-50 p-5 text-sm text-rose-800"><p>{error}</p><button onClick={reload} className="mt-3 font-bold underline">Tentar novamente</button></div>
@@ -87,9 +94,17 @@ export const CustomersView: React.FC<CustomersViewProps> = ({ initialCustomerId,
                 </section>
                 <section className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6 space-y-4">
                   <h3 className="font-bold text-slate-900">Unidades cadastradas ({selected.branches.length})</h3>
+                  {canAdmin && <button onClick={() => setRegistration({ customer: selected })} className="rounded-xl border border-slate-300 px-3 py-2 text-xs font-bold">Nova filial</button>}
                   {!selected.branches.length && <p className="text-sm text-slate-500">Nenhuma unidade disponível para este cliente.</p>}
                   {selected.branches.map(branch => <div key={branch.id} className="rounded-xl border border-slate-200 p-4 space-y-4">
                     <div className="flex flex-wrap items-center gap-2"><MapPin className="w-4 h-4 text-slate-400" /><h4 className="text-sm font-bold">{branch.name}</h4>{branch.isPrimary&&<span className="text-xs font-bold text-blue-700">Matriz</span>}<span className="text-xs text-slate-500">{branch.active ? 'Ativa' : 'Inativa'}</span></div>
+                    {canAdmin && <div className="flex gap-3 text-xs font-bold"><button disabled={primaryBusy} onClick={() => setRegistration({ customer: selected, branch })} className="underline">Editar unidade</button>{branch.active && !branch.isPrimary && <button disabled={primaryBusy} className="underline text-blue-700" onClick={async () => {
+                      if (!window.confirm(`Definir ${branch.name} como matriz de ${selected.name}? A matriz atual será substituída.`)) return;
+                      setPrimaryBusy(true);
+                      try { saved(await customerAdminService.setPrimary(authService.getCurrentUser()!.id, selected, branch.id)); }
+                      catch (error) { setNotice(error instanceof Error ? error.message : 'Não foi possível confirmar a matriz.'); }
+                      finally { setPrimaryBusy(false); }
+                    }}>Definir matriz</button>}</div>}
                     {branch.addressNeedsReview && <p className="flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 p-2 text-xs font-semibold text-amber-900"><AlertTriangle className="w-4 h-4 shrink-0" />Endereço sinalizado para revisão. Confirme antes de entregar.</p>}
                     <dl className="grid grid-cols-1 sm:grid-cols-2 gap-4"><Field label="Nome fantasia" value={branch.tradeName} /><Field label="Endereço" value={branch.address} /><Field label="Número" value={branch.number} /><Field label="Complemento" value={branch.complement} /><Field label="Bairro" value={branch.neighborhood} /><Field label="Cidade" value={branch.city} /><Field label="Estado" value={branch.state} /><Field label="CEP" value={branch.zipCode} /><Field label="Telefone" value={branch.phone} /><Field label="Contato" value={branch.contactName} /><Field label="Código da importação" value={branch.importSourceCustomerCode} /><Field label="Observações da unidade" value={branch.notes} /></dl>
                   </div>)}
@@ -100,6 +115,7 @@ export const CustomersView: React.FC<CustomersViewProps> = ({ initialCustomerId,
         </>
       )}
       {editing && <CustomerEditModal key={editing.id + editing.updatedAt} customer={editing} onClose={() => setEditing(null)} onSaved={updated => { acceptUpdated(updated); setSelectedId(updated.id); setEditing(null); setNotice('Cadastro atualizado e confirmado pelo PAMDA CORE.'); }} />}
+      {registration && <CustomerRegistrationModal {...registration} onClose={() => { setRegistration(null); reload(); }} onSaved={saved} />}
     </div>
   );
 };

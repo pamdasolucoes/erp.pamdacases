@@ -20,7 +20,7 @@ export function useCustomers() {
   }, [revision]);
   const reload = useCallback(() => setRevision(value => value + 1), []);
   const acceptUpdated = useCallback((updated: OfficialCustomer) => {
-    setCustomers(rows => rows.map(row => row.id === updated.id ? updated : row));
+    setCustomers(rows => rows.some(row => row.id === updated.id) ? rows.map(row => row.id === updated.id ? updated : row) : [...rows, updated]);
   }, []);
   return { customers, loading, error, reload, acceptUpdated };
 }

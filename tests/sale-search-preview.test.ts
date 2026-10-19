@@ -50,6 +50,8 @@ test('estoque provisório permite prévia; estoque conferido soma componentes co
 
 test('prévia isola snapshot, aplica desconto uma vez e conserva frete zero e personalização',()=>{
   const preview=createReceiptPreview(input);
+  assert.equal(preview.condition,'Condição de pagamento não configurada');
+  assert.equal(createReceiptPreview({...input,paymentCondition:'PIX verificado · À vista verificado'}).condition,'PIX verificado · À vista verificado');
   assert.equal(preview.kind,'preview'); assert.equal(preview.receiptNumber,null); assert.equal(preview.payment,null);
   assert.equal(preview.totalCents,3500); assert.equal(preview.subtotalCents,4000); assert.equal(preview.discountCents,500); assert.equal(preview.freightCents,0);
   assert.equal(preview.customerCode,'350'); assert.equal(preview.items[0].sku,item.snapshot.productSku);

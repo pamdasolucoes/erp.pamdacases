@@ -1,5 +1,5 @@
 import type { CustomerRow, CustomerBranchRow, OfficialCustomer, OfficialCustomerBranch } from '../types/pamdaCore';
-import { pendingCustomerFreight } from './freight';
+import { dbCents } from './pendingSaleMapping';
 
 export function mapBranch(row: CustomerBranchRow): OfficialCustomerBranch {
   if (typeof row.id !== 'string' || typeof row.customer_id !== 'string' || typeof row.address_needs_review !== 'boolean') {
@@ -12,6 +12,7 @@ export function mapBranch(row: CustomerBranchRow): OfficialCustomerBranch {
     notes: row.notes, active: row.active, addressNeedsReview: row.address_needs_review,
     importSourceCustomerCode: row.import_source_customer_code, createdAt: row.created_at, updatedAt: row.updated_at,
     isPrimary: typeof row.is_primary === 'boolean' ? row.is_primary : null,
+    shippingFeeOverrideCents: row.shipping_fee_override == null ? null : dbCents(row.shipping_fee_override),
   };
 }
 
@@ -28,7 +29,9 @@ export function mapCustomer(row: CustomerRow, branches: readonly OfficialCustome
     legacyRegisteredOn: row.legacy_registered_on, legacyLastPurchaseOn: row.legacy_last_purchase_on,
     legacyRegisteredRaw: row.legacy_registered_raw, legacyLastPurchaseRaw: row.legacy_last_purchase_raw,
     notes: row.notes, active: row.active, isChain: row.is_chain, customerKind: row.customer_kind,
-    billingMode: row.billing_mode, paymentPolicy: null, defaultFreight: pendingCustomerFreight, branches, createdAt: row.created_at, updatedAt: row.updated_at,
+    billingMode: row.billing_mode, paymentPolicy: null,
+    defaultFreight: { status: 'available', amountCents: row.default_shipping_fee == null ? null : dbCents(row.default_shipping_fee) },
+    branches, createdAt: row.created_at, updatedAt: row.updated_at,
   };
 }
 

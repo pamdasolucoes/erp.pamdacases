@@ -32,9 +32,11 @@ test('frete invalido nao vira zero e nao se mistura aos descontos dos itens',()=
   assert.equal(saleTotalWithFreight(null,'10,00').totalCents,null);
   assert.equal(saleTotalWithFreight(Number.MAX_SAFE_INTEGER,'1,00').totalCents,null);
 });
-test('mapeamento nao consulta coluna inexistente nem envia frete pela RPC cadastral atual',()=>{
+test('mapeamento lê frete oficial sem enviá-lo pela RPC cadastral',()=>{
   const customer=mapCustomer(customerRow(),[]);
-  assert.deepEqual(customer.defaultFreight,{status:'integration_pending'});
+  assert.deepEqual(customer.defaultFreight,{status:'available',amountCents:null});
+  assert.deepEqual(mapCustomer(customerRow(1,{default_shipping_fee:0}),[]).defaultFreight,{status:'available',amountCents:0});
+  assert.deepEqual(mapCustomer(customerRow(1,{default_shipping_fee:'12.50'}),[]).defaultFreight,{status:'available',amountCents:1250});
   const form=createCustomerForm(customer); form.values.phone='123';
   assert.deepEqual(toCustomerUpdateRpc(buildCustomerUpdate(customer,form)).p_changes,{phone:'123'});
   const update=buildCustomerUpdate(customer,form);

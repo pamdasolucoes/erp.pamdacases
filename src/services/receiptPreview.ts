@@ -8,7 +8,7 @@ import { calculateSalePricing } from './salePricing';
 export function createReceiptPreview(input: {
   customer: OfficialCustomer | null; branch: OfficialCustomerBranch | null;
   items: readonly PricingDraftItem[]; discount: string; freight: SaleFreightSnapshot;
-  notes: string; seller: User | null; generatedAt: string;
+  notes: string; seller: User | null; generatedAt: string; paymentCondition?: string;
 }): ReceiptDocumentData {
   const { customer, branch, seller } = input;
   if (!customer) throw new Error('Selecione o cliente para visualizar a prévia.');
@@ -41,7 +41,7 @@ export function createReceiptPreview(input: {
     branchName: null,
     address,
     addressNeedsReview: branch?.addressNeedsReview || false, salespersonName: seller.name || seller.username,
-    condition: 'Condição de pagamento não configurada',
+    condition: input.paymentCondition || 'Condição de pagamento não configurada',
     items: calculation.lines.map(line => ({ id: line.item.id, code: line.item.snapshot.productCode, sku: line.item.snapshot.productSku,
       name: line.item.snapshot.productName, description: line.item.snapshot.productDescription, quantity: line.quantity,
       unitPriceCents: line.unitPriceCents, subtotalCents: line.grossCents, discountCents: line.additionalDiscountCents, netCents: line.netCents,

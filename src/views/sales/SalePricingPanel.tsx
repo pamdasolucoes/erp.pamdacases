@@ -21,7 +21,7 @@ function usePreparationField<K extends keyof PricingPreparation>(draft:PricingPr
   return [draft[key],value=>update(previous=>({...previous,[key]:typeof value==='function'?(value as (old:PricingPreparation[K])=>PricingPreparation[K])(previous[key]):value}))];
 }
 
-export function SalePricingPanel({ products, customerId, branchId, draft, onDraftChange, sellerName, customerFreight = pendingCustomerFreight, selectedCustomer = null, selectedBranch = null, onFirstProductAdded, freightEditable = false }: { products: readonly OfficialProduct[]; customerId: string | null; branchId: string | null; draft:PricingPreparation; onDraftChange:React.Dispatch<React.SetStateAction<PricingPreparation>>; sellerName?:string; customerFreight?: CustomerFreightSetting; selectedCustomer?: OfficialCustomer | null; selectedBranch?: OfficialCustomerBranch | null; onFirstProductAdded():Promise<void>; freightEditable?:boolean }) {
+export function SalePricingPanel({ products, customerId, branchId, draft, onDraftChange, sellerName, paymentCondition, customerFreight = pendingCustomerFreight, selectedCustomer = null, selectedBranch = null, onFirstProductAdded, freightEditable = false }: { products: readonly OfficialProduct[]; customerId: string | null; branchId: string | null; draft:PricingPreparation; onDraftChange:React.Dispatch<React.SetStateAction<PricingPreparation>>; sellerName?:string; paymentCondition?:string; customerFreight?: CustomerFreightSetting; selectedCustomer?: OfficialCustomer | null; selectedBranch?: OfficialCustomerBranch | null; onFirstProductAdded():Promise<void>; freightEditable?:boolean }) {
   const [items, setItems] = usePreparationField(draft,onDraftChange,'items');
   const [discount, setDiscount] = usePreparationField(draft,onDraftChange,'discount');
   const [discountReason, setDiscountReason] = usePreparationField(draft,onDraftChange,'discountReason');
@@ -245,6 +245,7 @@ export function SalePricingPanel({ products, customerId, branchId, draft, onDraf
                 notes,
                 seller: user&&sellerName?{...user,name:sellerName}:user,
                 generatedAt: new Date().toISOString(),
+                paymentCondition,
               }));
             } catch (reason) {
               setError(reason instanceof Error ? reason.message : 'Não foi possível gerar o recibo.');

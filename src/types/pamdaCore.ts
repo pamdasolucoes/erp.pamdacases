@@ -11,6 +11,7 @@ export interface CustomerRow {
   legacy_registered_raw: string | null; legacy_last_purchase_raw: string | null;
   notes: string | null; active: boolean; is_chain: boolean; customer_kind: string;
   billing_mode: string | null; created_at: string; updated_at: string;
+  default_shipping_fee?: number | string | null;
 }
 
 export interface CustomerBranchRow {
@@ -20,6 +21,7 @@ export interface CustomerBranchRow {
   notes: string | null; active: boolean; address_needs_review: boolean;
   import_source_customer_code: string | null; created_at: string; updated_at: string;
   is_primary?: boolean; // Always requested from the official schema; optional for old fixtures.
+  shipping_fee_override?: number | string | null;
 }
 
 export interface OfficialCustomerBranch {
@@ -30,6 +32,7 @@ export interface OfficialCustomerBranch {
   readonly active: boolean; readonly addressNeedsReview: boolean; readonly importSourceCustomerCode: string | null;
   readonly createdAt: string; readonly updatedAt: string;
   readonly isPrimary?: boolean | null;
+  readonly shippingFeeOverrideCents?: number | null;
 }
 
 export interface OfficialCustomer {

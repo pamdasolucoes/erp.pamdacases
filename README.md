@@ -11,7 +11,7 @@ Buscas integradas na Nova Venda e prévia de recibo A4/80 mm: veja [configuraç�
 **Etapa atual: sincronização com o Supabase PAMDA CORE.**
 O login usa e-mail e senha do Supabase Auth; o perfil ativo é consultado em `public.erp_user_profiles` pelo `user_id`.
 Clientes e unidades usam as tabelas oficiais existentes, com edição cadastral protegida por RPC. O dashboard consulta o resumo oficial; o contexto comercial e os fretes usam as funções oficiais informadas pelo administrador.
-Criação de cliente/filiais e seletores de pagamento aguardam os contratos completos. Os módulos sem integração homologada não efetuam consultas ou gravações demonstrativas.
+Criação de cliente com matriz, criação/edição de filiais, definição de matriz, catálogos e configurações de pagamento usam as RPCs oficiais confirmadas. Os módulos sem integração homologada não efetuam consultas ou gravações demonstrativas.
 
 Consulte [SINCRONIZACAO_CORE.md](./docs/SINCRONIZACAO_CORE.md) para requisitos atuais de RLS, autenticação, contratos e validação. Os documentos das etapas anteriores são históricos. O aplicativo e o build não executam SQL. **Não aplicar a migration geral antiga nem reaplicar os scripts de `supabase/review` no banco existente.**
 
@@ -124,11 +124,11 @@ O perfil deve ter uma política RLS de `SELECT` que permita ao usuário autentic
 
 ## Validação local
 
-Produtos, Serviços & Kits e Nova Venda agora consultam o catálogo oficial do Supabase, incluindo componentes por UUID e valores nulos. Cadastro/edição/clonagem de produtos continuam bloqueados. O frete padrão do cliente aparece como pendente; o frete da preparação é manual e não altera o cliente. Veja [catálogo oficial, frete e pendências de banco](./docs/CATALOGO_OFICIAL_E_FRETE.md). Nenhuma migration foi criada/aplicada nesta atualização.
+Produtos, Serviços & Kits e Nova Venda consultam o catálogo oficial do Supabase, incluindo componentes por UUID e valores nulos. Cadastro/edição/clonagem de produtos continuam bloqueados. Frete e condições padrão vêm do contexto comercial oficial; frete negociado não modifica o cadastro. Nenhuma migration foi criada/aplicada nesta atualização. Para o estado atual prevalece [sincronização CORE](./docs/SINCRONIZACAO_CORE.md).
 
 A Nova Venda também permite negociar preços, restaurar o valor original e calcular margens dos itens sem alterar o catálogo. Consulte [negociação e snapshots](./docs/NEGOCIACAO_PRECOS.md). A migration 07 anterior serve somente à demonstração e não autoriza itens do catálogo oficial; vendas oficiais continuam bloqueadas.
 
-A atualização de clientes integra a busca da Nova Venda, a edição cadastral e a navegação para histórico. A edição depende da revisão e aplicação da migration incremental **06**, preparada para a autenticação atual; ela não foi executada automaticamente. O histórico oficial e a confirmação de venda continuam dependentes da integração do módulo de vendas. Consulte [configuração, arquivos alterados e validação](./docs/CLIENTES_EDICAO_E_VENDAS.md).
+A atualização de clientes integra a busca da Nova Venda, a edição cadastral e o histórico oficial de pendências. A RPC de edição já foi confirmada como instalada; não reaplicar a proposta histórica **06**. Confirmação da venda permanece bloqueada. Documentos de etapas anteriores são históricos; os contratos atuais estão em [sincronização CORE](./docs/SINCRONIZACAO_CORE.md).
 
 ```bash
 npm test

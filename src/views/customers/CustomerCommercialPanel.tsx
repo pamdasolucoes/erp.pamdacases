@@ -6,12 +6,18 @@ import { useCommercialContext } from '../../hooks/useCommercialContext';
 import { useCorePermission } from '../../hooks/useCorePermission';
 import { defaultBranchId } from '../../services/defaultBranch';
 import { centsInput, formatMoney, parsePriceInput } from '../../services/salePricing';
+import { usePaymentCatalog } from '../../hooks/usePaymentCatalog';
+import { paymentCondition } from '../../services/payments';
+import { CustomerPaymentPanel } from './CustomerPaymentPanel';
 
 export function CustomerCommercialPanel({ customer }: { customer: OfficialCustomer }) {
   const user = authService.getCurrentUser()!;
   const [branchId, setBranchId] = useState(() => defaultBranchId(customer));
   const context = useCommercialContext(user.id, customer.id, branchId);
-  const permission = useCorePermission(user.id, 'customers.manage');
+  const permission = useCorePermission(user.id, 'customers.shipping.manage');
+  const financial = useCorePermission(user.id, 'finance.read');
+  const manage = useCorePermission(user.id, 'customers.manage');
+  const catalog = usePaymentCatalog(user.id);
   const [customerAmount, setCustomerAmount] = useState('');
   const [branchAmount, setBranchAmount] = useState('');
   const [reason, setReason] = useState('');
@@ -41,9 +47,12 @@ export function CustomerCommercialPanel({ customer }: { customer: OfficialCustom
     {!branchId&&<p className="text-xs text-slate-500">Selecione a unidade para consultar as condições oficiais.</p>}
     {context.loading&&<p role="status" className="text-sm text-slate-500">Consultando condições comerciais…</p>}
     {(context.error||permission.error)&&<p role="alert" className="text-sm text-rose-800">{context.error||permission.error}{context.error&&<button type="button" onClick={context.reload} className="ml-2 underline">Atualizar condições</button>}</p>}
-    {context.data&&<><dl className="grid sm:grid-cols-2 gap-3 text-sm"><div><dt className="text-xs text-slate-500">Frete padrão do cliente</dt><dd>{money(context.data.customerShippingCents)}</dd></div><div><dt className="text-xs text-slate-500">Frete específico da unidade</dt><dd>{context.data.branchShippingCents===null?'Herdar do cliente':money(context.data.branchShippingCents)}</dd></div><div><dt className="text-xs text-slate-500">Frete efetivo</dt><dd className="font-bold">{money(context.data.effectiveShippingCents)}</dd></div>{user.canViewFinancialMetrics&&<div><dt className="text-xs text-slate-500">Limite de crédito</dt><dd>{money(context.data.creditLimitCents)}</dd></div>}</dl><p className="text-xs text-slate-600">{context.data.paymentMethodId||context.data.paymentTermId?'Condição de pagamento cadastrada no servidor.':'Condição de pagamento não configurada'}</p>
+    {context.data&&<><dl className="grid sm:grid-cols-2 gap-3 text-sm"><div><dt className="text-xs text-slate-500">Frete padrão do cliente</dt><dd>{money(context.data.customerShippingCents)}</dd></div><div><dt className="text-xs text-slate-500">Frete específico da unidade</dt><dd>{context.data.branchShippingCents===null?'Herdar do cliente':money(context.data.branchShippingCents)}</dd></div><div><dt className="text-xs text-slate-500">Frete efetivo</dt><dd className="font-bold">{money(context.data.effectiveShippingCents)}</dd></div>{financial.allowed&&<div><dt className="text-xs text-slate-500">Limite de crédito</dt><dd>{money(context.data.creditLimitCents)}</dd></div>}</dl><p className="text-xs text-slate-600">{paymentCondition(catalog.data,context.data.paymentMethodId,context.data.paymentTermId)}</p>
       {permission.allowed&&<fieldset disabled={busy} className="space-y-3 rounded-xl border border-slate-200 p-3"><legend className="px-1 text-xs font-bold">Configurar frete</legend><label className="block text-xs font-bold">Frete padrão do cliente (R$)<input aria-label="Frete padrão do cliente (R$)" inputMode="decimal" value={customerAmount} onChange={event=>setCustomerAmount(event.target.value)} className="block w-full mt-1 border rounded-lg p-2 font-normal"/></label><button type="button" onClick={()=>void save('customer')} disabled={!reason.trim()} className="rounded-xl bg-blue-600 px-3 py-2 text-xs font-bold text-white disabled:opacity-50">Salvar frete do cliente</button><label className="block text-xs font-bold">Frete da unidade (R$)<input aria-label="Frete da unidade (R$)" inputMode="decimal" value={branchAmount} onChange={event=>setBranchAmount(event.target.value)} className="block w-full mt-1 border rounded-lg p-2 font-normal"/></label><p className="text-xs text-slate-500">Vazio remove o valor específico. Zero representa frete grátis explícito. O custo real da entrega é independente.</p><button type="button" onClick={()=>void save('branch')} disabled={!reason.trim()} className="rounded-xl bg-blue-600 px-3 py-2 text-xs font-bold text-white disabled:opacity-50">Salvar frete da unidade</button><label className="block text-xs font-bold">Motivo da alteração de frete<input aria-label="Motivo da alteração de frete" value={reason} maxLength={4000} onChange={event=>setReason(event.target.value)} className="block w-full mt-1 border rounded-lg p-2 font-normal"/></label></fieldset>}
     </>}
+    {catalog.loading && <p role="status" className="text-xs text-slate-500">Consultando catálogo de pagamentos…</p>}
+    {catalog.error && <p role="alert" className="text-xs text-rose-800">{catalog.error} <button type="button" onClick={catalog.reload} className="underline">Atualizar catálogo</button></p>}
+    {catalog.data && <CustomerPaymentPanel userId={user.id} customerId={customer.id} branchId={branchId} catalog={catalog.data} canEdit={manage.allowed && user.role === 'admin_gerencial'} financial={financial.allowed} onSaved={context.reload} reloadCatalog={catalog.reload} />}
     {busy&&<p role="status" className="text-xs text-slate-500">Confirmando frete no servidor…</p>}
     {notice&&<p role="status" className="text-xs text-emerald-800">{notice}</p>}
     {error&&<p role="alert" className="text-xs text-rose-800">{error}</p>}
