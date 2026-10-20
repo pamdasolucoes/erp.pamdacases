@@ -1,0 +1,182 @@
+{
+  "rls": [
+    {
+      "table": "erp_customer_networks",
+      "enabled": true
+    },
+    {
+      "table": "erp_customer_network_members",
+      "enabled": true
+    },
+    {
+      "table": "erp_customer_billing_policies",
+      "enabled": true
+    },
+    {
+      "table": "erp_branch_billing_policies",
+      "enabled": true
+    }
+  ],
+  "constraints": [
+    {
+      "name": "erp_customer_networks_created_by_fkey",
+      "table": "erp_customer_networks",
+      "definition": "FOREIGN KEY (created_by) REFERENCES auth.users(id) ON DELETE RESTRICT"
+    },
+    {
+      "name": "erp_customer_networks_default_collection_mode_check",
+      "table": "erp_customer_networks",
+      "definition": "CHECK ((default_collection_mode = ANY (ARRAY['por_unidade'::text, 'centralizado'::text, 'flexivel'::text])))"
+    },
+    {
+      "name": "erp_customer_networks_default_cycle_check",
+      "table": "erp_customer_networks",
+      "definition": "CHECK ((default_cycle = ANY (ARRAY['diario'::text, 'semanal'::text, 'mensal'::text, 'flexivel'::text])))"
+    },
+    {
+      "name": "erp_customer_networks_default_due_days_check",
+      "table": "erp_customer_networks",
+      "definition": "CHECK (((default_due_days >= 0) AND (default_due_days <= 365)))"
+    },
+    {
+      "name": "erp_customer_networks_headquarters_customer_id_fkey",
+      "table": "erp_customer_networks",
+      "definition": "FOREIGN KEY (headquarters_customer_id) REFERENCES customers(id) ON DELETE RESTRICT"
+    },
+    {
+      "name": "erp_customer_networks_network_code_check",
+      "table": "erp_customer_networks",
+      "definition": "CHECK ((network_code ~ '^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$'::text))"
+    },
+    {
+      "name": "erp_customer_networks_network_code_key",
+      "table": "erp_customer_networks",
+      "definition": "UNIQUE (network_code)"
+    },
+    {
+      "name": "erp_customer_networks_network_kind_check",
+      "table": "erp_customer_networks",
+      "definition": "CHECK ((network_kind = ANY (ARRAY['rede'::text, 'franquia'::text, 'grupo_comercial'::text])))"
+    },
+    {
+      "name": "erp_customer_networks_network_name_check",
+      "table": "erp_customer_networks",
+      "definition": "CHECK ((btrim(network_name) <> ''::text))"
+    },
+    {
+      "name": "erp_customer_networks_pkey",
+      "table": "erp_customer_networks",
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "name": "erp_customer_network_members_customer_id_fkey",
+      "table": "erp_customer_network_members",
+      "definition": "FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE RESTRICT"
+    },
+    {
+      "name": "erp_customer_network_members_customer_id_key",
+      "table": "erp_customer_network_members",
+      "definition": "UNIQUE (customer_id)"
+    },
+    {
+      "name": "erp_customer_network_members_display_code_check",
+      "table": "erp_customer_network_members",
+      "definition": "CHECK ((btrim(display_code) <> ''::text))"
+    },
+    {
+      "name": "erp_customer_network_members_display_code_key",
+      "table": "erp_customer_network_members",
+      "definition": "UNIQUE (display_code)"
+    },
+    {
+      "name": "erp_customer_network_members_joined_by_fkey",
+      "table": "erp_customer_network_members",
+      "definition": "FOREIGN KEY (joined_by) REFERENCES auth.users(id) ON DELETE RESTRICT"
+    },
+    {
+      "name": "erp_customer_network_members_legacy_customer_code_check",
+      "table": "erp_customer_network_members",
+      "definition": "CHECK ((btrim(legacy_customer_code) <> ''::text))"
+    },
+    {
+      "name": "erp_customer_network_members_network_id_fkey",
+      "table": "erp_customer_network_members",
+      "definition": "FOREIGN KEY (network_id) REFERENCES erp_customer_networks(id) ON DELETE RESTRICT"
+    },
+    {
+      "name": "erp_customer_network_members_network_id_unit_sequence_key",
+      "table": "erp_customer_network_members",
+      "definition": "UNIQUE (network_id, unit_sequence)"
+    },
+    {
+      "name": "erp_customer_network_members_pkey",
+      "table": "erp_customer_network_members",
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "name": "erp_customer_network_members_unit_sequence_check",
+      "table": "erp_customer_network_members",
+      "definition": "CHECK ((unit_sequence >= 0))"
+    },
+    {
+      "name": "erp_customer_billing_policies_billing_cycle_check",
+      "table": "erp_customer_billing_policies",
+      "definition": "CHECK ((billing_cycle = ANY (ARRAY['diario'::text, 'semanal'::text, 'mensal'::text, 'flexivel'::text])))"
+    },
+    {
+      "name": "erp_customer_billing_policies_customer_id_fkey",
+      "table": "erp_customer_billing_policies",
+      "definition": "FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE RESTRICT"
+    },
+    {
+      "name": "erp_customer_billing_policies_default_collection_mode_check",
+      "table": "erp_customer_billing_policies",
+      "definition": "CHECK ((default_collection_mode = ANY (ARRAY['por_unidade'::text, 'centralizado'::text, 'flexivel'::text])))"
+    },
+    {
+      "name": "erp_customer_billing_policies_due_days_check",
+      "table": "erp_customer_billing_policies",
+      "definition": "CHECK (((due_days >= 0) AND (due_days <= 365)))"
+    },
+    {
+      "name": "erp_customer_billing_policies_pkey",
+      "table": "erp_customer_billing_policies",
+      "definition": "PRIMARY KEY (customer_id)"
+    },
+    {
+      "name": "erp_customer_billing_policies_updated_by_fkey",
+      "table": "erp_customer_billing_policies",
+      "definition": "FOREIGN KEY (updated_by) REFERENCES auth.users(id) ON DELETE RESTRICT"
+    },
+    {
+      "name": "erp_branch_billing_policies_billing_cycle_check",
+      "table": "erp_branch_billing_policies",
+      "definition": "CHECK ((billing_cycle = ANY (ARRAY['diario'::text, 'semanal'::text, 'mensal'::text, 'flexivel'::text])))"
+    },
+    {
+      "name": "erp_branch_billing_policies_branch_id_fkey",
+      "table": "erp_branch_billing_policies",
+      "definition": "FOREIGN KEY (branch_id) REFERENCES customer_branches(id) ON DELETE RESTRICT"
+    },
+    {
+      "name": "erp_branch_billing_policies_default_collection_mode_check",
+      "table": "erp_branch_billing_policies",
+      "definition": "CHECK ((default_collection_mode = ANY (ARRAY['por_unidade'::text, 'centralizado'::text, 'flexivel'::text])))"
+    },
+    {
+      "name": "erp_branch_billing_policies_due_days_check",
+      "table": "erp_branch_billing_policies",
+      "definition": "CHECK (((due_days >= 0) AND (due_days <= 365)))"
+    },
+    {
+      "name": "erp_branch_billing_policies_pkey",
+      "table": "erp_branch_billing_policies",
+      "definition": "PRIMARY KEY (branch_id)"
+    },
+    {
+      "name": "erp_branch_billing_policies_updated_by_fkey",
+      "table": "erp_branch_billing_policies",
+      "definition": "FOREIGN KEY (updated_by) REFERENCES auth.users(id) ON DELETE RESTRICT"
+    }
+  ]
+}

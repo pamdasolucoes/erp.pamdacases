@@ -1,0 +1,287 @@
+{
+  "capturedAt": "2026-10-20",
+  "project": "erp-pamda",
+  "notice": "Read-only contract snapshot. Not a migration; do not execute against production.",
+  "columns": [
+    {
+      "data_type": "uuid",
+      "table_name": "erp_branch_billing_policies",
+      "column_name": "branch_id",
+      "is_nullable": "NO"
+    },
+    {
+      "data_type": "text",
+      "table_name": "erp_branch_billing_policies",
+      "column_name": "billing_cycle",
+      "is_nullable": "YES"
+    },
+    {
+      "data_type": "text",
+      "table_name": "erp_branch_billing_policies",
+      "column_name": "default_collection_mode",
+      "is_nullable": "YES"
+    },
+    {
+      "data_type": "integer",
+      "table_name": "erp_branch_billing_policies",
+      "column_name": "due_days",
+      "is_nullable": "YES"
+    },
+    {
+      "data_type": "text",
+      "table_name": "erp_branch_billing_policies",
+      "column_name": "notes",
+      "is_nullable": "YES"
+    },
+    {
+      "data_type": "timestamp with time zone",
+      "table_name": "erp_branch_billing_policies",
+      "column_name": "updated_at",
+      "is_nullable": "NO"
+    },
+    {
+      "data_type": "uuid",
+      "table_name": "erp_branch_billing_policies",
+      "column_name": "updated_by",
+      "is_nullable": "NO"
+    },
+    {
+      "data_type": "uuid",
+      "table_name": "erp_customer_billing_policies",
+      "column_name": "customer_id",
+      "is_nullable": "NO"
+    },
+    {
+      "data_type": "text",
+      "table_name": "erp_customer_billing_policies",
+      "column_name": "billing_cycle",
+      "is_nullable": "NO"
+    },
+    {
+      "data_type": "text",
+      "table_name": "erp_customer_billing_policies",
+      "column_name": "default_collection_mode",
+      "is_nullable": "NO"
+    },
+    {
+      "data_type": "integer",
+      "table_name": "erp_customer_billing_policies",
+      "column_name": "due_days",
+      "is_nullable": "YES"
+    },
+    {
+      "data_type": "text",
+      "table_name": "erp_customer_billing_policies",
+      "column_name": "notes",
+      "is_nullable": "YES"
+    },
+    {
+      "data_type": "timestamp with time zone",
+      "table_name": "erp_customer_billing_policies",
+      "column_name": "updated_at",
+      "is_nullable": "NO"
+    },
+    {
+      "data_type": "uuid",
+      "table_name": "erp_customer_billing_policies",
+      "column_name": "updated_by",
+      "is_nullable": "NO"
+    },
+    {
+      "data_type": "uuid",
+      "table_name": "erp_customer_network_members",
+      "column_name": "id",
+      "is_nullable": "NO"
+    },
+    {
+      "data_type": "uuid",
+      "table_name": "erp_customer_network_members",
+      "column_name": "network_id",
+      "is_nullable": "NO"
+    },
+    {
+      "data_type": "uuid",
+      "table_name": "erp_customer_network_members",
+      "column_name": "customer_id",
+      "is_nullable": "NO"
+    },
+    {
+      "data_type": "integer",
+      "table_name": "erp_customer_network_members",
+      "column_name": "unit_sequence",
+      "is_nullable": "NO"
+    },
+    {
+      "data_type": "text",
+      "table_name": "erp_customer_network_members",
+      "column_name": "display_code",
+      "is_nullable": "NO"
+    },
+    {
+      "data_type": "text",
+      "table_name": "erp_customer_network_members",
+      "column_name": "legacy_customer_code",
+      "is_nullable": "NO"
+    },
+    {
+      "data_type": "timestamp with time zone",
+      "table_name": "erp_customer_network_members",
+      "column_name": "joined_at",
+      "is_nullable": "NO"
+    },
+    {
+      "data_type": "uuid",
+      "table_name": "erp_customer_network_members",
+      "column_name": "joined_by",
+      "is_nullable": "NO"
+    },
+    {
+      "data_type": "uuid",
+      "table_name": "erp_customer_networks",
+      "column_name": "id",
+      "is_nullable": "NO"
+    },
+    {
+      "data_type": "text",
+      "table_name": "erp_customer_networks",
+      "column_name": "network_name",
+      "is_nullable": "NO"
+    },
+    {
+      "data_type": "text",
+      "table_name": "erp_customer_networks",
+      "column_name": "network_code",
+      "is_nullable": "NO"
+    },
+    {
+      "data_type": "text",
+      "table_name": "erp_customer_networks",
+      "column_name": "network_kind",
+      "is_nullable": "NO"
+    },
+    {
+      "data_type": "uuid",
+      "table_name": "erp_customer_networks",
+      "column_name": "headquarters_customer_id",
+      "is_nullable": "NO"
+    },
+    {
+      "data_type": "text",
+      "table_name": "erp_customer_networks",
+      "column_name": "default_cycle",
+      "is_nullable": "NO"
+    },
+    {
+      "data_type": "text",
+      "table_name": "erp_customer_networks",
+      "column_name": "default_collection_mode",
+      "is_nullable": "NO"
+    },
+    {
+      "data_type": "integer",
+      "table_name": "erp_customer_networks",
+      "column_name": "default_due_days",
+      "is_nullable": "YES"
+    },
+    {
+      "data_type": "text",
+      "table_name": "erp_customer_networks",
+      "column_name": "notes",
+      "is_nullable": "YES"
+    },
+    {
+      "data_type": "uuid",
+      "table_name": "erp_customer_networks",
+      "column_name": "created_by",
+      "is_nullable": "NO"
+    },
+    {
+      "data_type": "timestamp with time zone",
+      "table_name": "erp_customer_networks",
+      "column_name": "created_at",
+      "is_nullable": "NO"
+    },
+    {
+      "data_type": "timestamp with time zone",
+      "table_name": "erp_customer_networks",
+      "column_name": "updated_at",
+      "is_nullable": "NO"
+    }
+  ],
+  "policies": [
+    {
+      "cmd": "SELECT",
+      "qual": "(pamda_has_permission('customers.manage'::text) OR pamda_has_permission('sales.read'::text))",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "erp_customer_networks",
+      "permissive": "PERMISSIVE",
+      "policyname": "erp_network_read",
+      "schemaname": "public",
+      "with_check": null
+    },
+    {
+      "cmd": "SELECT",
+      "qual": "(pamda_has_permission('customers.manage'::text) OR pamda_has_permission('sales.read'::text))",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "erp_customer_network_members",
+      "permissive": "PERMISSIVE",
+      "policyname": "erp_network_members_read",
+      "schemaname": "public",
+      "with_check": null
+    },
+    {
+      "cmd": "SELECT",
+      "qual": "(pamda_has_permission('customers.manage'::text) OR pamda_has_permission('sales.read'::text))",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "erp_customer_billing_policies",
+      "permissive": "PERMISSIVE",
+      "policyname": "erp_customer_billing_read",
+      "schemaname": "public",
+      "with_check": null
+    },
+    {
+      "cmd": "SELECT",
+      "qual": "(pamda_has_permission('customers.manage'::text) OR pamda_has_permission('sales.read'::text))",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "erp_branch_billing_policies",
+      "permissive": "PERMISSIVE",
+      "policyname": "erp_branch_billing_read",
+      "schemaname": "public",
+      "with_check": null
+    }
+  ],
+  "functions": [
+    {
+      "name": "pamda_admin_criar_rede",
+      "definition": "CREATE OR REPLACE FUNCTION public.pamda_admin_criar_rede(p_nome text, p_codigo text, p_matriz_cliente_id uuid, p_tipo text DEFAULT 'rede'::text)\n RETURNS uuid\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO ''\nAS $function$\nDECLARE v_id uuid;v_code text;v_legacy_code text;\nBEGIN\n IF NOT public.pamda_is_admin() THEN RAISE EXCEPTION 'Acesso restrito à administração' USING ERRCODE='42501'; END IF;\n v_code:=btrim(coalesce(p_codigo,''));\n IF btrim(coalesce(p_nome,''))='' OR v_code !~ '^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$' OR\n   p_tipo NOT IN ('rede','franquia','grupo_comercial') THEN\n  RAISE EXCEPTION 'Nome, código ou tipo da rede inválido';\n END IF;\n SELECT customer_code INTO v_legacy_code FROM public.customers\n  WHERE id=p_matriz_cliente_id AND active FOR UPDATE;\n IF NOT FOUND THEN RAISE EXCEPTION 'Cliente principal ativo não encontrado'; END IF;\n IF EXISTS(SELECT 1 FROM public.erp_customer_network_members WHERE customer_id=p_matriz_cliente_id) THEN\n  RAISE EXCEPTION 'Cliente já pertence a uma rede';\n END IF;\n INSERT INTO public.erp_customer_networks(network_name,network_code,network_kind,headquarters_customer_id,created_by)\n VALUES(btrim(p_nome),v_code,p_tipo,p_matriz_cliente_id,(SELECT auth.uid())) RETURNING id INTO v_id;\n INSERT INTO public.erp_customer_network_members(network_id,customer_id,unit_sequence,display_code,legacy_customer_code,joined_by)\n VALUES(v_id,p_matriz_cliente_id,0,v_code,v_legacy_code,(SELECT auth.uid()));\n INSERT INTO public.erp_commercial_change_audit(actor_user_id,customer_id,action,after_data,reason)\n VALUES((SELECT auth.uid()),p_matriz_cliente_id,'criar_rede_comercial',\n jsonb_build_object('network_id',v_id,'name',btrim(p_nome),'network_code',v_code),'Agrupamento comercial sem alteração dos códigos anteriores');\n RETURN v_id;\nEND;\n$function$\n"
+    },
+    {
+      "name": "pamda_admin_vincular_cliente_rede",
+      "definition": "CREATE OR REPLACE FUNCTION public.pamda_admin_vincular_cliente_rede(p_rede_id uuid, p_cliente_id uuid)\n RETURNS text\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO ''\nAS $function$\nDECLARE v_code text;v_legacy text;v_seq integer;v_display text;v_primary uuid;\nBEGIN\n IF NOT public.pamda_is_admin() THEN RAISE EXCEPTION 'Acesso restrito à administração' USING ERRCODE='42501'; END IF;\n IF p_rede_id IS NULL OR p_cliente_id IS NULL THEN RAISE EXCEPTION 'Rede ou cliente ausente'; END IF;\n SELECT network_code,headquarters_customer_id INTO v_code,v_primary\n FROM public.erp_customer_networks WHERE id=p_rede_id FOR UPDATE;\n IF NOT FOUND THEN RAISE EXCEPTION 'Rede não encontrada'; END IF;\n SELECT customer_code INTO v_legacy FROM public.customers WHERE id=p_cliente_id AND active FOR UPDATE;\n IF NOT FOUND THEN RAISE EXCEPTION 'Cliente não encontrado ou inativo'; END IF;\n IF EXISTS(SELECT 1 FROM public.erp_customer_network_members WHERE customer_id=p_cliente_id) THEN\n   RAISE EXCEPTION 'Este cliente já pertence a uma rede';\n END IF;\n SELECT COALESCE(MAX(unit_sequence),0)+1 INTO v_seq\n FROM public.erp_customer_network_members WHERE network_id=p_rede_id;\n v_display:=v_code||'-'||v_seq::text;\n INSERT INTO public.erp_customer_network_members(network_id,customer_id,unit_sequence,display_code,legacy_customer_code,joined_by)\n VALUES(p_rede_id,p_cliente_id,v_seq,v_display,v_legacy,(SELECT auth.uid()));\n INSERT INTO public.erp_commercial_change_audit(actor_user_id,customer_id,action,after_data,reason)\n VALUES((SELECT auth.uid()),p_cliente_id,'vincular_cliente_rede',\n jsonb_build_object('network_id',p_rede_id,'display_code',v_display,'original_code',v_legacy,'headquarters_customer_id',v_primary),\n 'Vínculo de grupo sem alterar pedidos e cadastro original');\n RETURN v_display;\nEND;\n$function$\n"
+    },
+    {
+      "name": "pamda_admin_configurar_cobranca_cliente",
+      "definition": "CREATE OR REPLACE FUNCTION public.pamda_admin_configurar_cobranca_cliente(p_cliente_id uuid, p_ciclo text, p_modo text, p_dias integer, p_observacoes text DEFAULT NULL::text)\n RETURNS void\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO ''\nAS $function$\nDECLARE v_before jsonb; v_after jsonb;\nBEGIN\n IF NOT public.pamda_has_permission('customers.manage') THEN RAISE EXCEPTION 'Acesso negado' USING ERRCODE='42501'; END IF;\n IF p_ciclo IS NULL OR p_ciclo NOT IN ('diario','semanal','mensal','flexivel') OR\n    p_modo IS NULL OR p_modo NOT IN ('por_unidade','centralizado','flexivel') OR\n    (p_dias IS NOT NULL AND (p_dias<0 OR p_dias>365)) THEN\n   RAISE EXCEPTION 'Configuração de cobrança inválida';\n END IF;\n PERFORM 1 FROM public.customers WHERE id=p_cliente_id FOR UPDATE;\n IF NOT FOUND THEN RAISE EXCEPTION 'Cliente não encontrado'; END IF;\n SELECT to_jsonb(p) INTO v_before FROM public.erp_customer_billing_policies p WHERE customer_id=p_cliente_id;\n INSERT INTO public.erp_customer_billing_policies(customer_id,billing_cycle,default_collection_mode,due_days,notes,updated_by)\n VALUES(p_cliente_id,p_ciclo,p_modo,p_dias,p_observacoes,(SELECT auth.uid()))\n ON CONFLICT(customer_id) DO UPDATE SET billing_cycle=excluded.billing_cycle,\n default_collection_mode=excluded.default_collection_mode,due_days=excluded.due_days,\n notes=excluded.notes,updated_at=now(),updated_by=excluded.updated_by;\n SELECT to_jsonb(p) INTO v_after FROM public.erp_customer_billing_policies p WHERE customer_id=p_cliente_id;\n INSERT INTO public.erp_commercial_change_audit(actor_user_id,customer_id,action,before_data,after_data)\n VALUES((SELECT auth.uid()),p_cliente_id,'configurar_cobranca_cliente',v_before,v_after);\nEND;\n$function$\n"
+    },
+    {
+      "name": "pamda_admin_configurar_cobranca_filial",
+      "definition": "CREATE OR REPLACE FUNCTION public.pamda_admin_configurar_cobranca_filial(p_filial_id uuid, p_ciclo text, p_modo text, p_dias integer, p_observacoes text DEFAULT NULL::text)\n RETURNS void\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO ''\nAS $function$\nDECLARE v_before jsonb;v_after jsonb;v_customer_id uuid;\nBEGIN\n IF NOT public.pamda_has_permission('customers.manage') THEN RAISE EXCEPTION 'Acesso negado' USING ERRCODE='42501'; END IF;\n IF (p_ciclo IS NOT NULL AND p_ciclo NOT IN ('diario','semanal','mensal','flexivel')) OR\n    (p_modo IS NOT NULL AND p_modo NOT IN ('por_unidade','centralizado','flexivel')) OR\n    (p_dias IS NOT NULL AND (p_dias<0 OR p_dias>365)) THEN\n   RAISE EXCEPTION 'Configuração de filial inválida';\n END IF;\n SELECT customer_id INTO v_customer_id FROM public.customer_branches WHERE id=p_filial_id FOR UPDATE;\n IF NOT FOUND THEN RAISE EXCEPTION 'Filial não encontrada'; END IF;\n SELECT to_jsonb(p) INTO v_before FROM public.erp_branch_billing_policies p WHERE branch_id=p_filial_id;\n INSERT INTO public.erp_branch_billing_policies(branch_id,billing_cycle,default_collection_mode,due_days,notes,updated_by)\n VALUES(p_filial_id,p_ciclo,p_modo,p_dias,p_observacoes,(SELECT auth.uid()))\n ON CONFLICT(branch_id) DO UPDATE SET billing_cycle=excluded.billing_cycle,\n default_collection_mode=excluded.default_collection_mode,due_days=excluded.due_days,\n notes=excluded.notes,updated_at=now(),updated_by=excluded.updated_by;\n SELECT to_jsonb(p) INTO v_after FROM public.erp_branch_billing_policies p WHERE branch_id=p_filial_id;\n INSERT INTO public.erp_commercial_change_audit(actor_user_id,customer_id,branch_id,action,before_data,after_data)\n VALUES((SELECT auth.uid()),v_customer_id,p_filial_id,'configurar_cobranca_filial',v_before,v_after);\nEND;\n$function$\n"
+    },
+    {
+      "name": "pamda_admin_configurar_cobranca_rede",
+      "definition": "CREATE OR REPLACE FUNCTION public.pamda_admin_configurar_cobranca_rede(p_rede_id uuid, p_ciclo text, p_modo text, p_dias integer, p_observacoes text DEFAULT NULL::text)\n RETURNS void\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO ''\nAS $function$\nDECLARE v_before jsonb;v_after jsonb;v_head uuid;\nBEGIN\n IF NOT public.pamda_is_admin() THEN RAISE EXCEPTION 'Acesso negado' USING ERRCODE='42501'; END IF;\n IF p_ciclo IS NULL OR p_ciclo NOT IN ('diario','semanal','mensal','flexivel') OR\n  p_modo IS NULL OR p_modo NOT IN ('por_unidade','centralizado','flexivel') OR\n  (p_dias IS NOT NULL AND (p_dias<0 OR p_dias>365)) THEN\n   RAISE EXCEPTION 'Configuração de rede inválida';\n END IF;\n SELECT to_jsonb(n),headquarters_customer_id INTO v_before,v_head\n FROM public.erp_customer_networks n WHERE id=p_rede_id FOR UPDATE;\n IF NOT FOUND THEN RAISE EXCEPTION 'Rede não encontrada'; END IF;\n UPDATE public.erp_customer_networks SET default_cycle=p_ciclo,\n  default_collection_mode=p_modo,default_due_days=p_dias,notes=p_observacoes,updated_at=now()\n WHERE id=p_rede_id;\n SELECT to_jsonb(n) INTO v_after FROM public.erp_customer_networks n WHERE id=p_rede_id;\n INSERT INTO public.erp_commercial_change_audit(actor_user_id,customer_id,action,before_data,after_data)\n VALUES((SELECT auth.uid()),v_head,'configurar_cobranca_rede',v_before,v_after);\nEND;\n$function$\n"
+    },
+    {
+      "name": "pamda_relatorio_rede_clientes",
+      "definition": "CREATE OR REPLACE FUNCTION public.pamda_relatorio_rede_clientes(p_rede_id uuid, p_inicio date, p_fim date)\n RETURNS jsonb\n LANGUAGE plpgsql\n STABLE SECURITY DEFINER\n SET search_path TO ''\nAS $function$\nDECLARE v_network public.erp_customer_networks%ROWTYPE;\n v_finance boolean;\n v_start timestamptz;\n v_end timestamptz;\n v_rows jsonb;\nBEGIN\n IF NOT (public.pamda_has_permission('sales.read') OR public.pamda_has_permission('customers.manage')) THEN\n  RAISE EXCEPTION 'Acesso negado' USING ERRCODE='42501';\n END IF;\n IF p_rede_id IS NULL OR p_inicio IS NULL OR p_fim IS NULL OR\n   p_fim<p_inicio OR p_fim>p_inicio+interval '5 years' THEN\n   RAISE EXCEPTION 'Rede ou período inválido';\n END IF;\n SELECT * INTO v_network FROM public.erp_customer_networks WHERE id=p_rede_id;\n IF NOT FOUND THEN RAISE EXCEPTION 'Rede não encontrada'; END IF;\n v_finance:=public.pamda_has_permission('finance.read');\n v_start:=p_inicio::timestamp AT TIME ZONE 'America/Sao_Paulo';\n v_end:=(p_fim+1)::timestamp AT TIME ZONE 'America/Sao_Paulo';\n SELECT coalesce(jsonb_agg(jsonb_build_object(\n  'customer_id',c.id,'customer_name',c.name,'legacy_customer_code',m.legacy_customer_code,\n  'group_display_code',m.display_code,'branch_id',b.id,'branch_name',b.name,\n  'primary_branch',b.is_primary,'unit_sequence',m.unit_sequence,\n  'billing_cycle',coalesce(bp.billing_cycle,cp.billing_cycle,v_network.default_cycle),\n  'collection_mode',coalesce(bp.default_collection_mode,cp.default_collection_mode,v_network.default_collection_mode),\n  'due_days',coalesce(bp.due_days,cp.due_days,v_network.default_due_days),\n  'orders_started',tot.orders_started,\n  'orders_confirmed_real',tot.real_confirmed,\n  'orders_confirmed_test',tot.test_confirmed,\n  'orders_cancelled',tot.cancelled,\n  'purchases_real',CASE WHEN v_finance THEN tot.real_value ELSE null END,\n  'purchases_test',CASE WHEN v_finance THEN tot.test_value ELSE null END,\n  'paid_real',null,'paid_test',null,'payments_integrated',false\n ) ORDER BY m.unit_sequence,c.customer_code,b.name),'[]'::jsonb) INTO v_rows\n FROM public.erp_customer_network_members m\n JOIN public.customers c ON c.id=m.customer_id\n JOIN public.customer_branches b ON b.customer_id=c.id\n LEFT JOIN public.erp_customer_billing_policies cp ON cp.customer_id=c.id\n LEFT JOIN public.erp_branch_billing_policies bp ON bp.branch_id=b.id\n CROSS JOIN LATERAL (\n  SELECT count(*) AS orders_started,\n  count(*) FILTER (WHERE s.status='confirmed' AND NOT s.is_test) AS real_confirmed,\n  count(*) FILTER (WHERE s.status='confirmed' AND s.is_test) AS test_confirmed,\n  count(*) FILTER (WHERE s.status='cancelled') AS cancelled,\n  coalesce(sum(s.total) FILTER (WHERE s.status='confirmed' AND NOT s.is_test),0) AS real_value,\n  coalesce(sum(s.total) FILTER (WHERE s.status='confirmed' AND s.is_test),0) AS test_value\n  FROM public.erp_sales s\n  WHERE s.customer_id=c.id AND s.branch_id=b.id\n    AND s.created_at>=v_start AND s.created_at<v_end\n ) tot\n WHERE m.network_id=p_rede_id;\n RETURN jsonb_build_object('network_id',v_network.id,'network_name',v_network.network_name,\n   'network_code',v_network.network_code,'network_kind',v_network.network_kind,\n   'from',p_inicio,'to',p_fim,'payments_integrated',false,\n   'financial_authorized',v_finance,'units',v_rows);\nEND;\n$function$\n"
+    }
+  ]
+}

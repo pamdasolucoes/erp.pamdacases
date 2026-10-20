@@ -11,6 +11,7 @@ import { CustomerRegistrationModal } from './CustomerRegistrationModal';
 import { customerAdminService } from '../../services/customerAdminService';
 import type { OfficialCustomerBranch } from '../../types/pamdaCore';
 import { useProgressiveRows } from '../../hooks/useProgressiveRows';
+import { CustomerNetworksPanel } from './CustomerNetworksPanel';
 
 function Field({ label, value }: { label: string; value: string | null | undefined }) {
   return <div><dt className="text-[11px] font-bold uppercase text-slate-400">{label}</dt><dd className="mt-1 text-sm text-slate-800 break-words whitespace-pre-wrap">{value || 'Não informado'}</dd></div>;
@@ -59,6 +60,7 @@ export const CustomersView: React.FC<CustomersViewProps> = ({ initialCustomerId,
       ) : (
         <>
           {notice && <p role="status" className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">{notice}</p>}
+          <CustomerNetworksPanel customers={customers} onOpen={customer => { setQuery(''); setSelectedId(customer.id); }} onEdit={customer => { setNotice(''); setEditing(customer); }} />
           <div className="flex flex-wrap gap-3 text-xs text-slate-600" aria-live="polite"><span>{customers.length} clientes acessíveis</span><span>{units} unidades</span><span className="text-amber-800">{reviews} endereços sinalizados para revisão</span></div>
           <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">As condições comerciais são consultadas no cadastro oficial de cada cliente e unidade. Não agrupe cadastros sem conferência.</div>
           {manage.error&&<p role="alert" className="text-sm text-amber-800">{manage.error} A edição permanece indisponível até validar a permissão.</p>}
