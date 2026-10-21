@@ -11,6 +11,7 @@ export function searchSaleCustomers(customers: readonly OfficialCustomer[], quer
   return exact.length ? exact : customers.filter(customer => customer.customerCode.trim().startsWith(value));
 }
 export function searchSaleProducts(products: readonly OfficialProduct[], query: string): readonly OfficialProduct[] {
+  products = products.filter(product => product.active);
   const value = query.trim(); const numeric = /^\d+$/.test(value);
   const exact = numeric ? products.filter(product => product.code.trim() === value) : [];
   const tokens = normalize(value).split(/\s+/).filter(Boolean);

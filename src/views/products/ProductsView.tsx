@@ -1,5 +1,8 @@
-﻿import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Layers, Plus, Copy, Sparkles, Edit2, Search, RefreshCw } from 'lucide-react';
+import { authService } from '../../services/auth';
+import { ProductAdminModal } from './ProductAdminModal';
+import type { OfficialProduct } from '../../types/productCatalog';
 import { useProducts } from '../../hooks/useProducts';
 import { searchProducts } from '../../services/productMapping';
 import { ProductThumbnail } from '../../components/common/ProductThumbnail';
@@ -8,6 +11,12 @@ import { useProgressiveRows } from '../../hooks/useProgressiveRows';
 const money = (value: number | null) => value === null ? 'Não informado' : value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 const writePending = 'Operação indisponível nesta etapa de leitura. Aguarda integração e testes das funções protegidas.';
 export const ProductsView: React.FC = () => {
+  const [admin, setAdmin] = useState(false);
+  const [selection, setSelection] = useState<{ product: OfficialProduct; action: 'sku' | 'archive' } | null>(null);
+  useEffect(() => authService.subscribe((user, loading, error) => {
+    setAdmin(!loading && !error && user?.active === true && user.role === 'admin_gerencial');
+    setSelection(null);
+  }), []);
   const { products, loading, refreshing, error, reload } = useProducts();
   const [filterType, setFilterType] = useState('todos');
   const [searchQuery, setSearchQuery] = useState('');
@@ -28,8 +37,8 @@ export const ProductsView: React.FC = () => {
           <button disabled title={writePending} className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 text-white text-xs font-bold rounded-xl shadow-xs transition-colors disabled:opacity-50 disabled:cursor-not-allowed"><Plus className="w-4 h-4" /><span>Novo Produto</span></button>
         </div>
       </div>
-      <p className="text-xs text-slate-500">PAMDA CORE · Somente leitura. Cadastro, edição, clonagem e alteração de status aguardam integração segura.</p>
-      {refreshing && <p role="status" className="text-xs text-slate-500">Atualizando catálogo oficial...</p>}
+      <p className="text-xs text-slate-500">PAMDA CORE · SKU e arquivamento restritos a administradores; funções protegidas exigem homologação.</p>
+      {admin && selection && <ProductAdminModal key={`${selection.product.id}:${selection.action}`} {...selection} products={products} close={() => setSelection(null)} />}{refreshing && <p role="status" className="text-xs text-slate-500">Atualizando catálogo oficial...</p>}
       {!loading && !error && <p aria-live="polite" className="text-xs text-slate-600">{products.length} itens oficiais · {countType('fisico')} físicos · {countType('servico')} serviços · {countType('kit')} kits · {countType('insumo')} insumos · {products.reduce((sum, product) => sum + product.components.length, 0)} vínculos de componentes</p>}
       <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0">
@@ -50,7 +59,7 @@ export const ProductsView: React.FC = () => {
               <td className="py-3 px-4 text-right font-mono text-slate-600">{money(product.currentCost)}</td><td className="py-3 px-4 text-right font-mono text-slate-700 font-semibold">{money(product.managerialCost)}</td><td className="py-3 px-4 text-right font-mono font-bold text-emerald-700 text-sm">{money(product.salePrice)}</td>
               <td className="py-3 px-4 text-center">{product.controlsInventory ? <><span className={`font-mono font-bold px-2 py-0.5 rounded ${product.stockVerified && product.currentInventory <= product.minInventory ? 'bg-rose-100 text-rose-800' : product.stockVerified ? 'bg-emerald-50 text-emerald-800' : 'bg-amber-50 text-amber-800'}`}>{product.currentInventory} un</span>{!product.stockVerified && <span className="block text-[10px] text-amber-800 mt-1">Não conferido</span>}</> : <span className="text-slate-400 text-[10px] uppercase">{product.type === 'servico' ? 'Serviço' : product.type === 'kit' ? 'Composto' : 'Não'}</span>}</td>
               <td className="py-3 px-4 text-center"><span className={`text-[10px] font-bold px-2 py-0.5 rounded ${product.active ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-500'}`}>{product.active ? 'Ativo' : 'Inativo'}</span></td>
-              <td className="py-3 px-5 text-right"><div className="flex items-center justify-end gap-1.5"><button disabled title={writePending} aria-label={`Editar ${product.name}`} className="p-1.5 text-slate-500 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"><Edit2 className="w-3.5 h-3.5" /></button><button disabled title={writePending} aria-label={`Clonar ${product.name}`} className="p-1.5 text-slate-500 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"><Copy className="w-3.5 h-3.5" /></button></div></td>
+              <td className="py-3 px-5 text-right"><div className="flex items-center justify-end gap-1.5">{admin && <><button onClick={() => setSelection({ product, action: 'sku' })} className="text-blue-700 text-xs">Alterar SKU</button><button disabled={!product.active} onClick={() => setSelection({ product, action: 'archive' })} className="text-rose-700 text-xs disabled:opacity-50">Excluir produto</button></>}<button disabled title={writePending} aria-label={`Editar ${product.name}`} className="p-1.5 text-slate-500 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"><Edit2 className="w-3.5 h-3.5" /></button><button disabled title={writePending} aria-label={`Clonar ${product.name}`} className="p-1.5 text-slate-500 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"><Copy className="w-3.5 h-3.5" /></button></div></td>
             </tr>)}
           </tbody>
         </table></div>
