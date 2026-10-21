@@ -10,7 +10,7 @@ test('catalogo oficial preserva layout, tipos, precos NULL, componentes e miniat
   await openCatalog(page);
   await expect(page.getByText(/637 itens oficiais · 316 físicos · 4 serviços · 317 kits · 0 insumos · 634 vínculos/)).toBeVisible();
   await expect(page.getByRole('table').getByRole('row')).toHaveCount(81);
-  for(const name of ['Novo Produto','Novo Kit Composto','Duplicar Produto + Kit']) await expect(page.getByRole('button',{name,exact:true})).toBeDisabled();
+  for(const name of ['Novo Produto','Novo Kit Composto','Duplicar Produto + Kit']) await expect(page.getByRole('button',{name,exact:true})).toBeEnabled();
   const physical=page.getByTestId(`product-${productId(1)}`);
   await expect(physical).toContainText('SKU-CAPA-201'); await expect(physical).toContainText('Não conferido');
   await expect(physical.locator('img')).toBeVisible();
@@ -25,8 +25,10 @@ test('catalogo oficial preserva layout, tipos, precos NULL, componentes e miniat
   const kit=page.getByTestId(`product-${kitId(1)}`);
   await expect(kit).toContainText('2 componentes (1 × Capa TPU transparente, 1 × Serviço de impressão 1)');
   await expect(kit.locator('td').nth(5)).toContainText('25,00');
-  await expect(kit.getByRole('button',{name:'Editar Capa TPU personalizada'})).toBeDisabled();
-  await expect(kit.getByRole('button',{name:'Clonar Capa TPU personalizada'})).toBeDisabled();
+  await expect(kit.getByRole('button',{name:'Editar Capa TPU personalizada'})).toBeEnabled();
+  await expect(kit.getByRole('button',{name:'Alterar SKU de Capa TPU personalizada'})).toBeEnabled();
+  await expect(kit.getByRole('button',{name:'Excluir produto Capa TPU personalizada'})).toBeEnabled();
+  await expect(kit.getByRole('button',{name:'Clonar Capa TPU personalizada'})).toBeEnabled();
   await search.fill('SKU-KIT-1'); await expect(kit).toBeVisible();
   await search.fill('TPU personalizada'); await expect(page.getByRole('table').getByRole('row')).toHaveCount(2);
   await page.screenshot({path:testInfo.outputPath('catalogo-desktop.png')});
