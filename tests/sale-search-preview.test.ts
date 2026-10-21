@@ -39,6 +39,18 @@ test('catálogo completo prioriza kits, encontra código e SKU e não cruza toke
   assert.equal(searchSaleProducts([{...products[0],name:'iPhone 12',modelPhone:'iPhone 12',sku:'SKU-11'}],'iPhone 11').length,0);
 });
 
+test('produtos arquivados não aparecem na busca de novas vendas e conservam seus dados',()=>{
+  const archived = {...products[0],active:false};
+  const catalog = [archived, products[1]];
+  const before = structuredClone(catalog);
+  for (const query of [archived.code, archived.sku, archived.name, '']) {
+    assert.ok(searchSaleProducts(catalog,query).every(product=>product.id!==archived.id));
+  }
+  assert.deepEqual(searchSaleProducts(catalog,products[1].code).map(product=>product.id),[products[1].id]);
+  assert.deepEqual(catalog,before);
+  assert.equal(item.snapshot.productSku,products.find(product=>product.id===kitId(1))!.sku);
+});
+
 test('estoque provisório permite prévia; estoque conferido soma componentes compartilhados',()=>{
   assert.equal(checkDraftStock([item],products).errors.length,0);
   assert.ok(checkDraftStock([item],products).warnings.length>0);
