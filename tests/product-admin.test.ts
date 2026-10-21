@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { ProductAdminService, productCommand, productDraft, optionalAmount, validateAssetFile, validatePublication, pandaState } from '../src/services/productAdmin';
+import { ProductAdminService, productCommand, productDraft, optionalAmount, validateAssetFile, validatePublication, pandaState, skuEditProduct } from '../src/services/productAdmin';
 import { mapProductCatalog } from '../src/services/productMapping';
 import { officialCatalogFixture } from './fixtures/officialProducts';
 import type { User } from '../src/types/erp';
@@ -33,6 +33,10 @@ test('comandos usam RPCs oficiais, valores NULL, SKU novo e somente campos edit�
   const skuKit = products.find(p => p.type === 'kit' && p.components.some(c => c.componentProductId === skuItem.id))!;
   const serviceId = skuKit.components.find(c => c.componentType === 'servico')!.componentProductId;
   const skuProducts = products.map(p => p.id === skuKit.id ? { ...p, sku: `KIT-${skuItem.sku}` } : p.id === serviceId ? { ...p, sku: 'SRV-DTF-UV' } : p);
+  assert.equal(skuEditProduct(skuProducts.find(p=>p.id===skuKit.id)!,skuProducts).id,skuItem.id);
+  assert.equal(skuEditProduct(skuItem,skuProducts).id,skuItem.id);
+  assert.throws(()=>skuEditProduct(skuKit,products),/especial ou vínculo ambíguo/);
+  assert.throws(()=>skuEditProduct({...skuItem,active:false},products),/arquivados/);
   const sku = productCommand('sku', { ...productDraft(skuItem), sku: 'NEW-CASE', reason: 'Correção SKU solicitada' }, skuProducts, skuItem);
   assert.equal(sku.name, 'pamda_admin_produto_acao');
   assert.deepEqual(sku.args.p_dados, { sku: 'NEW-CASE', linked_product_id: skuKit.id, expected_linked_updated_at: skuKit.updatedAt });

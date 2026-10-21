@@ -1,0 +1,126 @@
+{
+  "project": "onorqcdauhxumbznosxf",
+  "migration": "pamda_produtos_admin_seguro_revisado",
+  "user_authorized": true,
+  "data_unchanged": true,
+  "api_probe": {
+    "role": "anon",
+    "product_id": null,
+    "status": 401,
+    "code": "42501",
+    "message": "permission denied for function pamda_admin_produto_acao",
+    "meaning": "RPC encontrada pelo PostgREST; acesso anônimo negado; nenhum produto informado."
+  },
+  "cache_reload": "NOTIFY pgrst, 'reload schema'",
+  "installation": {
+    "data": {
+      "audit": {
+        "count": 5,
+        "fingerprint": "351f58dbcbefca675b69dac73b27980b"
+      },
+      "models": {
+        "count": 313,
+        "published": 0,
+        "fingerprint": "37b270b96122f0709a7d3b61bdefcb69"
+      },
+      "products": {
+        "count": 640,
+        "fingerprint": "41c5e9a038344c414b62610ab657b663"
+      },
+      "sequences": [
+        {
+          "name": "pamda_codigo_especiais_seq",
+          "last_value": 104
+        },
+        {
+          "name": "pamda_codigo_produtos_seq",
+          "last_value": 514
+        },
+        {
+          "name": "pamda_codigo_servicos_seq",
+          "last_value": 4
+        }
+      ],
+      "components": {
+        "count": 636,
+        "fingerprint": "3911ffc6faa767dfa7bf60560a1f551c"
+      }
+    },
+    "functions": [
+      {
+        "name": "pamda_admin_editar_produto",
+        "config": [
+          "search_path=\"\""
+        ],
+        "grants": [
+          "postgres=X/postgres",
+          "authenticated=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "result": "jsonb",
+        "schema": "public",
+        "arguments": "p_produto_id uuid, p_expected_updated_at timestamp with time zone, p_changes jsonb, p_motivo text",
+        "definition": "CREATE OR REPLACE FUNCTION public.pamda_admin_editar_produto(p_produto_id uuid, p_expected_updated_at timestamp with time zone, p_changes jsonb, p_motivo text)\n RETURNS jsonb\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO ''\nAS $function$\nDECLARE\n  v_old public.products%ROWTYPE;\n  v_new public.products%ROWTYPE;\n  v_bad text;\nBEGIN\n  IF NOT public.pamda_is_admin() THEN\n    RAISE EXCEPTION 'Somente administrador ativo pode editar produtos' USING ERRCODE='42501';\n  END IF;\n  IF p_produto_id IS NULL OR p_expected_updated_at IS NULL\n     OR p_changes IS NULL OR jsonb_typeof(p_changes)<>'object'\n     OR p_changes='{}'::jsonb OR length(btrim(coalesce(p_motivo,'')))<5 THEN\n    RAISE EXCEPTION 'Produto, versão, alteração e motivo são obrigatórios';\n  END IF;\n\n  SELECT keys.key INTO v_bad\n  FROM jsonb_object_keys(p_changes) AS keys(key)\n  WHERE keys.key NOT IN ('name','description','category','brand','model_phone',\n    'current_cost','managerial_cost','sale_price','image_url')\n  LIMIT 1;\n  IF v_bad IS NOT NULL THEN\n    RAISE EXCEPTION 'Campo não editável nesta tela: %', v_bad;\n  END IF;\n  IF (p_changes ? 'name' AND (jsonb_typeof(p_changes->'name')<>'string'\n       OR length(btrim(p_changes->>'name')) NOT BETWEEN 2 AND 160))\n     OR (p_changes ? 'category' AND (jsonb_typeof(p_changes->'category')<>'string'\n       OR length(btrim(p_changes->>'category')) NOT BETWEEN 1 AND 160))\n     OR (p_changes ? 'brand' AND (jsonb_typeof(p_changes->'brand')<>'string'\n       OR length(btrim(p_changes->>'brand')) NOT BETWEEN 1 AND 100))\n     OR (p_changes ? 'description' AND jsonb_typeof(p_changes->'description') NOT IN ('string','null'))\n     OR (p_changes ? 'model_phone' AND jsonb_typeof(p_changes->'model_phone') NOT IN ('string','null'))\n     OR (p_changes ? 'image_url' AND jsonb_typeof(p_changes->'image_url') NOT IN ('string','null')) THEN\n    RAISE EXCEPTION 'Campos textuais inválidos';\n  END IF;\n  IF (p_changes ? 'current_cost' AND jsonb_typeof(p_changes->'current_cost') NOT IN ('number','null'))\n     OR (p_changes ? 'managerial_cost' AND jsonb_typeof(p_changes->'managerial_cost') NOT IN ('number','null'))\n     OR (p_changes ? 'sale_price' AND jsonb_typeof(p_changes->'sale_price') NOT IN ('number','null')) THEN\n    RAISE EXCEPTION 'Custos e preço devem ser números ou NULL';\n  END IF;\n  IF (p_changes ? 'current_cost' AND p_changes->>'current_cost' IS NOT NULL\n       AND (p_changes->>'current_cost')::numeric<0)\n     OR (p_changes ? 'managerial_cost' AND p_changes->>'managerial_cost' IS NOT NULL\n       AND (p_changes->>'managerial_cost')::numeric<0)\n     OR (p_changes ? 'sale_price' AND p_changes->>'sale_price' IS NOT NULL\n       AND (p_changes->>'sale_price')::numeric<0) THEN\n    RAISE EXCEPTION 'Custos e preço não podem ser negativos';\n  END IF;\n  IF p_changes ? 'model_phone' AND p_changes->>'model_phone' IS NOT NULL\n     AND length(btrim(p_changes->>'model_phone'))>160 THEN\n    RAISE EXCEPTION 'Modelo do celular inválido';\n  END IF;\n  IF p_changes ? 'image_url' AND p_changes->>'image_url' IS NOT NULL\n     AND (p_changes->>'image_url' !~* '^https://[^[:space:]]+$'\n       OR length(p_changes->>'image_url')>2000) THEN\n    RAISE EXCEPTION 'A imagem precisa de uma URL HTTPS válida';\n  END IF;\n\n  SELECT * INTO v_old FROM public.products WHERE id=p_produto_id FOR UPDATE;\n  IF NOT FOUND THEN RAISE EXCEPTION 'Produto não encontrado'; END IF;\n  IF NOT v_old.active THEN RAISE EXCEPTION 'Produto arquivado não pode ser editado'; END IF;\n  IF v_old.updated_at IS DISTINCT FROM p_expected_updated_at THEN\n    RAISE EXCEPTION 'Produto foi alterado em outra sessão. Atualize a página';\n  END IF;\n  IF v_old.type='kit' AND p_changes ? 'sale_price'\n     AND p_changes->>'sale_price' IS NULL\n     AND (v_old.b2b_site_visible OR EXISTS (\n       SELECT 1 FROM public.erp_panda_ia_phone_models m\n       WHERE m.kit_product_id=v_old.id AND m.published\n     )) THEN\n    RAISE EXCEPTION 'Despublique o modelo Panda IA antes de remover o preço do kit';\n  END IF;\n  IF EXISTS (\n    SELECT 1 FROM public.erp_panda_ia_phone_models m\n    WHERE m.published AND (m.kit_product_id=v_old.id OR m.base_product_id=v_old.id)\n  ) AND (p_changes ? 'name' OR p_changes ? 'brand' OR p_changes ? 'model_phone') THEN\n    RAISE EXCEPTION 'Despublique o modelo Panda IA antes de alterar nome, marca ou modelo';\n  END IF;\n\n  UPDATE public.products SET\n    name=CASE WHEN p_changes ? 'name' THEN btrim(p_changes->>'name') ELSE name END,\n    description=CASE WHEN p_changes ? 'description' THEN p_changes->>'description' ELSE description END,\n    category=CASE WHEN p_changes ? 'category' THEN btrim(p_changes->>'category') ELSE category END,\n    brand=CASE WHEN p_changes ? 'brand' THEN btrim(p_changes->>'brand') ELSE brand END,\n    model_phone=CASE WHEN p_changes ? 'model_phone' THEN nullif(btrim(p_changes->>'model_phone'),'') ELSE model_phone END,\n    current_cost=CASE WHEN p_changes ? 'current_cost' THEN (p_changes->>'current_cost')::numeric ELSE current_cost END,\n    managerial_cost=CASE WHEN p_changes ? 'managerial_cost' THEN (p_changes->>'managerial_cost')::numeric ELSE managerial_cost END,\n    sale_price=CASE WHEN p_changes ? 'sale_price' THEN (p_changes->>'sale_price')::numeric ELSE sale_price END,\n    image_url=CASE WHEN p_changes ? 'image_url' THEN nullif(btrim(p_changes->>'image_url'),'') ELSE image_url END,\n    updated_at=clock_timestamp()\n  WHERE id=p_produto_id\n  RETURNING * INTO v_new;\n\n  INSERT INTO public.erp_product_admin_audit(product_id,actor_user_id,action,before_data,after_data,reason)\n  VALUES(p_produto_id,(SELECT auth.uid()),'editar_produto',to_jsonb(v_old),to_jsonb(v_new),btrim(p_motivo));\n  RETURN jsonb_build_object('id',v_new.id,'code',v_new.code,'sku',v_new.sku,\n    'type',v_new.type,'updated_at',v_new.updated_at);\nEND;\n$function$\n",
+        "security_definer": true
+      },
+      {
+        "name": "pamda_admin_produto_acao",
+        "config": [
+          "search_path=\"\""
+        ],
+        "grants": [
+          "postgres=X/postgres",
+          "authenticated=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "result": "jsonb",
+        "schema": "public",
+        "arguments": "p_produto_id uuid, p_acao text, p_expected_updated_at timestamp with time zone, p_dados jsonb, p_motivo text",
+        "definition": "CREATE OR REPLACE FUNCTION public.pamda_admin_produto_acao(p_produto_id uuid, p_acao text, p_expected_updated_at timestamp with time zone, p_dados jsonb, p_motivo text)\n RETURNS jsonb\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO ''\nAS $function$\nBEGIN\n  RETURN private.pamda_admin_produto_acao_impl(\n    p_produto_id,p_acao,p_expected_updated_at,p_dados,p_motivo\n  );\nEND;\n$function$\n",
+        "security_definer": true
+      },
+      {
+        "name": "pamda_admin_produto_acao_impl",
+        "config": [
+          "search_path=\"\""
+        ],
+        "grants": [
+          "postgres=X/postgres"
+        ],
+        "result": "jsonb",
+        "schema": "private",
+        "arguments": "p_produto_id uuid, p_acao text, p_expected_updated_at timestamp with time zone, p_dados jsonb, p_motivo text",
+        "definition": "CREATE OR REPLACE FUNCTION private.pamda_admin_produto_acao_impl(p_produto_id uuid, p_acao text, p_expected_updated_at timestamp with time zone, p_dados jsonb, p_motivo text)\n RETURNS jsonb\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO ''\nAS $function$\nDECLARE\n  v_old public.products%ROWTYPE;\n  v_new public.products%ROWTYPE;\n  v_link_old public.products%ROWTYPE;\n  v_link_new public.products%ROWTYPE;\n  v_link_id uuid;\n  v_link_count integer;\n  v_sku text;\n  v_link_sku text;\n  v_expected_linked timestamptz;\n  v_bad text;\nBEGIN\n  IF NOT public.pamda_is_admin() THEN\n    RAISE EXCEPTION 'Somente administrador ativo pode alterar produtos' USING ERRCODE='42501';\n  END IF;\n  IF p_produto_id IS NULL OR p_expected_updated_at IS NULL\n     OR p_dados IS NULL OR jsonb_typeof(p_dados)<>'object'\n     OR length(btrim(coalesce(p_motivo,'')))<5 THEN\n    RAISE EXCEPTION 'Produto, versão, dados e motivo são obrigatórios';\n  END IF;\n  IF p_acao IS NULL OR p_acao NOT IN ('alterar_sku','arquivar') THEN\n    RAISE EXCEPTION 'Ação de produto inválida';\n  END IF;\n  SELECT * INTO v_old FROM public.products WHERE id=p_produto_id FOR UPDATE;\n  IF NOT FOUND THEN RAISE EXCEPTION 'Produto não encontrado'; END IF;\n  IF NOT v_old.active THEN RAISE EXCEPTION 'Produto já está arquivado'; END IF;\n  IF v_old.updated_at IS DISTINCT FROM p_expected_updated_at THEN\n    RAISE EXCEPTION 'Produto foi alterado em outra sessão. Atualize a página';\n  END IF;\n\n  IF p_acao='alterar_sku' THEN\n    SELECT keys.key INTO v_bad FROM jsonb_object_keys(p_dados) AS keys(key)\n    WHERE keys.key NOT IN ('sku','linked_sku','linked_product_id','expected_linked_updated_at')\n    LIMIT 1;\n    IF v_bad IS NOT NULL OR NOT (p_dados ? 'sku')\n       OR jsonb_typeof(p_dados->'sku') IS DISTINCT FROM 'string'\n       OR (p_dados ? 'linked_sku' AND jsonb_typeof(p_dados->'linked_sku') NOT IN ('string','null'))\n       OR (p_dados ? 'linked_product_id' AND jsonb_typeof(p_dados->'linked_product_id') NOT IN ('string','null'))\n       OR (p_dados ? 'expected_linked_updated_at' AND jsonb_typeof(p_dados->'expected_linked_updated_at') NOT IN ('string','null')) THEN\n      RAISE EXCEPTION 'Dados de SKU inválidos';\n    END IF;\n    v_sku:=upper(btrim(p_dados->>'sku'));\n    IF v_sku IS NULL OR length(v_sku) NOT BETWEEN 2 AND 100 THEN RAISE EXCEPTION 'SKU inválido'; END IF;\n    IF v_sku=upper(btrim(v_old.sku)) THEN RAISE EXCEPTION 'Informe um SKU diferente do atual'; END IF;\n    -- O kit nunca pode ser renomeado independentemente da capa. Kits especiais\n    -- e componentes não físicos exigem revisão, sem tentar inferir outro par.\n    IF v_old.type='kit' THEN\n      RAISE EXCEPTION 'Altere o SKU pela capa vinculada; kits especiais exigem revisão administrativa';\n    END IF;\n    IF v_old.type<>'fisico' AND EXISTS (\n      SELECT 1 FROM public.kit_components WHERE component_product_id=v_old.id\n    ) THEN\n      RAISE EXCEPTION 'Componente de kit especial exige revisão administrativa';\n    END IF;\n    IF v_old.type='fisico' THEN\n      SELECT count(*) INTO v_link_count\n      FROM public.kit_components kc\n      JOIN public.products k ON k.id=kc.kit_product_id AND k.type='kit'\n      WHERE kc.component_product_id=v_old.id;\n      IF v_link_count>1 THEN RAISE EXCEPTION 'Produto possui vários kits vinculados; alteração bloqueada'; END IF;\n      IF v_link_count=1 THEN\n        SELECT kc.kit_product_id INTO v_link_id\n        FROM public.kit_components kc\n        JOIN public.products k ON k.id=kc.kit_product_id AND k.type='kit'\n        WHERE kc.component_product_id=v_old.id\n        LIMIT 1;\n      END IF;\n    ELSE\n      v_link_count:=0;\n    END IF;\n    IF v_link_count=1 THEN\n      IF nullif(p_dados->>'linked_product_id','') IS DISTINCT FROM v_link_id::text\n         OR p_dados->>'expected_linked_updated_at' IS NULL THEN\n        RAISE EXCEPTION 'Atualize o catálogo para confirmar o kit vinculado';\n      END IF;\n      v_expected_linked:=(p_dados->>'expected_linked_updated_at')::timestamptz;\n      SELECT * INTO v_link_old FROM public.products WHERE id=v_link_id FOR UPDATE;\n      IF NOT FOUND OR v_link_old.updated_at IS DISTINCT FROM v_expected_linked THEN\n        RAISE EXCEPTION 'Kit vinculado foi alterado em outra sessão. Atualize a página';\n      END IF;\n      IF v_old.sku IN ('CAP-CARTEIRA','CAP-MAGSAFE','CAP-SPACE','CAP-VELUDO')\n         OR v_sku IN ('CAP-CARTEIRA','CAP-MAGSAFE','CAP-SPACE','CAP-VELUDO')\n         OR v_link_old.sku IS DISTINCT FROM 'KIT-'||v_old.sku\n         OR (SELECT count(*) FROM public.kit_components WHERE kit_product_id=v_link_id)<>2\n         OR NOT EXISTS (\n           SELECT 1 FROM public.kit_components kc\n           WHERE kc.kit_product_id=v_link_id AND kc.component_product_id=v_old.id AND kc.quantity=1\n         ) OR NOT EXISTS (\n           SELECT 1 FROM public.kit_components kc JOIN public.products s ON s.id=kc.component_product_id\n           WHERE kc.kit_product_id=v_link_id AND s.type='servico' AND s.sku='SRV-DTF-UV' AND kc.quantity=1\n         ) THEN\n        RAISE EXCEPTION 'Kit especial ou incoerente exige revisão administrativa';\n      END IF;\n      v_link_sku:='KIT-'||v_sku;\n      IF length(v_link_sku)>100 THEN RAISE EXCEPTION 'SKU da capa excede o limite para gerar o SKU do kit'; END IF;\n      -- Compatibilidade com clientes anteriores: só aceita o valor derivado.\n      IF p_dados->>'linked_sku' IS NOT NULL\n         AND p_dados->>'linked_sku' IS DISTINCT FROM v_link_sku THEN\n        RAISE EXCEPTION 'SKU do kit deve ser KIT- seguido do SKU da capa';\n      END IF;\n      IF v_link_sku=upper(btrim(v_link_old.sku)) OR v_sku=upper(btrim(v_link_old.sku)) THEN\n        RAISE EXCEPTION 'Informe um SKU diferente do kit atual';\n      END IF;\n    ELSIF p_dados->>'linked_sku' IS NOT NULL OR p_dados->>'linked_product_id' IS NOT NULL\n       OR p_dados->>'expected_linked_updated_at' IS NOT NULL THEN\n      RAISE EXCEPTION 'Este produto não possui kit vinculado para alterar';\n    END IF;\n    IF EXISTS (\n      SELECT 1 FROM public.products p\n      WHERE upper(btrim(p.sku))=v_sku AND p.id<>v_old.id AND (v_link_count=0 OR p.id<>v_link_id)\n    ) OR (v_link_count=1 AND EXISTS (\n      SELECT 1 FROM public.products p\n      WHERE upper(btrim(p.sku))=v_link_sku AND p.id<>v_old.id AND p.id<>v_link_id\n    )) THEN\n      RAISE EXCEPTION 'SKU informado já existe, inclusive em produto arquivado';\n    END IF;\n\n    UPDATE public.products SET sku=v_sku,updated_at=clock_timestamp()\n    WHERE id=v_old.id RETURNING * INTO v_new;\n    INSERT INTO public.erp_product_admin_audit(product_id,actor_user_id,action,before_data,after_data,reason)\n    VALUES(v_old.id,(SELECT auth.uid()),'alterar_sku',to_jsonb(v_old),to_jsonb(v_new),btrim(p_motivo));\n    IF v_link_count=1 THEN\n      UPDATE public.products SET sku=v_link_sku,updated_at=clock_timestamp()\n      WHERE id=v_link_id RETURNING * INTO v_link_new;\n      INSERT INTO public.erp_product_admin_audit(product_id,actor_user_id,action,before_data,after_data,reason)\n      VALUES(v_link_id,(SELECT auth.uid()),'alterar_sku',to_jsonb(v_link_old),to_jsonb(v_link_new),btrim(p_motivo));\n    END IF;\n    RETURN jsonb_build_object('action',p_acao,'id',v_new.id,'sku',v_new.sku,\n      'linked_product_id',v_link_id,'linked_sku',v_link_new.sku);\n  END IF;\n\n  IF (SELECT count(*) FROM jsonb_object_keys(p_dados))<>1\n     OR jsonb_typeof(p_dados->'confirm_sku') IS DISTINCT FROM 'string'\n     OR p_dados->>'confirm_sku' IS DISTINCT FROM v_old.sku THEN\n    RAISE EXCEPTION 'Digite exatamente o SKU atual para confirmar o arquivamento';\n  END IF;\n  IF v_old.b2b_site_visible OR EXISTS (\n    SELECT 1 FROM public.erp_panda_ia_phone_models m\n    WHERE m.published AND (m.kit_product_id=v_old.id OR m.base_product_id=v_old.id)\n  ) THEN\n    RAISE EXCEPTION 'Despublique o modelo Panda IA antes de arquivar este produto';\n  END IF;\n  IF EXISTS (\n    SELECT 1 FROM public.kit_components kc\n    JOIN public.products k ON k.id=kc.kit_product_id\n    WHERE kc.component_product_id=v_old.id AND k.type='kit' AND k.active\n  ) THEN\n    RAISE EXCEPTION 'Arquive primeiro os kits ativos vinculados a este produto';\n  END IF;\n  UPDATE public.products SET active=false,updated_at=clock_timestamp()\n  WHERE id=v_old.id RETURNING * INTO v_new;\n  INSERT INTO public.erp_product_admin_audit(product_id,actor_user_id,action,before_data,after_data,reason)\n  VALUES(v_old.id,(SELECT auth.uid()),'arquivar_produto',to_jsonb(v_old),to_jsonb(v_new),btrim(p_motivo));\n  RETURN jsonb_build_object('action',p_acao,'id',v_new.id,'active',v_new.active,\n    'updated_at',v_new.updated_at);\nEND;\n$function$\n",
+        "security_definer": true
+      }
+    ],
+    "privileges": {
+      "index": "CREATE UNIQUE INDEX products_sku_normalized_unique ON public.products USING btree (upper(btrim(sku)))",
+      "rpc_anon": false,
+      "helper_anon": false,
+      "rpc_authenticated": true,
+      "helper_authenticated": false,
+      "private_authenticated_usage": false
+    }
+  },
+  "security_advisories": [
+    {
+      "name": "rls_enabled_no_policy",
+      "level": "INFO",
+      "count": 4,
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy"
+    },
+    {
+      "name": "authenticated_security_definer_function_executable",
+      "level": "WARN",
+      "count": 44,
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable"
+    },
+    {
+      "name": "auth_leaked_password_protection",
+      "level": "WARN",
+      "count": 1,
+      "remediation": "https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection"
+    }
+  ]
+}

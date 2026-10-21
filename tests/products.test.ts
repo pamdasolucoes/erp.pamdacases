@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { ProductsService, PRODUCT_COLUMNS, KIT_COMPONENT_COLUMNS } from '../src/services/products';
-import { catalogNumber, mapProductCatalog, safeProductImage, searchProducts } from '../src/services/productMapping';
+import { catalogNumber, mapProductCatalog, safeProductImage, searchProducts, selectCatalogProducts } from '../src/services/productMapping';
 import { officialCatalogFixture, kitId, productId } from './fixtures/officialProducts';
 import { captureProductPricing, buildPriceReview, calculateSalePricing } from '../src/services/salePricing';
 import { uuid } from './fixtures/customerRows';
@@ -58,6 +58,22 @@ test('busca compartilhada por codigo, nome e SKU e miniaturas opcionais seguras'
   assert.equal(safeProductImage(null),null); assert.equal(safeProductImage('javascript:alert(1)'),null);
   assert.equal(safeProductImage('data:image/svg+xml,test'),null);
   assert.equal(safeProductImage(rows[0].imageUrl),rows[0].imageUrl);
+});
+
+test('catálogo oculta arquivados por padrão e ordena kits antes das bases sem remover componentes',()=>{
+  const fixture=officialCatalogFixture();
+  fixture.products.find(p=>p.id===kitId(1))!.active=false;
+  fixture.products.find(p=>p.id===productId(1))!.active=false;
+  const rows=mapProductCatalog(fixture.products,fixture.components), before=structuredClone(rows);
+  const active=selectCatalogProducts(rows,'iPhone 11');
+  assert.deepEqual(active.map(p=>p.type),['kit','kit','fisico','fisico']);
+  assert.deepEqual(selectCatalogProducts(rows,'iPhone 11','todos','arquivados').map(p=>p.id),[kitId(1),productId(1)]);
+  assert.deepEqual(selectCatalogProducts(rows,'iPhone 11','todos','todos').map(p=>p.type),['kit','kit','kit','fisico','fisico','fisico']);
+  assert.deepEqual(selectCatalogProducts(rows,'iPhone 11','fisico','arquivados').map(p=>p.id),[productId(1)]);
+  assert.equal(selectCatalogProducts(rows,rows.find(p=>p.id===kitId(1))!.sku).length,0);
+  assert.ok(selectCatalogProducts(rows,'').slice(0,80).every(p=>p.type==='kit'));
+  assert.equal(rows.find(p=>p.id===kitId(1))!.components.length,2);
+  assert.deepEqual(rows,before);
 });
 test('sem identidade, permissao, conexao ou lista completa nao retorna dados de demonstracao',async()=>{
   const missing=backend({authenticated:false}); await assert.rejects(new ProductsService(missing.client).list(),/Sessão/); assert.equal(missing.calls.length,0);

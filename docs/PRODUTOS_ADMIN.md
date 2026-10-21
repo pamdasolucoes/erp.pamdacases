@@ -1,5 +1,7 @@
 # Administração do catálogo PAMDA CORE
 
+Instalação posterior autorizada em 21/10/2026: o SQL 11 foi aplicado em produção pela migration `pamda_produtos_admin_seguro_revisado`, após autorização explícita do usuário. A RPC foi reconhecida pela API e o cache atualizado; as impressões digitais dos produtos, componentes, modelos e auditoria e os valores das sequências permaneceram idênticos. Consulte `docs/operations/PRODUTOS_ADMIN_INSTALADO_20261021.md`. As menções abaixo a SQL pendente de aplicação descrevem as etapas anteriores à autorização.
+
 Atualização de revisão remota em 21/10/2026: a conexão de leitura ao Supabase foi utilizada posteriormente para comparar o SQL 11 com as funções, colunas, índices, permissões e relações oficiais. Não foram encontrados impedimentos estruturais na comparação. O estado observado agora é de 640 produtos, 636 vínculos e 313 modelos técnicos, todos sem publicação. Consulte `docs/REVISAO_SUPABASE_PRODUTOS.md` para o parecer e os limites; as referências abaixo à ausência de conexão e aos números anteriores descrevem as etapas anteriores. O SQL continua sem aplicação em produção.
 
 Implementação de 21/10/2026. As assinaturas, definições das cinco RPCs, colunas, restrições, bucket e políticas de Storage foram consultados no projeto `onorqcdauhxumbznosxf` somente por leitura. Nenhuma migration, função, tabela, produto ou publicação foi criada ou alterada no projeto oficial durante a implementação.

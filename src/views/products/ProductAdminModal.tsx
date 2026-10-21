@@ -4,7 +4,7 @@ import type { OfficialProduct } from '../../types/productCatalog';
 import { dependentKits, productDraft, type ProductDraft, type ProductMode } from '../../services/productAdmin';
 import { productAdminService } from '../../services/productAdminService';
 
-export interface ProductAction { mode: ProductMode; product?: OfficialProduct; duplicate?: boolean }
+export interface ProductAction { mode: ProductMode; product?: OfficialProduct; duplicate?: boolean; skuSource?: OfficialProduct }
 export function ProductAdminModal({ action, products, onClose, onSaved }: { action: ProductAction; products: readonly OfficialProduct[]; onClose: () => void; onSaved: () => void }) {
   const { mode, product } = action;
   const dependencies = product ? dependentKits(products, product.id) : [];
@@ -19,11 +19,12 @@ export function ProductAdminModal({ action, products, onClose, onSaved }: { acti
   });
   const [busy, setBusy] = useState(false), [error, setError] = useState('');
   const field = (key: keyof ProductDraft, label: string, required = false, placeholder = '') => <label className="block text-sm">{label}<input className="block w-full rounded-lg border p-2 mt-1" value={String(draft[key])} onChange={e => setDraft(d => ({ ...d, [key]: e.target.value }))} required={required} placeholder={placeholder} /></label>;
-  const title = mode === 'edit' ? 'Editar Produto' : mode === 'sku' ? 'Alterar SKU' : mode === 'archive' ? 'Excluir produto (arquivar)' : mode === 'case' ? action.duplicate ? 'Duplicar Produto + Kit' : 'Nova Capa + Kit' : mode === 'kit' ? 'Novo Kit Composto' : mode === 'clone' ? 'Clonar Produto' : 'Novo Produto';
+  const title = mode === 'edit' ? 'Editar Produto' : mode === 'sku' ? 'Alterar SKU' : mode === 'archive' ? 'Arquivar produto' : mode === 'case' ? action.duplicate ? 'Duplicar Produto + Kit' : 'Nova Capa + Kit' : mode === 'kit' ? 'Novo Kit Composto' : mode === 'clone' ? 'Clonar Produto' : 'Novo Produto';
   return <Modal isOpen onClose={() => { if (!busy) onClose(); }} title={title} subtitle={product ? `Origem: ${product.code} · ${product.sku}` : 'Cadastro oficial · códigos gerados pelo servidor'}>
     <form className="space-y-4" onSubmit={async e => { e.preventDefault(); if (busy) return; setBusy(true); setError(''); try { await productAdminService.save(mode, draft, products, product); onSaved(); } catch (e) { setError(e instanceof Error ? e.message : 'Falha ao salvar.'); } finally { setBusy(false); } }}>
       {error && <p role="alert" className="text-sm text-rose-800 bg-rose-50 p-3 rounded-lg">{error}</p>}
       <fieldset disabled={busy} className="space-y-4 disabled:opacity-60">
+        {action.skuSource && <p className="text-sm bg-blue-50 text-blue-900 p-3 rounded-lg">Kit selecionado: {action.skuSource.sku}. Altere o SKU da capa base {product?.sku} abaixo. O servidor atualizará a capa e o kit juntos, preservando seus códigos e vínculos.</p>}
         {mode === 'archive' ? <><p className="text-sm text-amber-900 bg-amber-50 p-3 rounded-lg">O produto será arquivado, sem exclusão física. Ficará inativo para novas operações. Vendas, estoque, produção, componentes, auditoria e vínculos do Panda IA serão preservados. Nenhum kit dependente será arquivado ou despublicado automaticamente.</p>
           <section aria-label="Impacto do arquivamento" className="text-sm space-y-2"><h4 className="font-bold">Kits dependentes ({dependencies.length})</h4>{dependencies.length ? <ul className="space-y-1">{dependencies.map(kit => <li key={kit.id}>{kit.sku} · {kit.name} · {kit.active ? 'Ativo: bloqueia o arquivamento' : 'Inativo: vínculo preservado'}{kit.b2bSiteVisible && ' · Publicado no Panda IA: despublique antes'}</li>)}</ul> : <p>Nenhum kit dependente no catálogo atual.</p>}<p>Arquive primeiro os kits dependentes ativos. Modelos publicados precisam ser despublicados previamente; o servidor verificará os vínculos atuais ao confirmar.</p>{product?.b2bSiteVisible && <p>Este produto está publicado no Panda IA. Despublique antes de arquivar.</p>}</section>
           {field('confirmSku', 'Digite o SKU atual para confirmar', true)}<p className="text-xs">SKU atual: <strong>{product?.sku}</strong></p></> :

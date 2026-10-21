@@ -56,3 +56,10 @@ export function searchProducts(products: readonly OfficialProduct[], query: stri
   const normalized = normalize(query.trim());
   return normalized ? products.filter(product => productSearchIndex(product).fields.some(value => value.includes(normalized))) : products;
 }
+export type ProductStatusFilter = 'ativos' | 'arquivados' | 'todos';
+export function selectCatalogProducts(products: readonly OfficialProduct[], query: string, type = 'todos', status: ProductStatusFilter = 'ativos'): readonly OfficialProduct[] {
+  const rank = { kit: 0, fisico: 1, servico: 2, insumo: 3 };
+  return searchProducts(products, query)
+    .filter(product => (type === 'todos' || product.type === type) && (status === 'todos' || product.active === (status === 'ativos')))
+    .sort((a, b) => rank[a.type] - rank[b.type]);
+}

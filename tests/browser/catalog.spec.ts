@@ -11,6 +11,8 @@ test('catalogo oficial preserva layout, tipos, precos NULL, componentes e miniat
   await expect(page.getByText(/637 itens oficiais · 316 físicos · 4 serviços · 317 kits · 0 insumos · 634 vínculos/)).toBeVisible();
   await expect(page.getByRole('table').getByRole('row')).toHaveCount(81);
   for(const name of ['Novo Produto','Novo Kit Composto','Duplicar Produto + Kit']) await expect(page.getByRole('button',{name,exact:true})).toBeEnabled();
+  await expect(page.getByRole('table').locator('tbody tr').first()).toHaveAttribute('data-testid',`product-${kitId(1)}`);
+  await page.getByRole('button',{name:'Produtos Físicos',exact:true}).click();
   const physical=page.getByTestId(`product-${productId(1)}`);
   await expect(physical).toContainText('SKU-CAPA-201'); await expect(physical).toContainText('Não conferido');
   await expect(physical.locator('img')).toBeVisible();
@@ -27,7 +29,7 @@ test('catalogo oficial preserva layout, tipos, precos NULL, componentes e miniat
   await expect(kit.locator('td').nth(5)).toContainText('25,00');
   await expect(kit.getByRole('button',{name:'Editar Capa TPU personalizada'})).toBeEnabled();
   await expect(kit.getByRole('button',{name:'Alterar SKU de Capa TPU personalizada'})).toBeEnabled();
-  await expect(kit.getByRole('button',{name:'Excluir produto Capa TPU personalizada'})).toBeEnabled();
+  await expect(kit.getByRole('button',{name:'Arquivar produto Capa TPU personalizada'})).toBeEnabled();
   await expect(kit.getByRole('button',{name:'Clonar Capa TPU personalizada'})).toBeEnabled();
   await search.fill('SKU-KIT-1'); await expect(kit).toBeVisible();
   await search.fill('TPU personalizada'); await expect(page.getByRole('table').getByRole('row')).toHaveCount(2);
@@ -43,10 +45,35 @@ test('erro de permissao ou rede nao mostra produtos locais e nova consulta usa d
   await expect(page.getByRole('alert')).toContainText('conexão',{timeout:15000});
   state.productError=''; products[0].sale_price=12.34;
   await page.getByRole('button',{name:'Tentar novamente',exact:true}).click();
+  await page.getByLabel('Buscar produtos por nome, SKU ou código').fill('201');
   await expect(page.getByTestId(`product-${productId(1)}`).locator('td').nth(5)).toContainText('12,34');
   products[0].sale_price=13;
   await page.reload(); // O módulo atual é recuperado, sem redirecionar para Clientes.
+  await page.getByLabel('Buscar produtos por nome, SKU ou código').fill('201');
   await expect(page.getByTestId(`product-${productId(1)}`).locator('td').nth(5)).toContainText('13,00');
+  expect(state.writes).toEqual([]); expect(state.pageErrors).toEqual([]);
+});
+
+test('arquivados aparecem somente pelo filtro e a busca mantém kits antes das bases',async({page})=>{
+  const {products,state}=await setup(page);
+  products.find(p=>p.id===kitId(1))!.active=false;
+  products.find(p=>p.id===productId(1))!.active=false;
+  await openCatalog(page);
+  const status=page.getByRole('combobox',{name:'Situação dos produtos',exact:true});
+  const search=page.getByLabel('Buscar produtos por nome, SKU ou código');
+  await expect(status).toHaveValue('ativos');
+  await search.fill('iPhone 11');
+  const ids=()=>page.getByRole('table').locator('tbody tr[data-testid]').evaluateAll(rows=>rows.map(row=>row.getAttribute('data-testid')));
+  await expect.poll(ids).toEqual([kitId(2),kitId(3),productId(2),productId(3)].map(id=>`product-${id}`));
+  await status.selectOption('arquivados');
+  await expect.poll(ids).toEqual([kitId(1),productId(1)].map(id=>`product-${id}`));
+  await page.getByRole('button',{name:'Produtos Físicos',exact:true}).click();
+  await expect.poll(ids).toEqual([`product-${productId(1)}`]);
+  await page.getByRole('button',{name:'Todos',exact:true}).click();
+  await status.selectOption('todos');
+  await expect.poll(ids).toEqual([kitId(1),kitId(2),kitId(3),productId(1),productId(2),productId(3)].map(id=>`product-${id}`));
+  await status.selectOption('ativos'); await search.fill(products.find(p=>p.id===kitId(1))!.sku);
+  await expect(page.getByText('Nenhum produto encontrado para esta pesquisa.')).toBeVisible();
   expect(state.writes).toEqual([]); expect(state.pageErrors).toEqual([]);
 });
 test('catálogo vazio não usa dados fictícios e frete é gerenciado em operações oficiais próprias',async({page})=>{

@@ -125,6 +125,18 @@ export function productCommand(mode: ProductMode, draft: ProductDraft, products:
 export function dependentKits(products: readonly OfficialProduct[], productId: string) {
   return products.filter(p => p.type === 'kit' && p.components.some(c => c.componentProductId === productId));
 }
+export function skuEditProduct(product: OfficialProduct, products: readonly OfficialProduct[]): OfficialProduct {
+  if (!product.active) throw new Error('Produtos arquivados não podem ter o SKU alterado.');
+  if (product.type !== 'kit') return product;
+  const physical = product.components.filter(c => c.componentType === 'fisico');
+  const base = products.find(p => p.id === physical[0]?.componentProductId);
+  if (physical.length !== 1 || !base?.active || product.components.length !== 2 || product.components.some(c => c.quantity !== 1) ||
+      product.sku !== `KIT-${base.sku}` || dependentKits(products, base.id).length !== 1 ||
+      !product.components.some(c => c.componentType === 'servico' && products.find(p => p.id === c.componentProductId)?.sku === 'SRV-DTF-UV')) {
+    throw new Error('Kit especial ou vínculo ambíguo: a alteração de SKU exige revisão administrativa.');
+  }
+  return base;
+}
 export function pandaState(model: PandaModel | null) {
   if (model?.published) return 'Publicado';
   if (!model) return 'Em preparação';

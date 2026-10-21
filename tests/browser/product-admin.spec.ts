@@ -75,6 +75,7 @@ test('administrador cria capa+kit, atualiza catálogo e recebe código do servid
 
 test('edição usa versão e motivo; clonagem exige SKU novo e confirmação', async ({ page }) => {
   const ctx = await adminBackend(page); await open(page);
+  await page.getByRole('button', { name: 'Produtos Físicos', exact: true }).click();
   await page.getByTestId(`product-${productId(1)}`).getByRole('button', { name: /^Editar / }).click();
   await page.getByLabel('Nome', { exact: true }).fill('Nome revisado'); await page.getByLabel('Motivo da alteração').fill('Correção aprovada');
   ctx.setConflict(true); await page.getByRole('button', { name: 'Confirmar e salvar' }).click();
@@ -99,7 +100,8 @@ test('Alterar SKU usa ação própria para capa/kit; excluir arquiva sem remover
   ctx.products.find(p => p.id === component.component_product_id)!.sku = 'SRV-DTF-UV';
   await open(page);
   const expectedKitVersion = kit.updated_at;
-  await page.getByTestId(`product-${physical.id}`).getByRole('button', { name: /^Excluir produto / }).click();
+  await page.getByRole('button', { name: 'Produtos Físicos', exact: true }).click();
+  await page.getByTestId(`product-${physical.id}`).getByRole('button', { name: /^Arquivar produto / }).click();
   const impact = page.getByRole('region', { name: 'Impacto do arquivamento' });
   await expect(impact).toContainText('Kits dependentes (1)');
   await expect(impact).toContainText(kit.sku); await expect(impact).toContainText(kit.name);
@@ -125,8 +127,9 @@ test('Alterar SKU usa ação própria para capa/kit; excluir arquiva sem remover
   });
   expect(physical.sku).toBe('CAPA-NOVA-UI'); expect(kit.sku).toBe('KIT-CAPA-NOVA-UI');
 
+  await page.getByRole('button', { name: 'Todos', exact: true }).click();
   await page.getByRole('textbox', { name: 'Buscar produtos por nome, SKU ou código' }).fill('KIT-CAPA-NOVA-UI');
-  await page.getByTestId(`product-${kit.id}`).getByRole('button', { name: /^Excluir produto / }).click();
+  await page.getByTestId(`product-${kit.id}`).getByRole('button', { name: /^Arquivar produto / }).click();
   await expect(page.getByText(/sem exclusão física/)).toBeVisible();
   await page.getByLabel('Motivo da alteração', { exact: true }).fill('Kit arquivado para teste isolado');
   await page.getByRole('button', { name: 'Arquivar produto', exact: true }).click();
@@ -138,6 +141,9 @@ test('Alterar SKU usa ação própria para capa/kit; excluir arquiva sem remover
   expect(ctx.calls[1].args.p_acao).toBe('arquivar'); expect(ctx.calls[1].args.p_dados).toEqual({ confirm_sku: kit.sku });
   expect(ctx.products.some(p => p.id === kit.id)).toBe(true);
   expect(ctx.products.find(p => p.id === kit.id)?.active).toBe(false);
+  await expect(page.getByTestId(`product-${kit.id}`)).toHaveCount(0);
+  await page.getByRole('combobox', { name: 'Situação dos produtos', exact: true }).selectOption('arquivados');
+  await expect(page.getByTestId(`product-${kit.id}`)).toContainText('Inativo');
   expect(ctx.state.pageErrors).toEqual([]);
 });
 
@@ -152,6 +158,25 @@ test('preço de kit publicado não pode ser removido nem causa despublicação a
   await page.getByRole('button', { name: 'Confirmar e salvar' }).click();
   await expect(page.getByRole('alert')).toContainText('Despublique o modelo Panda IA antes de remover o preço');
   expect(ctx.calls).toHaveLength(0); expect(kit.sale_price).toBe(25); expect(kit.b2b_site_visible).toBe(true);
+});
+
+test('Alterar SKU pelo kit abre a capa base e envia a alteração conjunta ao servidor', async ({ page }) => {
+  const ctx=await adminBackend(page);
+  const base=ctx.products.find(p=>p.id===productId(2))!, kit=ctx.products.find(p=>p.id===kitId(2))!;
+  kit.sku=`KIT-${base.sku}`;
+  const serviceLink=ctx.components.find(c=>c.kit_product_id===kit.id && c.component_product_id!==base.id)!;
+  ctx.products.find(p=>p.id===serviceLink.component_product_id)!.sku='SRV-DTF-UV';
+  await open(page);
+  await page.getByTestId(`product-${kit.id}`).getByRole('button',{name:/^Alterar SKU de /}).click();
+  await expect(page.getByText(/Kit selecionado:/)).toContainText(kit.sku);
+  await page.getByLabel(`Novo SKU de ${base.name}`,{exact:true}).fill('CAPA-PELO-KIT');
+  await page.getByLabel('Motivo da alteração',{exact:true}).fill('Alteração do par via kit');
+  await page.getByRole('button',{name:'Alterar SKU',exact:true}).last().click();
+  await expect.poll(()=>ctx.calls.length).toBe(1);
+  expect(ctx.calls[0].args.p_produto_id).toBe(base.id);
+  expect(ctx.calls[0].args.p_dados.linked_product_id).toBe(kit.id);
+  await expect(page.getByTestId(`product-${kit.id}`)).toContainText('KIT-CAPA-PELO-KIT');
+  expect(ctx.state.pageErrors).toEqual([]);
 });
 
 test('modelo técnico carrega só no detalhe, valida transparência, upload e publicação explícita', async ({ page }, testInfo) => {
@@ -193,10 +218,11 @@ test('modelo técnico carrega só no detalhe, valida transparência, upload e pu
 
 test('funcionário consulta produtos sem ações de alteração nem acesso aos modelos técnicos', async ({ page }) => {
   const ctx = await setup(page, 'venda_atendimento'); await open(page);
+  await page.getByRole('button', { name: 'Produtos Físicos', exact: true }).click();
   for (const name of ['Novo Produto','Nova Capa + Kit','Novo Kit Composto','Duplicar Produto + Kit']) await expect(page.getByRole('button', { name, exact: true })).toBeDisabled();
   await expect(page.getByTestId(`product-${productId(1)}`).getByRole('button', { name: /^Editar / })).toBeDisabled();
   await expect(page.getByTestId(`product-${productId(1)}`).getByRole('button', { name: /^Alterar SKU de / })).toBeDisabled();
-  await expect(page.getByTestId(`product-${productId(1)}`).getByRole('button', { name: /^Excluir produto / })).toBeDisabled();
+  await expect(page.getByTestId(`product-${productId(1)}`).getByRole('button', { name: /^Arquivar produto / })).toBeDisabled();
   await page.getByTestId(`product-${productId(1)}`).getByRole('button', { name: /^Consultar / }).click();
   await expect(page.getByText('Preço: R$ 10,00')).toBeVisible(); await expect(page.getByRole('button', { name: 'Editar Produto', exact: true })).toHaveCount(0);
   expect(ctx.state.writes).toEqual([]);
