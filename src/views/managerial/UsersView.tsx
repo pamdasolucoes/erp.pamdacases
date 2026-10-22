@@ -1,6 +1,25 @@
-import React from 'react';
-import { UnavailableModule } from '../../components/common/UnavailableModule';
-
-export function UsersView() {
-  return <UnavailableModule module="usuarios" />;
+import React,{useEffect,useState} from 'react';
+import {operations,type DataRow} from '../../services/operations';
+import {authService} from '../../services/auth';
+const roles:Record<string,string>={admin_gerencial:'Administrador',venda_atendimento:'Vendas e atendimento',financeiro:'Financeiro',producao:'Produção',estoque_expedicao:'Estoque e expedição'};
+const input='w-full border rounded-lg px-3 py-2 bg-white';
+export function UsersView(){
+ const [data,setData]=useState<DataRow|null>(null),[selected,setSelected]=useState<DataRow|null>(null),[permissions,setPermissions]=useState<Record<string,boolean>>({});
+ const [busy,setBusy]=useState(false),[error,setError]=useState(''),[notice,setNotice]=useState('');
+ async function reload(){setError('');try{setData(await operations.users());}catch(e){setData(null);setError(e instanceof Error?e.message:'Falha ao consultar usuários');}}
+ useEffect(()=>{void reload();},[]);
+ const effective=(user:DataRow)=>Object.fromEntries(data!.catalog.map((p:DataRow)=>[p.key,user.role==='admin_gerencial'||(data!.overrides.find((o:DataRow)=>o.user_id===user.user_id&&o.permission_key===p.key)?.allowed??data!.roles?.find((r:DataRow)=>r.role===user.role&&r.permission_key===p.key)?.allowed??false)]));
+ const select=(user:DataRow)=>{setSelected({...user});setPermissions(effective(user));setNotice('');};
+ async function run(action:()=>Promise<unknown>,message:string){if(busy)return;setBusy(true);setError('');setNotice('');try{await action();setNotice(message);await reload();await authService.refresh();}catch(e){setError(e instanceof Error?e.message:'Operação não confirmada');}finally{setBusy(false);}}
+ return <div className="space-y-5"><h1 className="text-2xl font-black">Usuários e acessos</h1>{error&&<p role="alert" className="bg-rose-50 text-rose-800 p-4 rounded-xl">{error}</p>}{notice&&<p role="status" className="text-emerald-800">{notice}</p>}
+ <form className="grid sm:grid-cols-2 gap-3 border bg-white rounded-xl p-4" onSubmit={e=>{e.preventDefault();const f=Object.fromEntries(new FormData(e.currentTarget));const form=e.currentTarget;void run(async()=>{await operations.account({action:'create',...f});form.reset();},'Usuário cadastrado. Selecione abaixo para configurar os acessos.');}}>
+ <h2 className="font-bold sm:col-span-2">Cadastrar usuário</h2><label>Nome<input name="name" className={input} required autoComplete="off"/></label><label>E-mail de acesso<input name="email" type="email" className={input} required autoComplete="off"/></label><label>Senha inicial (mínimo 12 caracteres)<input name="password" type="password" className={input} minLength={12} required autoComplete="new-password"/></label><label>Perfil<select name="role" className={input} defaultValue="venda_atendimento">{Object.entries(roles).map(([key,label])=><option key={key} value={key}>{label}</option>)}</select></label><button disabled={busy} className="rounded-lg bg-blue-700 text-white p-2 font-bold">Cadastrar usuário</button></form>
+ {data&&<div className="grid lg:grid-cols-3 gap-4"><div className="space-y-2">{data.users.map((u:DataRow)=><button key={u.user_id} disabled={busy} className={`w-full text-left border rounded-xl p-3 ${selected?.user_id===u.user_id?'bg-blue-50 border-blue-500':'bg-white'}`} onClick={()=>select(u)}><strong>{u.display_name}</strong><p className="text-xs">{u.username} · {roles[u.role]} · {u.active?'Ativo':'Inativo'}</p></button>)}</div>
+ {selected&&<div className="lg:col-span-2 space-y-4"><form className="border bg-white rounded-xl p-4 space-y-3" onSubmit={e=>{e.preventDefault();void run(()=>operations.saveUser({...selected,permissions}),'Perfil e permissões salvos no Supabase.');}}>
+ <label>Nome<input className={input} required value={selected.display_name} onChange={e=>setSelected(s=>({...s,display_name:e.target.value}))}/></label><label>Perfil<select className={input} value={selected.role} onChange={e=>{const next={...selected,role:e.target.value};setSelected(next);setPermissions(effective(next));}}>{Object.entries(roles).map(([key,label])=><option key={key} value={key}>{label}</option>)}</select></label>
+ <label className="block"><input type="checkbox" checked={selected.active} onChange={e=>setSelected(s=>({...s,active:e.target.checked}))}/> Usuário ativo</label><label className="block"><input type="checkbox" checked={selected.can_view_financial_metrics} onChange={e=>setSelected(s=>({...s,can_view_financial_metrics:e.target.checked}))}/> Exibir indicadores financeiros</label>
+ <h2 className="font-bold">Opções e ações disponíveis</h2>{selected.role==='admin_gerencial'?<p className="text-sm">Administradores têm acesso integral ao ERP.</p>:<div className="grid sm:grid-cols-2 gap-2">{data.catalog.map((p:DataRow)=><label className="text-sm flex gap-2" key={p.key}><input type="checkbox" checked={permissions[p.key]===true} onChange={e=>setPermissions(prev=>({...prev,[p.key]:e.target.checked}))}/>{p.description}</label>)}</div>}
+ <button disabled={busy} className="rounded-lg bg-blue-700 text-white px-4 py-2 font-bold">Salvar acessos</button></form>
+ <form className="border bg-white rounded-xl p-4 space-y-3" onSubmit={e=>{e.preventDefault();const form=e.currentTarget;const password=String(new FormData(form).get('password'));void run(async()=>{await operations.account({action:'reset_password',user_id:selected.user_id,password});form.reset();},'Senha redefinida.');}}><h2 className="font-bold">Redefinir senha</h2><input className={input} name="password" type="password" required minLength={12} autoComplete="new-password" aria-label="Nova senha"/><button disabled={busy} className="border rounded-lg px-4 py-2">Redefinir senha</button></form></div>}
+ </div>}</div>;
 }

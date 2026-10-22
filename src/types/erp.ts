@@ -3,6 +3,7 @@
 export type UserRole = 'admin_gerencial' | 'venda_atendimento' | 'producao' | 'financeiro' | 'estoque_expedicao';
 
 export interface User {
+  permissions?: Record<string,boolean>;
   id: string;
   username: string;
   name: string;

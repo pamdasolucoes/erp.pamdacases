@@ -142,6 +142,13 @@ export class AuthService {
         profile as ErpUserProfile | null,
         identity.user.created_at,
       );
+      if(user){
+        const {data:permissions,error:permissionError}=await this.client.rpc('pamda_my_permissions');
+        if(generation!==this.generation)return null;
+        if(permissionError||!permissions||typeof permissions!=='object'||Array.isArray(permissions))throw new Error('Não foi possível validar permissões.');
+        user.permissions=permissions as Record<string,boolean>;
+        user.canReadCustomers=user.role==='admin_gerencial'||user.permissions['customers.manage']===true;
+      }
       this.publish(
         user,
         false,

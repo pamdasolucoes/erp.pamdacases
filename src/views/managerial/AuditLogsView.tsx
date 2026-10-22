@@ -1,6 +1,3 @@
 import React from 'react';
-import { UnavailableModule } from '../../components/common/UnavailableModule';
-
-export function AuditLogsView() {
-  return <UnavailableModule module="logs" />;
-}
+import {OperationsView} from '../OperationsView';
+export function AuditLogsView(props:any){return <OperationsView module="audit" {...props}/>;}

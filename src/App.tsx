@@ -224,14 +224,14 @@ export function App() {
           )}
 
           {(currentTab === 'relatorio_vendas' || currentTab === 'relatorio_clientes') && (
-            <SalesReportView />
+            <SalesReportView byCustomer={currentTab === 'relatorio_clientes'} />
           )}
 
           {currentTab === 'lucratividade' && (
             <ProfitabilityView />
           )}
 
-          {currentTab === 'custo_estoque' && <InventoryView />}
+          {currentTab === 'custo_estoque' && <InventoryView costOnly />}
 
           {currentTab === 'usuarios' && <UsersView />}
 

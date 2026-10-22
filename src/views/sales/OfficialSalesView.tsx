@@ -8,6 +8,7 @@ import type {PendingSaleRow,OfficialSaleStatus,SaleDetails} from '../../types/pe
 import type {TestPaymentRecord} from '../../types/testSales';
 import type {ReceiptDocumentData} from '../../types/receipt';
 import {testSalesService} from '../../services/testSales';
+import {realSales} from '../../services/realSales';
 import {testReceiptDocument} from '../../services/testReceipt';
 import {ReceiptPreviewModal} from '../../components/receipt/ReceiptPreviewModal';
 
@@ -33,7 +34,7 @@ export function OfficialSalesView({onContinue,customerId}:{onContinue():void;cus
     try{
       await saleWorkspace(user.id).flush();
       const result=await pendingSalesService.list(user.id,history,customerId);
-      if(token===revision.current)setRows(result);
+      if(token===revision.current)setRows(result.filter(row=>row.is_test!==true||row.status==='draft'));
     }catch(error){if(token===revision.current){setRows([]);setError(error instanceof Error?error.message:'Erro ao consultar vendas.');}}
     finally{if(token===revision.current)setLoading(false);}
   },[user.id,history,customerId]);
@@ -49,7 +50,8 @@ export function OfficialSalesView({onContinue,customerId}:{onContinue():void;cus
   const openDetails=async(row:Row)=>{
     setBusy(true);setError('');setTestPayments([]);setTestReceipt(null);setShowTestReceipt(false);
     try{
-      const value=await pendingSalesService.details(user.id,row.id);setDetails(value);
+      const value=await pendingSalesService.details(user.id,row.id);if(value.sale.status==='confirmed'&&value.sale.is_test===false)setTestReceipt(await realSales.receipt(user.id,value));
+      setDetails(value);
       if(value.sale.status==='confirmed'&&value.sale.is_test===true){
         const [payments,receipt]=await Promise.all([testSalesService.payments(user.id,row.id),testSalesService.receipt(user.id,row.id)]);
         setTestPayments(payments);setTestReceipt(testReceiptDocument(value,receipt));
@@ -117,6 +119,7 @@ export function OfficialSalesView({onContinue,customerId}:{onContinue():void;cus
       <p className="text-sm">Pedido: {details.sale.order_number??'Sem número · revisar'} · Primeiro produto: {date(details.sale.first_product_at)}</p><p className="font-semibold">{saleCustomerCode(details.sale)} · {saleCustomerName(details.sale)}</p><p className="text-sm">{snapshotText(details.sale.branch_snapshot,'name')} · {[snapshotText(details.sale.branch_snapshot,'address'),snapshotText(details.sale.branch_snapshot,'number'),snapshotText(details.sale.branch_snapshot,'city')].filter(Boolean).join(', ')}</p><p className="text-sm">Vendedor: {details.sale.seller_snapshot} · Início: {date(details.sale.created_at)}</p>
       <div className="overflow-x-auto"><table className="w-full text-sm text-left"><thead><tr><th className="p-2">Item</th><th className="p-2">Quantidade</th><th className="p-2">Preço</th><th className="p-2">Subtotal</th></tr></thead><tbody>{details.items.map(item=><tr key={item.id} className="border-t"><td className="p-2"><p>{item.description_snapshot}</p><p className="text-xs text-slate-500">{item.product_code_snapshot} · {item.product_sku_snapshot}</p>{typeof item.customization?.model==='string'&&<p className="text-xs">Modelo: {item.customization.model}</p>}{typeof item.customization?.color==='string'&&<p className="text-xs">Cor: {item.customization.color}</p>}</td><td className="p-2">{String(item.quantity)}</td><td className="p-2">{formatMoney(dbCents(item.negotiated_unit_price))}</td><td className="p-2">{formatMoney(dbCents(item.line_subtotal))}</td></tr>)}</tbody></table>{!details.items.length&&<p className="text-sm p-3 text-slate-500">Venda sem itens.</p>}</div>
       <div className="text-sm space-y-1"><p>Subtotal: {formatMoney(dbCents(details.sale.subtotal))}</p><p>Desconto: {formatMoney(dbCents(details.sale.discount_amount))}{details.sale.discount_reason?` · ${details.sale.discount_reason}`:''}</p><p>Frete: {details.sale.shipping_confirmed&&details.sale.shipping_charged!==null?formatMoney(dbCents(details.sale.shipping_charged)):'Não informado'}</p><p className="font-bold">Total: {formatMoney(dbCents(details.sale.total))}</p><p className="whitespace-pre-wrap">{details.sale.notes}</p></div>
+      {details.sale.is_test===false&&testReceipt&&<button type="button" className="rounded-lg bg-blue-700 text-white px-4 py-2" onClick={()=>setShowTestReceipt(true)}>Consultar recibo</button>}
       {details.sale.is_test===true&&<section className="rounded-xl border border-amber-300 bg-amber-50 p-4 space-y-3"><div><h3 className="font-bold">Pagamentos de TESTE</h3><p className="text-xs text-amber-900">Sem cobrança ou movimentação financeira real.</p></div>{testPayments.length?testPayments.map(payment=><div key={payment.id} className="flex flex-wrap justify-between gap-2 border-t border-amber-200 pt-2 text-sm"><span>{payment.methodCode} · {payment.channel.toUpperCase()} · {payment.status==='paid'?'Pago em teste':payment.status==='scheduled'?'Agendado':'Pendente'}{payment.scheduledFor&&` · ${date(payment.scheduledFor)}`}{payment.reference&&` · ${payment.reference}`}</span><strong>{formatMoney(payment.amountCents)}</strong>{user.role==='admin_gerencial'&&payment.channel==='erp'&&payment.status!=='paid'&&<button type="button" disabled={busy} onClick={()=>void confirmTestPayment(payment)} className="rounded-lg border px-2 py-1 text-xs font-bold">Confirmar pagamento TESTE</button>}</div>):<p className="text-sm">Nenhum pagamento encontrado.</p>}{testReceipt&&<button type="button" onClick={()=>setShowTestReceipt(true)} className="rounded-lg bg-amber-700 px-3 py-2 text-xs font-bold text-white">Consultar recibo de TESTE</button>}</section>}
       {details.sale.status==='cancelled'&&<div className="rounded-xl bg-rose-50 text-rose-900 p-3 text-sm space-y-1"><p className="font-bold">Cancelamento registrado</p><p>Em {date(details.sale.cancelled_at)}</p><p>Responsável: {details.actors[details.sale.cancelled_by||'']||'Identificação não disponível para esta conta'}</p><p>Motivo: {details.sale.cancellation_reason}</p></div>}
       <div><h3 className="font-semibold text-sm mb-2">Histórico</h3><ol className="space-y-2 text-xs">{details.events.map(event=><li key={event.id} className="border rounded-lg p-2">{eventLabels[event.event_type]||'Evento registrado'} · {date(event.occurred_at)} · {details.actors[event.actor_user_id]||'Responsável não disponível para esta conta'}</li>)}</ol></div>

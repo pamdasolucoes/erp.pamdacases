@@ -1,7 +1,3 @@
 import React from 'react';
-import { UnavailableModule } from '../../components/common/UnavailableModule';
-import type { Sale } from '../../types/erp';
-
-export function ProductionView(_props: { onViewReceipt?: (sale: Sale) => void }) {
-  return <UnavailableModule module="producao" />;
-}
+import {OperationsView} from '../OperationsView';
+export function ProductionView(props:any){return <OperationsView module="production" {...props}/>;}

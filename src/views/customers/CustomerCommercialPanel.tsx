@@ -9,7 +9,7 @@ import { centsInput, formatMoney, parsePriceInput } from '../../services/salePri
 import { usePaymentCatalog } from '../../hooks/usePaymentCatalog';
 import { paymentCondition } from '../../services/payments';
 import { CustomerPaymentPanel } from './CustomerPaymentPanel';
-import {CustomerTestCreditPanel} from './CustomerTestCreditPanel';
+
 
 export function CustomerCommercialPanel({ customer }: { customer: OfficialCustomer }) {
   const user = authService.getCurrentUser()!;
@@ -73,6 +73,6 @@ export function CustomerCommercialPanel({ customer }: { customer: OfficialCustom
     {busy&&<p role="status" className="text-xs text-slate-500">Confirmando frete no servidor…</p>}
     {notice&&<p role="status" className="text-xs text-emerald-800">{notice}</p>}
     {error&&<p role="alert" className="text-xs text-rose-800">{error}</p>}
-    <CustomerTestCreditPanel customerId={customer.id}/>
+    
   </section>;
 }

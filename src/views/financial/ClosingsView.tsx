@@ -1,6 +1,3 @@
 import React from 'react';
-import { UnavailableModule } from '../../components/common/UnavailableModule';
-
-export function ClosingsView() {
-  return <UnavailableModule module="fechamentos" />;
-}
+import {OperationsView} from '../OperationsView';
+export function ClosingsView(props:any){return <OperationsView module="closings" {...props}/>;}

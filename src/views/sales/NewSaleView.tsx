@@ -22,7 +22,7 @@ import type {SaleDetails} from '../../types/pendingSales';
 import type {ReceiptDocumentData} from '../../types/receipt';
 import type {TestPaymentDraft} from '../../types/testSales';
 import {ReceiptPreviewModal} from '../../components/receipt/ReceiptPreviewModal';
-import {TestSaleFinalizationModal} from './TestSaleFinalizationModal';
+import {SaleFinalizationModal as TestSaleFinalizationModal} from './SaleFinalizationModal';
 
 interface NewSaleViewProps {
   initialCustomer?: CustomerContext | null;
@@ -101,7 +101,7 @@ export const NewSaleView: React.FC<NewSaleViewProps> = ({ initialCustomer, onDis
     setNotice('');
     try{
       const currentUser=authService.getCurrentUser();
-      if(userId!==currentUser?.id||currentUser.active!==true||currentUser.role!=='admin_gerencial')throw new Error('A finalização de teste está disponível somente para administrador ativo.');
+      if(userId!==currentUser?.id||currentUser.active!==true||!(currentUser.role==='admin_gerencial'||currentUser.permissions?.['sales.confirm']))throw new Error('Seu usuário não tem permissão para finalizar vendas.');
       if(!paymentCatalog.data)throw new Error('Aguarde o carregamento do catálogo oficial de pagamentos antes de finalizar.');
       if(!draft.remote?.saleId)throw new Error('Aguarde o Supabase iniciar a venda antes de finalizar.');
       if(!await workspace.flush())throw new Error('Há alterações não salvas. Corrija o erro ou tente salvar novamente antes de finalizar.');
@@ -112,19 +112,19 @@ export const NewSaleView: React.FC<NewSaleViewProps> = ({ initialCustomer, onDis
         details.sale.first_product_at===null||!details.sale.shipping_confirmed||details.sale.shipping_charged===null)
         throw new Error('A venda precisa ter número confirmado, produto salvo e frete confirmado (inclusive R$ 0,00).');
       setFinalizing(details);
-    }catch(reason){setNotice(reason instanceof Error?reason.message:'Não foi possível preparar a finalização de teste.');}
+    }catch(reason){setNotice(reason instanceof Error?reason.message:'Não foi possível preparar a finalização.');}
   };
   const completeTestFinalization=(details:SaleDetails,receipt:ReceiptDocumentData)=>{
     workspace.acceptClosed(details);setFinalizing(null);setTestReceipt(receipt);
-    setNotice('Venda concluída em modo TESTE. Estoque e financeiro reais não foram movimentados.');
+    setNotice('Venda confirmada. Estoque, financeiro e produção atualizados.');
   };
   const numberLabel=draft.remote?.orderNumber!==null&&draft.remote?.orderNumber!==undefined
     ? `Nº ${draft.remote.orderNumber.toLocaleString('pt-BR')}`
     : draft.remote?.saleId&&sync.status==='saved'?'Sem número':'Iniciando…';
-  const admin=authService.getCurrentUser()?.active===true&&authService.getCurrentUser()?.role==='admin_gerencial';
+  const admin=authService.getCurrentUser()?.active===true&&(authService.getCurrentUser()?.role==='admin_gerencial'||authService.getCurrentUser()?.permissions?.['sales.confirm']===true);
   const activePaymentMethods=useMemo(()=>{
     const priority=['pix','dinheiro','credito_cliente','cartao_debito','cartao_credito','boleto'];
-    return paymentCatalog.data?.methods.filter(method=>method.active).sort((a,b)=>{
+    return paymentCatalog.data?.methods.filter(method=>method.active&&method.code!=='credito_cliente').sort((a,b)=>{
       const ai=priority.indexOf(a.code),bi=priority.indexOf(b.code);
       return (ai<0?priority.length:ai)-(bi<0?priority.length:bi)||a.name.localeCompare(b.name);
     })||[];
@@ -323,7 +323,7 @@ export const NewSaleView: React.FC<NewSaleViewProps> = ({ initialCustomer, onDis
                       <fieldset disabled={!paymentCatalog.data || commercial.loading || draft.commercialDefaultsPending} className="space-y-3">
                         <legend className="text-xs font-bold text-slate-600">Formas de pagamento</legend>
                         {paymentPlan.map((payment,index)=><div key={index} className="grid grid-cols-[minmax(0,1fr)_minmax(0,0.7fr)_auto] items-end gap-2">
-                          <PaymentSelect label={index===0?'Forma de pagamento da venda':`Forma de pagamento da venda ${index+1}`} value={payment.methodId} rows={paymentCatalog.data?.methods||[]} onChange={id=>{
+                          <PaymentSelect label={index===0?'Forma de pagamento da venda':`Forma de pagamento da venda ${index+1}`} value={payment.methodId} rows={paymentCatalog.data?.methods.filter(method=>method.code!=='credito_cliente')||[]} onChange={id=>{
                             setPaymentPlan(rows=>rows.map((row,rowIndex)=>rowIndex===index?{...row,methodId:id}:row));
                             if(index===0)setDraft(previous=>({...previous,paymentMethodId:id}));
                           }} />
@@ -340,7 +340,7 @@ export const NewSaleView: React.FC<NewSaleViewProps> = ({ initialCustomer, onDis
                     </div>
                   </section>
                 }
-                finalizationAction={admin&&<div className="space-y-1"><button type="button" onClick={()=>void openTestFinalization()} disabled={!draft.remote?.saleId||draft.remote.orderNumber===null||sync.status!=='saved'||locked||!paymentCatalog.data} className="rounded-xl bg-amber-700 px-5 py-3 text-sm font-bold text-white disabled:opacity-50">Finalizar venda · TESTE</button><p className="text-xs text-slate-500">Homologação · sem movimentação real</p></div>}
+                finalizationAction={admin&&<div className="space-y-1"><button type="button" onClick={()=>void openTestFinalization()} disabled={!draft.remote?.saleId||draft.remote.orderNumber===null||sync.status!=='saved'||locked||!paymentCatalog.data} className="rounded-xl bg-amber-700 px-5 py-3 text-sm font-bold text-white disabled:opacity-50">Finalizar venda</button><p className="text-xs text-slate-500">Operação real · estoque e financeiro</p></div>}
                 onReceiptPreview={setReceiptPreview}
               />
             )}

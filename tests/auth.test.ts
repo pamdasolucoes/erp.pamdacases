@@ -35,6 +35,7 @@ function fakeAuth(initialProfile: Record<string, unknown> | null = null, authent
     return { data: { user: serverUser, session: { access_token: 'test-access-token' } }, error: null };
   };
   const client = {
+    async rpc(name:string){assert.equal(name,'pamda_my_permissions');return {data:{'customers.manage':currentProfile?.role==='admin_gerencial'},error:null};},
     auth: {
       onAuthStateChange(cb: typeof callback) { callback = cb; return { data: { subscription: { unsubscribe() {} } } }; },
       getUser() { calls.getUser++; return getUser(); },

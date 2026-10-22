@@ -42,6 +42,7 @@ export async function setup(page: Page, role: 'admin_gerencial' | 'venda_atendim
     if (url.pathname==='/auth/v1/token') {state.tokenRequests++;if(url.searchParams.get('grant_type')==='refresh_token') state.refreshRequests++;return respond({ access_token:token(),token_type:'bearer',expires_in:state.authLifetimeSeconds,expires_at:expires(),refresh_token:'synthetic-refresh-token',user:employee });}
     if (url.pathname==='/auth/v1/logout') return respond({});
     if (url.pathname==='/auth/v1/user') return state.identityRevoked?respond({msg:'Invalid session',code:'session_not_found'},401):respond(employee);
+    if(url.pathname==='/rest/v1/rpc/pamda_my_permissions') return respond({'sales.read':role==='admin_gerencial'||role==='venda_atendimento','sales.draft':role==='admin_gerencial'||role==='venda_atendimento','sales.confirm':role==='admin_gerencial'||role==='venda_atendimento','customers.manage':role==='admin_gerencial','finance.read':state.financialPermission,'stock.read':role==='admin_gerencial'||role==='estoque_expedicao'||role==='venda_atendimento','production.read':true,'production.manage':role==='admin_gerencial'||role==='producao'});
     if (url.pathname==='/rest/v1/erp_user_profiles') {
       if(state.profileError==='network') return route.abort('failed');
       if(state.profileError) return respond({code:state.profileError,message:'Profile denied'},403);
