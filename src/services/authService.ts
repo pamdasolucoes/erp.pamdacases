@@ -6,6 +6,7 @@ const ERP_ROLES: UserRole[] = ['admin_gerencial', 'venda_atendimento', 'producao
 interface ErpUserProfile {
   user_id: string;
   username: string;
+  display_name?: string;
   role: UserRole;
   active: boolean;
   can_view_financial_metrics: boolean;
@@ -22,7 +23,7 @@ export function mapUserProfile(userId: string, profile: ErpUserProfile | null, c
   return {
     id: userId,
     username: profile.username,
-    name: profile.username,
+    name: profile.display_name?.trim() || profile.username,
     role: profile.role,
     active: true,
     canReadCustomers: profile.role === 'admin_gerencial',
@@ -120,7 +121,7 @@ export class AuthService {
 
       const { data: profile, error: profileError, status: profileStatus } = await this.client
         .from('erp_user_profiles')
-        .select('user_id,username,role,active,can_view_financial_metrics')
+        .select('user_id,username,display_name,role,active,can_view_financial_metrics')
         .retry(false)
         .eq('user_id', identity.user.id)
         .maybeSingle();

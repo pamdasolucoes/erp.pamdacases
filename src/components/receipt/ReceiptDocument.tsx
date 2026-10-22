@@ -194,7 +194,7 @@ export function ReceiptDocument({ data }: { data: ReceiptDocumentData }) {
           {data.payment.paid ? (
             <><strong>Pagamento confirmado</strong><p>Valor recebido: {formatMoney(data.payment.amountPaidCents)}</p></>
           ) : (
-            <><strong>Pagamento via Pix</strong>{data.payment.qrCodeUrl && <img src={data.payment.qrCodeUrl} alt="QR Code Pix" style={{ width: 150, display: 'block', margin: '8px auto' }} />}<p>Chave Pix: {data.payment.pixKey}</p><p>Saldo: {formatMoney(data.payment.balanceCents)}</p></>
+            <><strong>Saldo a receber</strong>{data.payment.qrCodeUrl && <img src={data.payment.qrCodeUrl} alt="QR Code Pix" style={{ width: 150, display: 'block', margin: '8px auto' }} />}{data.payment.pixKey&&<p>Chave Pix: {data.payment.pixKey}</p>}<p>Saldo: {formatMoney(data.payment.balanceCents)}</p></>
           )}
         </section>
       )}

@@ -90,7 +90,7 @@ test('login autentica com e-mail e senha pelo Supabase Auth', async () => {
   assert.deepEqual(fake.calls.login, [{ email: 'admin@example.com', password: ' senha original ' }]);
   assert.deepEqual(fake.calls.profile, [{
     table: 'erp_user_profiles',
-    columns: 'user_id,username,role,active,can_view_financial_metrics',
+    columns: 'user_id,username,display_name,role,active,can_view_financial_metrics',
     userId,
   }]);
   assert.equal(auth.getCurrentUser()?.username, 'admin');

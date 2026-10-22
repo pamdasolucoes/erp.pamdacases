@@ -30,7 +30,7 @@ Após a conexão, novos pushes na branch `main` iniciam uma implantação de pro
 
 O `.env.local` fica apenas no computador e não é enviado ao GitHub. Em **Settings → Environment Variables**, configure `VITE_SUPABASE_URL` e `VITE_SUPABASE_PUBLISHABLE_KEY` (ou `VITE_SUPABASE_ANON_KEY`) para o projeto existente **erp-pamda**, e faça um novo deploy.
 
-A autenticação usa Supabase Auth e a Edge Function `pamda-auth`. Clientes e unidades oficiais são lidos do Supabase sob RLS e não são persistidos no `localStorage`. O SDK persiste somente sua sessão de autenticação. Os demais módulos de demonstração continuam usando dados locais; eles não criam vendas reais no Supabase.
+A autenticação usa Supabase Auth. O cadastro de usuários usa a Edge Function `pamda-user-admin`. Os módulos operacionais usam o banco oficial e RPCs com autorização. O SDK persiste a sessão de autenticação; registros operacionais não são gravados em dados demonstrativos locais. Consulte [OPERACAO_REAL.md](./docs/OPERACAO_REAL.md).
 
 Configure o domínio de produção e cada domínio de preview autorizado em `PAMDA_ALLOWED_ORIGINS` na Edge Function. Não existe conta administrativa automática. O primeiro administrador é criado manualmente pelo procedimento seguro documentado.
 

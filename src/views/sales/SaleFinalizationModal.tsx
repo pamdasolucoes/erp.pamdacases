@@ -7,9 +7,11 @@ import {pendingSalesService} from '../../services/saleWorkspace';
 import {authService} from '../../services/auth';
 import {productCatalog} from '../../services/catalogResources';
 import {money} from '../../services/operations';
-export function SaleFinalizationModal({userId,details,catalog,onClose,onCompleted}:{userId:string;details:SaleDetails;catalog:PaymentCatalog;onClose():void;onCompleted(details:SaleDetails,receipt:ReceiptDocumentData):void}){
+import type {TestPaymentDraft} from '../../types/testSales';
+import {parsePriceInput} from '../../services/salePricing';
+export function SaleFinalizationModal({userId,details,catalog,initialPayments,onClose,onCompleted}:{userId:string;details:SaleDetails;catalog:PaymentCatalog;initialPayments?:TestPaymentDraft[];onClose():void;onCompleted(details:SaleDetails,receipt:ReceiptDocumentData):void}){
  const methods=catalog.methods.filter(m=>m.active&&m.code!=='credito_cliente');
- const [payments,setPayments]=useState([{method_code:methods[0]?.code||'',amount:String(details.sale.total),status:'pending',scheduled_for:'',reference:''}]);
+ const [payments,setPayments]=useState(()=>initialPayments?.length?initialPayments.map(p=>({method_code:p.methodCode,amount:String((parsePriceInput(p.amount)??0)/100),status:p.status,scheduled_for:p.scheduledFor,reference:''})):[{method_code:methods[0]?.code||'',amount:String(details.sale.total),status:'pending',scheduled_for:'',reference:''}]);
  const [busy,setBusy]=useState(false),[error,setError]=useState('');const key=useRef(crypto.randomUUID());
  const user=authService.getCurrentUser();const canReceive=user?.role==='admin_gerencial'||user?.permissions?.['finance.manage'];
  const sum=payments.reduce((s,p)=>s+Math.round(Number(p.amount)*100),0),total=Math.round(Number(details.sale.total)*100);

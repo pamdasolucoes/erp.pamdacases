@@ -11,7 +11,7 @@ test('módulos reais exibem consultas, ajuste de estoque e entradas sem forneced
  });
  await page.route('**/rest/v1/rpc/pamda_stock_write',async route=>{writes.push(route.request().postDataJSON());return route.fulfill({json:'00000000-0000-4000-8000-000000000002'});});
  await page.getByRole('button',{name:'Estoque & Movimentos',exact:true}).click();
- await page.getByLabel('Produto',{exact:true}).selectOption('00000000-0000-4000-8000-000000000001');
+ await page.getByRole('combobox',{name:'Produto',exact:true}).selectOption('00000000-0000-4000-8000-000000000001');
  await page.getByLabel('Quantidade contada (novo saldo)').fill('12');await page.getByLabel('Motivo do ajuste').fill('Contagem física');
  await page.getByRole('button',{name:'Registrar ajuste',exact:true}).click();
  await expect(page.getByText('Operação confirmada no Supabase.')).toBeVisible();

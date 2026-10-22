@@ -78,7 +78,7 @@ test('arquivados aparecem somente pelo filtro e a busca mantém kits antes das b
 });
 test('catálogo vazio não usa dados fictícios e frete é gerenciado em operações oficiais próprias',async({page})=>{
   const {state}=await setup(page);
-  await expect(page.getByRole('region',{name:'Condições comerciais oficiais'})).toContainText('Condição de pagamento não configurada');
+  await expect(page.getByRole('combobox',{name:'Forma padrão do cliente',exact:true})).toHaveValue('');
   await page.getByRole('button',{name:'Editar cadastro',exact:true}).click();
   await expect(page.getByText(/Frete e condições comerciais são gerenciados na ficha/)).toBeVisible();
   await page.getByRole('button',{name:'Salvar alterações',exact:true}).click();

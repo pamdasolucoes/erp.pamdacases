@@ -1,6 +1,6 @@
 -- Executar dentro de BEGIN/ROLLBACK. Nenhum cadastro ou movimento permanece.
 do $$
-declare actor uuid; product uuid; customer uuid; branch uuid; sale uuid; sale2 uuid; k uuid; result jsonb; module text;
+declare actor uuid; product uuid; customer uuid; branch uuid; sale uuid; sale2 uuid; kit uuid; other_user uuid:=gen_random_uuid(); k uuid; result jsonb; module text;
 before_balance numeric; after_balance numeric; payment_key uuid:=gen_random_uuid();
 begin
  select user_id into actor from public.erp_user_profiles where active and role='admin_gerencial' limit 1;
@@ -45,6 +45,36 @@ begin
  if result is null then raise exception 'Módulo sem resposta: %',module; end if;
  end loop;
  perform public.pamda_users_read(); perform public.pamda_resumo_erp();
+ -- Kits consomem os componentes e congelam o custo no momento da venda.
+ insert into public.products(code,sku,name,type,current_cost,sale_price,controls_inventory,current_inventory,stock_verified)
+ values('QA-'||gen_random_uuid(),'QA-'||gen_random_uuid(),'Kit transacional','kit',0,30,false,0,false) returning id into kit;
+ insert into public.kit_components(kit_product_id,component_product_id,quantity,sort_order) values(kit,product,3,1);
+ sale2:=public.pamda_iniciar_venda(customer,branch,gen_random_uuid());
+ insert into public.erp_sale_items(sale_id,product_id,product_code_snapshot,product_sku_snapshot,description_snapshot,quantity,negotiated_unit_price)
+ values(sale2,kit,'QA-KIT','QA-KIT','Validação do kit',1,30);
+ update public.erp_sales set subtotal=30,shipping_charged=0,shipping_confirmed=true where id=sale2;
+ perform public.pamda_finalize_sale(sale2,jsonb_build_array(jsonb_build_object('method_code','pix','amount',30,'status','pending','channel','erp')),gen_random_uuid());
+ if (select current_inventory from public.products where id=product)<>10 then raise exception 'Kit não consumiu componentes'; end if;
+ if not exists(select 1 from public.erp_sale_items where sale_id=sale2 and unit_cost_snapshot=(select 3*current_cost from public.products where id=product) and cost_verified) then raise exception 'Custo médio do kit divergente'; end if;
+ -- Saldo insuficiente reverte também as parcelas já preparadas.
+ sale2:=public.pamda_iniciar_venda(customer,branch,gen_random_uuid());
+ insert into public.erp_sale_items(sale_id,product_id,product_code_snapshot,product_sku_snapshot,description_snapshot,quantity,negotiated_unit_price)
+ values(sale2,product,'QA','QA','Validação de saldo',100,1);
+ update public.erp_sales set subtotal=100,shipping_charged=0,shipping_confirmed=true where id=sale2;
+ begin
+ perform public.pamda_finalize_sale(sale2,jsonb_build_array(jsonb_build_object('method_code','pix','amount',100,'status','pending','channel','erp')),gen_random_uuid());
+ raise exception 'Aceitou estoque insuficiente' using errcode='XX001'; exception when sqlstate 'P0001' then null;end;
+ if exists(select 1 from public.erp_real_payments where sale_id=sale2) then raise exception 'Falha não reverteu pagamentos'; end if;
+ -- Perfis e permissões são controlados no banco, sem confiar em metadata.
+ insert into auth.users(id) values(other_user);
+ insert into public.erp_user_profiles(user_id,username,display_name,role,active) values(other_user,'qa-'||other_user,'Validação','producao',true);
+ perform public.pamda_user_save(jsonb_build_object('user_id',other_user,'display_name','Validação','role','producao','active',true,'permissions',jsonb_build_object('stock.read',true)));
+ perform set_config('request.jwt.claim.sub',other_user::text,true);
+ if not public.pamda_has_permission('stock.read') then raise exception 'Permissão configurada não aplicada'; end if;
+ begin perform public.pamda_operation_read('receivables');raise exception 'Produção acessou financeiro' using errcode='XX001';exception when insufficient_privilege then null;end;
+ begin perform public.pamda_users_read();raise exception 'Produção acessou usuários' using errcode='XX001';exception when insufficient_privilege then null;end;
+ if has_function_privilege('anon','public.pamda_stock_write(jsonb,uuid)','execute') then raise exception 'Anônimo pode executar ajuste'; end if;
+ if has_table_privilege('authenticated','public.erp_receivables','update') then raise exception 'Escrita direta no financeiro liberada'; end if;
  perform set_config('request.jwt.claim.sub','',true);
  perform set_config('request.jwt.claims','{}',true);
  begin perform public.pamda_operation_read('receivables');raise exception 'Anônimo leu financeiro' using errcode='XX001'; exception when insufficient_privilege then null;end;

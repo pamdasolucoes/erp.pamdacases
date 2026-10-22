@@ -334,7 +334,7 @@ export const NewSaleView: React.FC<NewSaleViewProps> = ({ initialCustomer, onDis
                           <button type="button" disabled={!activePaymentMethods.length} onClick={()=>setPaymentPlan(rows=>[...rows,{methodId:activePaymentMethods.find(method=>!rows.some(row=>row.methodId===method.id))?.id||activePaymentMethods[0]?.id||null,amount:'0,00',status:'pending',channel:'erp',scheduledFor:''}])} className="text-xs font-bold text-blue-700">+ Adicionar forma de pagamento</button>
                           <p className={`text-xs font-bold ${paymentPlanTotal!==null&&paymentTotalCents!==null&&paymentPlanTotal===paymentTotalCents?'text-emerald-800':'text-amber-800'}`}>Soma dos pagamentos: {paymentPlanTotal===null?'Valor inválido':new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(paymentPlanTotal/100)}{paymentTotalCents!==null&&` · Total da venda: ${new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(paymentTotalCents/100)}`}</p>
                         </div>
-                        <p className="text-xs text-slate-600">A divisão é confirmada na finalização de homologação; o rascunho oficial mantém uma única forma de pagamento.</p>
+                        <p className="text-xs text-slate-600">A divisão é confirmada na finalização da venda.</p>
                       </fieldset>
                       <PaymentSelect label="Prazo de pagamento da venda" value={draft.paymentTermId} rows={paymentCatalog.data?.terms || []} disabled={!paymentCatalog.data || commercial.loading || draft.commercialDefaultsPending} onChange={id => setDraft(previous => ({ ...previous, paymentTermId: id }))} />
                     </div>

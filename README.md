@@ -1,21 +1,14 @@
 # PAMDA ERP - Sistema B2B Pamda Cases
 
-Estado atual: [sincronização ERP + Supabase, integrações entregues e pendências de contrato](./docs/SINCRONIZACAO_CORE.md). O Supabase existente é a única fonte oficial. Os módulos sem backend homologado ficam indisponíveis; dados locais demonstrativos não são utilizados pelo aplicativo.
+Estado atual (22/10/2026): [operação real, regras de acesso e homologação](./docs/OPERACAO_REAL.md). O Supabase existente é a fonte oficial de dados. Estoque, entradas, financeiro, produção, entregas, relatórios, usuários e configurações utilizam operações persistentes e autorizadas no servidor.
 
-Vendas pendentes oficiais: [início automático, salvamento serial, retomada e cancelamento autorizado](./docs/VENDAS_PENDENTES.md). A confirmação e as movimentações de estoque/financeiro continuam bloqueadas nesta etapa.
+A finalização cria venda real, recibo, baixa de estoque, contas a receber e fila de produção na mesma transação. Registros antigos de teste ficam fora dos indicadores reais. Consulte o documento de operação para conferência inicial do estoque, custos e dados da empresa.
 
-Sessão, unidade automática e recuperação temporária da Nova Venda: [comportamento e verificação no localhost](./docs/SESSAO_E_RASCUNHO.md).
+O login usa Supabase Auth e perfil ativo em `erp_user_profiles`. O cadastro de funcionários pelo ERP usa a Edge Function `pamda-user-admin`, restrita a administradores.
 
-Buscas integradas na Nova Venda e prévia de recibo A4/80 mm: veja [configuração, comportamento e testes](./docs/BUSCAS_E_PREVIA_RECIBO.md). A confirmação oficial de vendas permanece bloqueada.
+Os documentos anteriores registram etapas históricas. O aplicativo não executa SQL de instalação. Não reaplicar a migration geral antiga nem scripts de revisão no projeto existente.
 
-**Etapa atual: sincronização com o Supabase PAMDA CORE.**
-O login usa e-mail e senha do Supabase Auth; o perfil ativo é consultado em `public.erp_user_profiles` pelo `user_id`.
-Clientes e unidades usam as tabelas oficiais existentes, com edição cadastral protegida por RPC. O dashboard consulta o resumo oficial; o contexto comercial e os fretes usam as funções oficiais informadas pelo administrador.
-Criação de cliente com matriz, criação/edição de filiais, definição de matriz, catálogos e configurações de pagamento usam as RPCs oficiais confirmadas. Os módulos sem integração homologada não efetuam consultas ou gravações demonstrativas.
-
-Consulte [SINCRONIZACAO_CORE.md](./docs/SINCRONIZACAO_CORE.md) para requisitos atuais de RLS, autenticação, contratos e validação. Os documentos das etapas anteriores são históricos. O aplicativo e o build não executam SQL. **Não aplicar a migration geral antiga nem reaplicar os scripts de `supabase/review` no banco existente.**
-
-ERP B2B sob medida para a **PAMDA CASES**, projetado para substituir o legado REIN e permitir a gestão integral de clientes, redes com filiais, políticas comerciais, produtos físicos, serviços de estamparia DTF UV, kits personalizados com cálculo de custo composto, clonagem inteligente de produtos/kits, emissão de recibos com numeração sequencial (a partir de 10000) e Pix dinâmico, esteira de produção e controle de lucratividade gerencial com snapshot histórico de custos.
+ERP B2B sob medida para a **PAMDA CASES**, projetado para substituir o legado REIN e permitir a gestão integral de clientes, redes com filiais, políticas comerciais, produtos físicos, serviços de estamparia DTF UV, kits personalizados com cálculo de custo composto, clonagem inteligente de produtos/kits, emissão de recibos com numeração sequencial (a partir de 10000) e chave Pix, esteira de produção e controle de lucratividade gerencial com snapshot histórico de custos.
 
 ---
 

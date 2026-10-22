@@ -165,6 +165,7 @@ begin
  if s.status<>'draft' or s.order_number is null or not s.shipping_confirmed then raise exception 'Venda precisa estar pendente, numerada e com frete confirmado'; end if;
  if not public.pamda_is_admin() and s.created_by<>auth.uid() then raise exception 'Finalize apenas suas próprias vendas' using errcode='42501'; end if;
  if not exists(select 1 from public.erp_sale_items where sale_id=s.id) then raise exception 'Inclua produtos'; end if;
+ if (select sum(line_subtotal) from public.erp_sale_items where sale_id=s.id) is distinct from s.subtotal then raise exception 'Total dos itens divergente. Salve a venda novamente'; end if;
  if jsonb_typeof(p_payments) is distinct from 'array' or jsonb_array_length(p_payments)>20 then raise exception 'Pagamentos inválidos'; end if;
  for p in select value from jsonb_array_elements(p_payments) loop
  v_amount:=(p->>'amount')::numeric; v_status:=p->>'status';
@@ -228,6 +229,7 @@ begin
  perform pg_advisory_xact_lock(hashtextextended(p_request_key::text,0));
  if p_action='expense' then
  perform pamda_private.require_permission('expenses.manage');
+ if (p_data->>'amount')::numeric='NaN'::numeric or (p_data->>'amount')::numeric>1000000000 then raise exception 'Valor da despesa inválido'; end if;
  insert into public.erp_expenses(description,category,amount,expense_date,paid,request_key,actor_user_id)
  values(p_data->>'description',p_data->>'category',(p_data->>'amount')::numeric,(p_data->>'date')::date,coalesce((p_data->>'paid')::boolean,false),p_request_key,auth.uid())
  on conflict(request_key) do update set request_key=excluded.request_key returning id into v_id;
@@ -275,6 +277,7 @@ begin
  else raise exception 'Transição de produção inválida ou bloqueada'; end if; v_id:=v_sale;
  elsif p_action='delivery' then
  perform pamda_private.require_permission('deliveries.manage'); v_sale:=(p_data->>'sale_id')::uuid;
+ if (p_data->>'actual_cost')::numeric is null or (p_data->>'actual_cost')::numeric='NaN'::numeric or (p_data->>'actual_cost')::numeric>1000000 then raise exception 'Informe o custo real da entrega'; end if;
  select status into v_status from public.erp_deliveries where sale_id=v_sale for update;
  if v_status is null or v_status='cancelled' or p_data->>'status' not in ('pending','dispatched','delivered') then raise exception 'Entrega inválida'; end if;
  if v_status='delivered' and p_data->>'status'<>'delivered' then raise exception 'Entrega já concluída'; end if;
