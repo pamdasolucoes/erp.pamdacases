@@ -43,7 +43,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, sessionErr
     <div className="min-h-screen w-full bg-slate-900 flex items-center justify-center p-4 sm:p-6 lg:p-10">
       <div className="w-full max-w-5xl bg-white rounded-3xl shadow-2xl overflow-hidden grid grid-cols-1 lg:grid-cols-12 min-h-[580px]">
         {/* Left Side: Visual Showcase matching Screen 1 */}
-        <div className="lg:col-span-6 bg-gradient-to-br from-slate-950 via-slate-900 to-blue-950 p-8 sm:p-12 flex flex-col justify-between text-white relative overflow-hidden">
+        <div className="lg:col-span-6 bg-gradient-to-br from-[#243c2e] via-[#304335] to-[#435446] p-8 sm:p-12 flex flex-col justify-between text-white relative overflow-hidden">
           {/* Subtle decorative circles */}
           <div className="absolute -right-20 -bottom-20 w-80 h-80 rounded-full bg-blue-600/20 blur-3xl pointer-events-none" />
           <div className="absolute -left-10 -top-10 w-60 h-60 rounded-full bg-purple-600/15 blur-2xl pointer-events-none" />

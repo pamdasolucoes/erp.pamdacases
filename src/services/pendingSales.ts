@@ -25,6 +25,18 @@ function validateSale(row:PendingSaleRow) {
 }
 export class PendingSalesService {
   constructor(private client:SupabaseClient|null){}
+  async reserveNumber(userId:string,draftKey:string,previousKey:string|null=null):Promise<number>{
+    if(!isUuid(draftKey)||previousKey!==null&&!isUuid(previousKey))throw new Error('Chave da preparação inválida.');
+    await this.identity(userId);
+    const {data,error}=await this.client!.rpc('pamda_prepare_order_number',{p_draft_key:draftKey,p_previous_key:previousKey});
+    if(error)throw saleError(error);
+    const number=Number(data);if(!Number.isSafeInteger(number)||number<10000)throw new Error('O servidor não confirmou o número da nova venda.');
+    return number;
+  }
+  async releaseNumber(userId:string,draftKey:string):Promise<void>{
+    if(!isUuid(draftKey))throw new Error('Chave da preparação inválida.');await this.identity(userId);
+    const {error}=await this.client!.rpc('pamda_release_order_number',{p_draft_key:draftKey});if(error)throw saleError(error);
+  }
   private async identity(userId:string){
     if(!this.client) throw new Error('Configure o Supabase PAMDA CORE.');
     const {data,error}=await this.client.auth.getUser();

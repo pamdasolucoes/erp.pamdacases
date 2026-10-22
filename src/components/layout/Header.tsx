@@ -15,7 +15,7 @@ export const Header: React.FC<HeaderProps> = ({
   title,
 }) => {
   return (
-    <header className="sticky top-0 z-30 h-16 bg-white/90 backdrop-blur-md border-b border-slate-200 px-4 sm:px-8 flex items-center justify-between">
+    <header className="sticky top-0 z-30 h-16 erp-header bg-white/90 backdrop-blur-md border-b border-slate-200 px-4 sm:px-8 flex items-center justify-between">
       <div className="flex items-center gap-3">
         <button
           onClick={onOpenMobileMenu}
@@ -40,7 +40,7 @@ export const Header: React.FC<HeaderProps> = ({
 
       <div className="flex items-center gap-3">
         <div className="flex items-center gap-2 pl-1">
-          <div className="w-8 h-8 rounded-full bg-slate-900 text-white flex items-center justify-center font-bold text-xs uppercase shadow-xs">
+          <div className="w-8 h-8 rounded-full bg-blue-800 text-white flex items-center justify-center font-bold text-xs uppercase shadow-xs">
             {currentUser?.username.substring(0, 2).toUpperCase() || 'AD'}
           </div>
           <div className="hidden md:block text-left">

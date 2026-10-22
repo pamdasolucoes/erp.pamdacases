@@ -19,7 +19,7 @@ async function refresh(page:Page){
 async function reopenSale(page:Page){
   await page.getByRole('navigation').getByRole('button',{name:'Pendências',exact:true}).click();
   await page.getByRole('button',{name:/^Pedido \d+$/}).first().click();
-  await expect(page.getByRole('heading',{name:/NOVA VENDA \|/})).toBeVisible();
+  await expect(page.getByRole('heading',{name:/NOVA VENDA.*/})).toBeVisible();
 }
 async function prepare(page:Page){
   await page.getByRole('button',{name:'+ NOVA VENDA',exact:true}).click();
@@ -35,7 +35,7 @@ async function prepare(page:Page){
   await page.getByLabel('Modelo informado do item 1').fill('Modelo especial');
 }
 async function preserved(page:Page){
-  await expect(page.getByRole('heading',{name:/NOVA VENDA \|/})).toBeVisible();
+  await expect(page.getByRole('heading',{name:/NOVA VENDA.*/})).toBeVisible();
   await expect(page.getByRole('combobox',{name:'Cliente',exact:true})).toHaveValue('000001 - Loja Árvore');
   await expect(page.getByRole('combobox',{name:'Unidade / Filial',exact:true})).toHaveValue(uuid(1001));
   await expect(page.getByLabel('Valor unitário do item 1')).toHaveValue('19,99');

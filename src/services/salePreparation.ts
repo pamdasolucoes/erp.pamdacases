@@ -27,6 +27,8 @@ export function parseSalePreparation(raw:string|null,userId:string):SalePreparat
       ids.add(item.id);
     }
     // Audit/authorization payloads are deliberately not trusted or recovered from browser storage.
+    const reservation=value.numberReservation;
+    if(reservation&&(!/^[0-9a-f-]{36}$/i.test(reservation.draftKey)||!Number.isSafeInteger(reservation.orderNumber)||reservation.orderNumber<10000))return null;
     const remote=value.remote;
     if(remote&&(![remote.draftKey,remote.initialCustomerId,remote.initialBranchId].every(id=>typeof id==='string'&&/^[0-9a-f-]{36}$/i.test(id))||
       !(remote.saleId===null||typeof remote.saleId==='string'&&/^[0-9a-f-]{36}$/i.test(remote.saleId))||!['draft','confirmed','cancelled'].includes(remote.status)||
@@ -34,6 +36,7 @@ export function parseSalePreparation(raw:string|null,userId:string):SalePreparat
       !(remote.orderNumber===undefined||remote.orderNumber===null||Number.isSafeInteger(remote.orderNumber)&&remote.orderNumber>=10000)||
       !(remote.firstProductAt===undefined||remote.firstProductAt===null||text(remote.firstProductAt,100))))return null;
     return {version:1,userId,customerId:value.customerId,branchId:value.branchId,
+      ...(reservation?{numberReservation:{draftKey:reservation.draftKey,orderNumber:reservation.orderNumber}}:{}),
       ...(typeof value.commercialDefaultsPending==='boolean'?{commercialDefaultsPending:value.commercialDefaultsPending}:{}),
       ...(remote?{remote:{draftKey:remote.draftKey,saleId:remote.saleId,initialCustomerId:remote.initialCustomerId,initialBranchId:remote.initialBranchId,status:remote.status,savedFingerprint:remote.savedFingerprint,sellerName:typeof remote.sellerName==='string'?remote.sellerName:undefined,orderNumber:remote.orderNumber??null,firstProductAt:remote.firstProductAt??null}}:{}),
       paymentMethodId:typeof value.paymentMethodId==='string'?value.paymentMethodId:null,paymentTermId:typeof value.paymentTermId==='string'?value.paymentTermId:null,

@@ -157,7 +157,7 @@ export function App() {
   return (
     <React.Fragment key={currentUser.id}>
     {sessionError && <div role="alertdialog" aria-modal="true" aria-label="Validação da sessão pendente" className="fixed inset-0 z-[100] bg-slate-50 flex items-center justify-center p-6"><div className="max-w-lg space-y-4"><h1 className="text-xl font-bold">Não foi possível revalidar seu acesso</h1><p>{sessionError}</p><p className="text-sm text-slate-600">A preparação foi preservada nesta aba. Valide a sessão para continuar.</p><div className="flex gap-4"><button type="button" onClick={()=>{void authService.refresh();}} className="bg-blue-600 text-white rounded-xl px-4 py-2">Tentar validar novamente</button><button type="button" onClick={()=>{void authService.logout();}} className="underline">Sair</button></div></div></div>}
-    <div inert={!!sessionError} aria-hidden={!!sessionError || undefined} className="min-h-screen bg-slate-50 flex w-full">
+    <div inert={!!sessionError} aria-hidden={!!sessionError || undefined} className="erp-shell min-h-screen flex w-full">
       {/* Sidebar Navigation */}
       <Sidebar
         currentTab={currentTab}

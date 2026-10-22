@@ -14,6 +14,8 @@ export class SaleWorkspace {
   private sync:PendingDraftSync|null=null;
   private key='';
   private enabled=false;
+  private pendingNumberKey='';
+  private numberRequest:Promise<void>|null=null;
   private listeners=new Set<()=>void>();
   private unsubscribeSync:(()=>void)|null=null;
   private unsubscribeStore:()=>void;
@@ -40,7 +42,8 @@ export class SaleWorkspace {
   begin=()=>{
     if(!this.allowed())return;
     const draft=this.store.getSnapshot();
-    if(!draft.remote&&draft.customerId&&draft.branchId)this.store.update({...draft,remote:{draftKey:crypto.randomUUID(),saleId:null,initialCustomerId:draft.customerId,initialBranchId:draft.branchId,savedFingerprint:null,status:'draft',orderNumber:null,firstProductAt:null}});
+    if(!draft.remote&&!draft.numberReservation){void this.ensureNumber().then(()=>this.begin()).catch(()=>{});return;}
+    if(!draft.remote&&draft.customerId&&draft.branchId)this.store.update({...draft,remote:{draftKey:draft.numberReservation?.draftKey||crypto.randomUUID(),saleId:null,initialCustomerId:draft.customerId,initialBranchId:draft.branchId,savedFingerprint:null,status:'draft',orderNumber:draft.numberReservation?.orderNumber??null,firstProductAt:null}});
     this.activate();
   };
   async flush(){return this.sync?this.sync.flush():true;}
@@ -59,7 +62,13 @@ export class SaleWorkspace {
   async leave(){
     if(!await this.flush())throw new Error('As alterações ainda não foram confirmadas. Tente salvar antes de sair.');
     await this.pause();
-    try{if(await this.discardIfNeverHadProducts())this.store.update(emptySalePreparation(this.userId));}
+    try{
+      if(await this.discardIfNeverHadProducts())this.store.update(emptySalePreparation(this.userId));
+      else if(!this.store.getSnapshot().remote&&this.store.getSnapshot().numberReservation){
+        await pendingSalesService.releaseNumber(this.userId,this.store.getSnapshot().numberReservation!.draftKey);
+        this.store.update(emptySalePreparation(this.userId));
+      }
+    }
     catch(error){this.resume();throw error;}
   }
   async discardEmptyOnExit(){
@@ -80,6 +89,8 @@ export class SaleWorkspace {
   async open(details:SaleDetails){
     if(!await this.flush())throw new Error('A preparação atual tem alterações não salvas. Volte à Nova Venda e salve antes de abrir outra pendência.');
     await this.pause();
+    const reservation=this.store.getSnapshot().numberReservation;
+    if(reservation&&reservation.draftKey!==details.sale.draft_key)await pendingSalesService.releaseNumber(this.userId,reservation.draftKey);
     this.store.update(preparationFromSale(this.userId,details));
     this.enabled=true;this.ensure();await this.sync?.activate();
   }
@@ -88,8 +99,26 @@ export class SaleWorkspace {
     await this.pause();
     let discarded=false;
     try{discarded=await this.discardIfNeverHadProducts();}catch(error){this.resume();throw error;}
-    this.store.update(emptySalePreparation(this.userId));
+    const previousKey=this.store.getSnapshot().numberReservation?.draftKey??null;
+    if(discarded)this.store.update(emptySalePreparation(this.userId));
+    this.pendingNumberKey||=crypto.randomUUID();
+    try{
+      const orderNumber=await pendingSalesService.reserveNumber(this.userId,this.pendingNumberKey,previousKey);
+      this.store.update({...emptySalePreparation(this.userId),numberReservation:{draftKey:this.pendingNumberKey,orderNumber}});
+      this.pendingNumberKey='';
+    }catch(error){this.resume();throw error;}
     return discarded;
+  }
+  async ensureNumber(){
+    if(this.store.getSnapshot().remote||this.store.getSnapshot().numberReservation)return;
+    if(this.numberRequest)return this.numberRequest;
+    this.numberRequest=(async()=>{
+      this.pendingNumberKey||=crypto.randomUUID();const key=this.pendingNumberKey;
+      const orderNumber=await pendingSalesService.reserveNumber(this.userId,key);
+      this.store.update(current=>current.remote||current.numberReservation?current:{...current,numberReservation:{draftKey:key,orderNumber}});
+      this.pendingNumberKey='';
+    })().finally(()=>{this.numberRequest=null;});
+    return this.numberRequest;
   }
   acceptDiscarded(saleId:string){
     if(this.store.getSnapshot().remote?.saleId===saleId)this.store.update(emptySalePreparation(this.userId));

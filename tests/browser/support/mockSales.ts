@@ -13,6 +13,7 @@ export class MockSales {
   private nextTestRecord=800000;
   private sequence=300000;
   private nextOrderNumber=10000;
+  private reservations=new Map<string,{owner:string;number:number}>();
   private availableOrderNumbers:number[]=[];
   constructor(private identity:()=>{id:string;active:boolean;role:string},private customers:CustomerRow[],private branches:CustomerBranchRow[],private products:ProductRow[]){}
   private allowed(code:string){const user=this.identity();return user.active&&(code in this.permissions?this.permissions[code]:user.role==='admin_gerencial'||user.role==='venda_atendimento'&&['sales.read','sales.draft'].includes(code));}
@@ -36,6 +37,18 @@ export class MockSales {
       rows=[...rows].sort((a,b)=>a.id.localeCompare(b.id));const count=rows.length;
       const from=Number(url.searchParams.get('offset')||0);const limit=Math.min(37,Number(url.searchParams.get('limit')||100));
       return {body:rows.slice(from,from+limit),headers:{'content-range':`${from}-${Math.min(count,from+limit)-1}/${count}`}};
+    }
+    if(name==='pamda_prepare_order_number'||name==='pamda_release_order_number'){
+      if(!this.allowed('sales.draft'))return this.error('Sem permissão','42501',403);
+      const owner=this.identity().id;
+      const release=(key:string)=>{const entry=this.reservations.get(key);if(!entry||entry.owner!==owner)return false;this.reservations.delete(key);this.availableOrderNumbers.push(entry.number);this.availableOrderNumbers.sort((a,b)=>a-b);return true;};
+      if(name==='pamda_release_order_number')return {body:release(body.p_draft_key)};
+      if(body.p_previous_key&&body.p_previous_key!==body.p_draft_key)release(body.p_previous_key);
+      const existing=this.sales.find(row=>row.created_by===owner&&row.draft_key===body.p_draft_key);
+      if(existing)return {body:existing.order_number};
+      let entry=this.reservations.get(body.p_draft_key);
+      if(!entry){entry={owner,number:this.availableOrderNumbers.shift()??this.nextOrderNumber++};this.reservations.set(body.p_draft_key,entry);}
+      return {body:entry.number};
     }
     if(name==='pamda_saldo_credito_teste')return {body:(this.customerTestCredit.get(body.p_customer_id)||0)/100};
     if(!['pamda_iniciar_venda','pamda_salvar_rascunho_venda','pamda_cancelar_venda','pamda_descartar_venda_vazia','pamda_conceder_credito_teste','pamda_finalizar_venda_teste','pamda_confirmar_pagamento_teste'].includes(name))return null;
@@ -85,8 +98,8 @@ export class MockSales {
       if(!customer||!branch)return this.error('Cliente e unidade inválidos');
       const existing=this.sales.find(s=>s.created_by===user.id&&s.draft_key===body.p_draft_key);
       if(existing){if(existing.customer_id!==customer.id||existing.branch_id!==branch.id||existing.status!=='draft')return this.error('Chave de início incompatível');return {body:existing.id};}
-      const row:OfficialSaleRow={id:this.id(),order_number:this.availableOrderNumbers.shift()??this.nextOrderNumber++,first_product_at:null,customer_id:customer.id,branch_id:branch.id,created_by:user.id,status:'draft',created_at:new Date().toISOString(),updated_at:new Date().toISOString(),confirmed_at:null,payment_method_id:null,payment_term_id:null,customer_snapshot:{...structuredClone(customer),code:customer.customer_code} as any,branch_snapshot:structuredClone(branch) as any,seller_snapshot:'Teste isolado',notes:null,discount_reason:null,subtotal:0,discount_amount:0,shipping_charged:0,shipping_actual_cost:null,total:0,draft_key:body.p_draft_key, cancelled_at:null,cancelled_by:null,cancellation_reason:null,is_test:false,shipping_confirmed:false};
-      this.sales.push(row);this.event(row.id,'sale_started');
+      const row:OfficialSaleRow={id:this.id(),order_number:this.reservations.get(body.p_draft_key)?.number??this.availableOrderNumbers.shift()??this.nextOrderNumber++,first_product_at:null,customer_id:customer.id,branch_id:branch.id,created_by:user.id,status:'draft',created_at:new Date().toISOString(),updated_at:new Date().toISOString(),confirmed_at:null,payment_method_id:null,payment_term_id:null,customer_snapshot:{...structuredClone(customer),code:customer.customer_code} as any,branch_snapshot:structuredClone(branch) as any,seller_snapshot:'Teste isolado',notes:null,discount_reason:null,subtotal:0,discount_amount:0,shipping_charged:0,shipping_actual_cost:null,total:0,draft_key:body.p_draft_key, cancelled_at:null,cancelled_by:null,cancellation_reason:null,is_test:false,shipping_confirmed:false};
+      this.reservations.delete(body.p_draft_key);this.sales.push(row);this.event(row.id,'sale_started');
       if(this.failStartAfterCommit){this.failStartAfterCommit=false;return {abort:true};}return {body:row.id};
     }
     if(name==='pamda_descartar_venda_vazia'){

@@ -50,6 +50,7 @@ export const NewSaleView: React.FC<NewSaleViewProps> = ({ initialCustomer, onNew
     source: commercial.data.branchShippingCents !== null ? 'branch_override' as const : 'customer_default' as const } : pendingCustomerFreight, [commercial.data]);
   const [query, setQuery] = useState('');
   const [notice, setNotice] = useState('');
+  useEffect(()=>{void workspace.ensureNumber().catch(error=>setNotice(error instanceof Error?error.message:'Não foi possível consultar o número da venda.'));},[workspace]);
   const [finalizing,setFinalizing]=useState<SaleDetails|null>(null);
   const [receiptPreview,setReceiptPreview]=useState<ReceiptDocumentData|null>(null);
   const [testReceipt,setTestReceipt]=useState<ReceiptDocumentData|null>(null);
@@ -118,9 +119,8 @@ export const NewSaleView: React.FC<NewSaleViewProps> = ({ initialCustomer, onNew
     workspace.acceptClosed(details);setFinalizing(null);setTestReceipt(receipt);
     setNotice('Venda confirmada. Estoque, financeiro e produção atualizados.');
   };
-  const numberLabel=draft.remote?.orderNumber!==null&&draft.remote?.orderNumber!==undefined
-    ? `Nº ${draft.remote.orderNumber.toLocaleString('pt-BR')}`
-    : draft.remote?.saleId&&sync.status==='saved'?'Sem número':'Iniciando…';
+  const orderNumber=draft.remote?.orderNumber??draft.numberReservation?.orderNumber??null;
+  const numberLabel=orderNumber===null?'':`Nº ${orderNumber.toLocaleString('pt-BR')}`;
   const admin=authService.getCurrentUser()?.active===true&&(authService.getCurrentUser()?.role==='admin_gerencial'||authService.getCurrentUser()?.permissions?.['sales.confirm']===true);
   const activePaymentMethods=useMemo(()=>{
     const priority=['pix','dinheiro','credito_cliente','cartao_debito','cartao_credito','boleto'];
@@ -159,7 +159,7 @@ export const NewSaleView: React.FC<NewSaleViewProps> = ({ initialCustomer, onNew
   return (
     <div className="space-y-5">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <h1 className="text-2xl font-black tracking-tight text-slate-900">NOVA VENDA <span className="whitespace-nowrap">| {numberLabel}</span>{draft.remote?.orderNumber!==null&&draft.remote?.orderNumber!==undefined&&draft.remote.firstProductAt===null&&<span className="ml-2 text-xs font-bold text-amber-800">PROVISÓRIO</span>}</h1>
+        <h1 className="text-2xl font-black tracking-tight text-slate-900">NOVA VENDA {numberLabel&&<span className="sale-number-badge whitespace-nowrap">{numberLabel}</span>}</h1>
       </div>
 
       {notice && <p role="alert" className="text-sm text-amber-900">{notice}</p>}

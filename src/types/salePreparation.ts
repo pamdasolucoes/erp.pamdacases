@@ -19,6 +19,7 @@ export interface SalePreparation {
   pricing: PricingPreparation;
   paymentMethodId?:string|null;
   paymentTermId?:string|null;
+  numberReservation?: {draftKey:string;orderNumber:number};
   remote?: {
     draftKey:string; saleId:string|null; initialCustomerId:string; initialBranchId:string;
     savedFingerprint:string|null; status:'draft'|'confirmed'|'cancelled'; sellerName?:string;

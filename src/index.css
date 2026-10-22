@@ -36,3 +36,27 @@
     margin: 0 auto !important;
   }
 }
+
+@theme {
+ --color-blue-50: #f0f5ef; --color-blue-100: #d1e2d1;
+ --color-blue-200: #b5ceb6; --color-blue-300: #91b495;
+ --color-blue-400: #729878; --color-blue-500: #587e60;
+ --color-blue-600: #4a6951; --color-blue-700: #435446;
+ --color-blue-800: #304335; --color-blue-900: #243c2e;
+ --color-indigo-50: #f0f5ef; --color-indigo-100: #d1e2d1;
+ --color-indigo-600: #4a6951; --color-indigo-700: #435446;
+}
+body { background: #f4f5ef; color: #24372c; }
+.erp-shell { background: radial-gradient(ellipse at top right, #e2ecdf 0, transparent 55%), #f4f5ef; }
+.erp-sidebar { background: linear-gradient(170deg,#2d4737,#1e3327 72%); border-color:#334d3b; box-shadow: 6px 0 24px #1e332710; }
+.sidebar-brand { border-color:#ffffff16; background:#ffffff03; }
+.sidebar-active { background:#ffffff17; box-shadow:inset 3px 0 #bad7ad; }
+.erp-sidebar nav button { transition:background .15s; margin-top:2px; }
+.erp-sidebar nav h2 { font-size:10px; padding-bottom:7px; }
+.erp-header { border-color:#d9e2d6; box-shadow:0 2px 12px #2d473705; }
+.erp-shell main .bg-white { border-color:#dce4d8; box-shadow:0 3px 16px #2d473705; }
+.erp-shell main input:not([type=checkbox]):not([type=radio]), .erp-shell main select, .erp-shell main textarea { border-color:#d3ddce; }
+.erp-shell main input:focus, .erp-shell main select:focus, .erp-shell main textarea:focus { outline-color:#729878; }
+.erp-shell main thead { background:#edf2e9; color:#435446; }
+.sale-number-badge { display:inline-flex; vertical-align:middle; padding:6px 12px; margin-left:8px; border-radius:10px; background:#d1e2d1; color:#304335; font-size:16px; letter-spacing:0; }
+@media(max-width:639px) { .sale-number-badge {font-size:14px;margin-left:3px;padding:5px 8px;} }

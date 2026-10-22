@@ -45,7 +45,7 @@ export class PendingDraftSync {
   begin(){
     const draft=this.store.getSnapshot();
     if(!draft.remote&&draft.customerId&&draft.branchId){
-      this.store.update({...draft,remote:{draftKey:crypto.randomUUID(),saleId:null,initialCustomerId:draft.customerId,initialBranchId:draft.branchId,savedFingerprint:null,status:'draft',orderNumber:null,firstProductAt:null}});
+      this.store.update({...draft,remote:{draftKey:draft.numberReservation?.draftKey||crypto.randomUUID(),saleId:null,initialCustomerId:draft.customerId,initialBranchId:draft.branchId,savedFingerprint:null,status:'draft',orderNumber:draft.numberReservation?.orderNumber??null,firstProductAt:null}});
     }
     void this.changed();
   }
