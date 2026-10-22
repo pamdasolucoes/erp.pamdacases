@@ -75,7 +75,7 @@ test('recarga, navegação e Nova Venda repetida preservam toda a preparação',
   await page.getByRole('button',{name:'Produtos & Serviços',exact:true}).click();
   await reopenSale(page); await preserved(page);
   await page.reload(); await reopenSale(page); await preserved(page);
-  await expect(page.getByRole('button',{name:'Finalizar venda - TESTE',exact:true})).toBeVisible();
+  await expect(page.getByRole('button',{name:'Finalizar venda · TESTE',exact:true})).toBeVisible();
   expect(state.writes).toEqual([]);expect(state.pageErrors).toEqual([]);
 });
 

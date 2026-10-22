@@ -8,7 +8,7 @@ export function PaymentSelect({ label, value, rows, onChange, disabled = false }
     return (ai<0?priority.length:ai)-(bi<0?priority.length:bi)||a.name.localeCompare(b.name);
   });
   return <label className="block text-xs font-bold text-slate-600">{label}<select aria-label={label} disabled={disabled} value={value || ''} onChange={event => onChange(event.target.value || null)} className="mt-1 block w-full rounded-xl border border-slate-300 bg-white p-2 text-sm font-normal">
-    <option value="">Não configurado</option>{unavailable && <option value={value} disabled>Condição salva indisponível</option>}
+    <option value="">Selecione uma opção</option>{unavailable && <option value={value} disabled>Condição salva indisponível</option>}
     {activeRows.map(row => <option key={row.id} value={row.id}>{row.name}</option>)}
   </select></label>;
 }

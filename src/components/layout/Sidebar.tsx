@@ -175,7 +175,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   }`}
                 >
                   <ShoppingCart className="w-4 h-4" />
-                  <span>Todas as Vendas</span>
+                  <span>Pendências</span>
                 </button>
 
                 {currentUser?.canReadCustomers && <button

@@ -17,7 +17,7 @@ const method = (row: Row): PaymentMethod => {
 const unconfirmed = () => new UnconfirmedWriteError('Pagamento não confirmado. Atualize as condições e confira o servidor antes de repetir a operação.');
 
 export function paymentCondition(catalog: PaymentCatalog | null, methodId: string | null | undefined, termId: string | null | undefined): string {
-  if (!methodId && !termId) return 'Condição de pagamento não configurada';
+  if (!methodId && !termId) return '';
   const method = catalog?.methods.find(row => row.id === methodId), term = catalog?.terms.find(row => row.id === termId);
   if (methodId && !method?.active || termId && !term?.active) return 'Condição salva indisponível';
   return [method?.name, term?.name].filter(Boolean).join(' · ');

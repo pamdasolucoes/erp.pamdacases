@@ -83,7 +83,7 @@ test('catálogos reais paginam, preservam NULL e não inventam condições; erro
   const catalog = await fake.payments.catalog(userId);
   assert.equal(catalog.methods.length, 2); assert.equal(catalog.terms[0].dueDays, null);
   assert.equal(catalog.terms[0].installments, null);
-  assert.equal(paymentCondition(catalog, null, null), 'Condição de pagamento não configurada');
+  assert.equal(paymentCondition(catalog, null, null), '');
   assert.equal(paymentCondition(catalog, uuid(7101), uuid(7201)), 'PIX verificado · À vista verificado');
   assert.equal(paymentCondition(catalog, uuid(7500), null), 'Condição salva indisponível');
   assert.equal(paymentCondition(catalog, uuid(7102), null), 'Condição salva indisponível');

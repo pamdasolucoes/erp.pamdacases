@@ -81,7 +81,7 @@ test('pagamentos oficiais persistem na pendência e a prévia mantém o layout a
   await page.reload();
   await expect(page.getByLabel('Forma de pagamento da venda', { exact: true })).toHaveValue(uuid(7101));
   await expect(page.getByLabel('Prazo de pagamento da venda', { exact: true })).toHaveValue(uuid(7201));
-  await page.getByRole('button', { name: 'PRÉVIA DO RECIBO', exact: true }).click();
+  await page.getByRole('button', { name: 'Ver / imprimir recibo', exact: true }).click();
   await expect(page.getByRole('dialog', { name: 'Prévia do recibo', exact: true })).toBeVisible();
   await expect(page.locator('#pamda-receipt-preview-paper .receipt-heading strong')).toHaveText('RECIBO Nº TESTE');
   await page.screenshot({ path: testInfo.outputPath('pagamento-recibo.png'), fullPage: true });

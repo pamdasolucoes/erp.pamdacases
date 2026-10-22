@@ -13,7 +13,6 @@ import { ProductThumbnail } from '../../components/common/ProductThumbnail';
 import { searchSaleProducts } from '../../services/saleSearch';
 import { checkDraftStock } from '../../services/draftStock';
 import { createReceiptPreview } from '../../services/receiptPreview';
-import { ReceiptPreviewModal } from '../../components/receipt/ReceiptPreviewModal';
 import type { PricingPreparation } from '../../types/salePreparation';
 
 const inputClass = 'w-full px-3 py-2 border border-slate-300 rounded-xl text-sm bg-white';
@@ -21,7 +20,7 @@ function usePreparationField<K extends keyof PricingPreparation>(draft:PricingPr
   return [draft[key],value=>update(previous=>({...previous,[key]:typeof value==='function'?(value as (old:PricingPreparation[K])=>PricingPreparation[K])(previous[key]):value}))];
 }
 
-export function SalePricingPanel({ products, customerId, branchId, draft, onDraftChange, sellerName, paymentCondition, customerFreight = pendingCustomerFreight, selectedCustomer = null, selectedBranch = null, onFirstProductAdded, freightEditable = false }: { products: readonly OfficialProduct[]; customerId: string | null; branchId: string | null; draft:PricingPreparation; onDraftChange:React.Dispatch<React.SetStateAction<PricingPreparation>>; sellerName?:string; paymentCondition?:string; customerFreight?: CustomerFreightSetting; selectedCustomer?: OfficialCustomer | null; selectedBranch?: OfficialCustomerBranch | null; onFirstProductAdded():Promise<void>; freightEditable?:boolean }) {
+export function SalePricingPanel({ products, customerId, branchId, draft, onDraftChange, sellerName, paymentCondition, customerFreight = pendingCustomerFreight, selectedCustomer = null, selectedBranch = null, onFirstProductAdded, freightEditable = false, paymentSection, finalizationAction, onReceiptPreview }: { products: readonly OfficialProduct[]; customerId: string | null; branchId: string | null; draft:PricingPreparation; onDraftChange:React.Dispatch<React.SetStateAction<PricingPreparation>>; sellerName?:string; paymentCondition?:string; customerFreight?: CustomerFreightSetting; selectedCustomer?: OfficialCustomer | null; selectedBranch?: OfficialCustomerBranch | null; onFirstProductAdded():Promise<void>; freightEditable?:boolean; paymentSection:React.ReactNode; finalizationAction?:React.ReactNode; onReceiptPreview(data:ReceiptDocumentData):void }) {
   const [items, setItems] = usePreparationField(draft,onDraftChange,'items');
   const [discount, setDiscount] = usePreparationField(draft,onDraftChange,'discount');
   const [discountReason, setDiscountReason] = usePreparationField(draft,onDraftChange,'discountReason');
@@ -30,7 +29,6 @@ export function SalePricingPanel({ products, customerId, branchId, draft, onDraf
   const [freightReason, setFreightReason] = usePreparationField(draft,onDraftChange,'freightReason');
   const [manualFreight, setManualFreight] = usePreparationField(draft,onDraftChange,'manualFreight');
   const [productQuery, setProductQuery] = useState('');
-  const [preview, setPreview] = useState<ReceiptDocumentData | null>(null);
   const [, setEvents] = usePreparationField(draft,onDraftChange,'events');
   const [error, setError] = useState('');
   const revisionRef = useRef(crypto.randomUUID());
@@ -229,6 +227,7 @@ export function SalePricingPanel({ products, customerId, branchId, draft, onDraf
           <strong data-testid="pricing-total">{calculation.totals === null ? 'Valor inválido' : orderTotal.totalCents === null ? 'Informe um frete válido' : formatMoney(orderTotal.totalCents)}</strong>
         </p>
       </div>
+      {paymentSection}
       <div className="flex flex-col items-start gap-3 border-t pt-4 sm:flex-row sm:items-center lg:col-span-2">
         <button
           type="button"
@@ -236,7 +235,7 @@ export function SalePricingPanel({ products, customerId, branchId, draft, onDraf
             setError('');
             try {
               if (stock.errors.length) throw new Error(stock.errors.join(' '));
-              setPreview(createReceiptPreview({
+              onReceiptPreview(createReceiptPreview({
                 customer: selectedCustomer,
                 branch: selectedBranch,
                 items,
@@ -253,10 +252,10 @@ export function SalePricingPanel({ products, customerId, branchId, draft, onDraf
           }}
           className="rounded-xl bg-blue-600 px-5 py-3 text-sm font-bold text-white"
         >
-          PRÉVIA DO RECIBO
+          Ver / imprimir recibo
         </button>
+        {finalizationAction}
       </div>
     </div>
-    {preview && <ReceiptPreviewModal data={preview} onClose={()=>setPreview(null)} />}
   </section>;
 }

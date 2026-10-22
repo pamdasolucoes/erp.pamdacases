@@ -128,7 +128,7 @@ export function App() {
   const tabTitles: Record<ActiveTab, string> = {
     dashboard: 'Painel Geral de Operações B2B',
     nova_venda: 'Emissão de Nova Venda B2B',
-    vendas: 'Todas as Vendas e Pedidos',
+    vendas: 'Todas as Vendas',
     clientes: 'Clientes e Unidades — PAMDA CORE',
     produtos: 'Catálogo de Produtos & Serviços',
     kits: 'Kits & Produtos Compostos',
@@ -193,6 +193,7 @@ export function App() {
               customerContext={historyCustomer}
               onBackToCustomer={() => setCurrentTab('clientes')}
               onNewSaleClick={() => openNewSale(historyCustomer)}
+              onContinuePending={() => { setNewSaleCustomer(null); setCurrentTab('nova_venda'); }}
             />
           )}
 

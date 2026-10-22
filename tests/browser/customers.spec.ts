@@ -11,14 +11,14 @@ test('busca central, unidades reais, historico pendente e nova venda vazia com c
   await search.fill('12345678901'); await expect(page.getByText('1 de 384 clientes')).toBeVisible();
   await expect(page.getByText('Unidades cadastradas (1)')).toBeVisible();
   await page.getByRole('button',{ name:'CONSULTAR VENDAS',exact:true }).click();
-  await expect(page.getByRole('heading',{name:'Pedidos & Pendências'})).toBeVisible();
+  await expect(page.getByRole('heading',{name:'Todas as Vendas'})).toBeVisible();
   await expect(page.getByText('Nenhuma pendência encontrada.')).toBeVisible();
   await page.getByRole('button',{ name:'Voltar ao cliente' }).click();
   await expect(page.getByRole('heading',{ name:'Loja Árvore' })).toBeVisible();
   await page.getByRole('button',{ name:'+ NOVA VENDA',exact:true }).click();
   await expect(page.getByRole('combobox',{name:'Cliente',exact:true})).toHaveValue('000001 - Loja Árvore');
   await expect(page.getByText('Adicione um produto para começar.')).toBeVisible();
-  await expect(page.getByRole('button',{name:'Finalizar venda - TESTE',exact:true})).toBeVisible();
+  await expect(page.getByRole('button',{name:'Finalizar venda · TESTE',exact:true})).toBeVisible();
   await page.getByRole('combobox',{name:'Unidade / Filial',exact:true}).selectOption(uuid(1001));
   await expect(page.getByText('Endereço sinalizado para revisão.',{exact:true})).toBeVisible();
   await page.getByRole('combobox',{name:'Cliente',exact:true}).fill('000384');
@@ -28,7 +28,8 @@ test('busca central, unidades reais, historico pendente e nova venda vazia com c
   await selectCatalogProduct(page,kitId(1));
   await expect(page.getByLabel('Quantidade do item 1')).toHaveValue('1');
   await page.locator('form').evaluate(form=>(form as HTMLFormElement).requestSubmit());
-  await expect(page.getByRole('alert')).toContainText(/frete confirmado/i);
+  await expect(page.getByRole('alert')).toHaveCount(0);
+  await expect(page.getByRole('button',{name:'Finalizar venda · TESTE',exact:true})).toBeVisible();
   expect(state.writes).toEqual([]);
   expect(state.reads).toBeGreaterThan(20);
 });

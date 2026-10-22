@@ -41,7 +41,7 @@ export function createReceiptPreview(input: {
     branchName: null,
     address,
     addressNeedsReview: branch?.addressNeedsReview || false, salespersonName: seller.name || seller.username,
-    condition: input.paymentCondition || 'Condição de pagamento não configurada',
+    condition: input.paymentCondition || '',
     items: calculation.lines.map(line => ({ id: line.item.id, code: line.item.snapshot.productCode, sku: line.item.snapshot.productSku,
       name: line.item.snapshot.productName, description: line.item.snapshot.productDescription, quantity: line.quantity,
       unitPriceCents: line.unitPriceCents, subtotalCents: line.grossCents, discountCents: line.additionalDiscountCents, netCents: line.netCents,

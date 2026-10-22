@@ -7,6 +7,13 @@ export interface TestPaymentInput {
   channel:TestPaymentChannel;
   scheduled_for?:string;
 }
+export interface TestPaymentDraft {
+  methodCode:string;
+  amount:string;
+  status:TestPaymentStatus;
+  channel:TestPaymentChannel;
+  scheduledFor:string;
+}
 export interface TestPaymentRecord {
   id:string;
   saleId:string;

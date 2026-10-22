@@ -73,7 +73,7 @@ test('prévia responsiva imprime documento isolado A4/80 mm sem gravar nem confi
   await page.getByLabel('OBSERVAÇÕES',{exact:true}).fill('<script>teste</script>');
   await expect(page.getByTestId('sale-save-state')).toHaveText('Salvo · Pendente');
   const savedBeforePreview=sales.writes.length;
-  await page.getByRole('button',{name:'PRÉVIA DO RECIBO',exact:true}).click();
+  await page.getByRole('button',{name:'Ver / imprimir recibo',exact:true}).click();
   const dialog=page.getByRole('dialog',{name:'Prévia do recibo',exact:true});
   await expect(dialog).toBeVisible();
   const paper=page.locator('#pamda-receipt-preview-paper');
@@ -160,7 +160,7 @@ test('prévia responsiva imprime documento isolado A4/80 mm sem gravar nem confi
   expect(sales.writes.length).toBe(savedBeforePreview);
   await page.getByRole('button',{name:'Fechar e editar venda',exact:true}).click();
   await page.getByLabel('Valor unitário do item 1').fill('25,00');
-  await page.getByRole('button',{name:'PRÉVIA DO RECIBO',exact:true}).click();
+  await page.getByRole('button',{name:'Ver / imprimir recibo',exact:true}).click();
   await expect(paper).toContainText('45,00');
   expect(JSON.stringify({customers,products})).toBe(before);
   expect(sales.sales).toHaveLength(1);expect(sales.sales[0].status).toBe('draft');
@@ -179,7 +179,7 @@ test('prévia estreita adapta recibo, fonte e itens sem composição técnica',a
   await selectCatalogProduct(page,productId(1));
   await page.getByLabel('DESCONTO GERENCIAL (R$)',{exact:true}).fill('4,00');
   await page.getByLabel('Frete cobrado (R$)',{exact:true}).fill('12,50');
-  await page.getByRole('button',{name:'PRÉVIA DO RECIBO',exact:true}).click();
+  await page.getByRole('button',{name:'Ver / imprimir recibo',exact:true}).click();
   await page.setViewportSize({width:390,height:844});
 
   const paper=page.locator('#pamda-receipt-preview-paper');

@@ -2,6 +2,7 @@ import React,{useEffect,useMemo,useRef,useState} from 'react';
 import {X,Plus,Trash2} from 'lucide-react';
 import type {PaymentCatalog} from '../../types/payments';
 import type {TestPaymentInput,TestPaymentStatus,TestPaymentChannel,TestPaymentRecord,TestReceiptRecord} from '../../types/testSales';
+import type {TestPaymentDraft} from '../../types/testSales';
 import type {ReceiptDocumentData} from '../../types/receipt';
 import type {SaleDetails} from '../../types/pendingSales';
 import {pendingSalesService} from '../../services/saleWorkspace';
@@ -10,19 +11,18 @@ import {testReceiptDocument} from '../../services/testReceipt';
 import {formatMoney,parsePriceInput,centsInput} from '../../services/salePricing';
 import {dbCents} from '../../services/pendingSaleMapping';
 
-interface PaymentDraft {methodCode:string;amount:string;status:TestPaymentStatus;channel:TestPaymentChannel;scheduledFor:string;}
 const statusLabels:Record<TestPaymentStatus,string>={pending:'Pendente',scheduled:'Agendado',paid:'Pago no ambiente de teste'};
 const methodOrder=['pix','dinheiro','credito_cliente','cartao_debito','cartao_credito','boleto'];
-const newPayment=(methodCode:string,amount:string):PaymentDraft=>({methodCode,amount,status:'pending',channel:'erp',scheduledFor:''});
+const newPayment=(methodCode:string,amount:string):TestPaymentDraft=>({methodCode,amount,status:'pending',channel:'erp',scheduledFor:''});
 
-export function TestSaleFinalizationModal({userId,details,catalog,onClose,onCompleted}:{userId:string;details:SaleDetails;catalog:PaymentCatalog;onClose():void;onCompleted(details:SaleDetails,receipt:ReceiptDocumentData,payments:TestPaymentRecord[]):void}){
+export function TestSaleFinalizationModal({userId,details,catalog,initialPayments,onClose,onCompleted}:{userId:string;details:SaleDetails;catalog:PaymentCatalog;initialPayments?:TestPaymentDraft[];onClose():void;onCompleted(details:SaleDetails,receipt:ReceiptDocumentData,payments:TestPaymentRecord[]):void}){
   const {sale,items}=details;
   const totalCents=dbCents(sale.total);
   const activeMethods=useMemo(()=>catalog.methods.filter(method=>method.active).sort((a,b)=>{
     const ai=methodOrder.indexOf(a.code),bi=methodOrder.indexOf(b.code);
     return (ai<0?methodOrder.length:ai)-(bi<0?methodOrder.length:bi)||a.name.localeCompare(b.name);
   }),[catalog.methods]);
-  const [payments,setPayments]=useState<PaymentDraft[]>(()=>[newPayment(activeMethods.find(method=>method.code==='pix')?.code||activeMethods[0]?.code||'',centsInput(totalCents))]);
+  const [payments,setPayments]=useState<TestPaymentDraft[]>(()=>initialPayments?.length?structuredClone(initialPayments):[newPayment(activeMethods.find(method=>method.code==='pix')?.code||activeMethods[0]?.code||'',centsInput(totalCents))]);
   const [creditBalance,setCreditBalance]=useState<number|null>(null),[creditLoading,setCreditLoading]=useState(false);
   const [busy,setBusy]=useState(false),[error,setError]=useState('');
   const requestKey=useRef(crypto.randomUUID());
@@ -35,7 +35,7 @@ export function TestSaleFinalizationModal({userId,details,catalog,onClose,onComp
     void testSalesService.creditBalance(userId,sale.customer_id).then(value=>{if(alive)setCreditBalance(value);},reason=>{if(alive){setCreditBalance(null);setError(reason instanceof Error?reason.message:'Não foi possível consultar o crédito de teste.');}}).finally(()=>{if(alive)setCreditLoading(false);});
     return()=>{alive=false;};
   },[userId,sale.customer_id,usesCredit]);
-  function change(index:number,patch:Partial<PaymentDraft>){
+  function change(index:number,patch:Partial<TestPaymentDraft>){
     setPayments(rows=>rows.map((row,rowIndex)=>rowIndex===index?{...row,...patch}:row));
   }
   function addPayment(){

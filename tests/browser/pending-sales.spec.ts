@@ -5,7 +5,7 @@ import {uuid} from '../fixtures/customerRows';
 
 async function openCustomerSale(page:Page){await page.getByRole('button',{name:'+ NOVA VENDA',exact:true}).click();}
 async function saved(page:Page){await expect(page.getByTestId('sale-save-state')).toHaveText('Salvo · Pendente');}
-async function pendingList(page:Page){await page.getByRole('button',{name:'Todas as Vendas',exact:true}).click();await expect(page.getByRole('heading',{name:'Pedidos & Pendências'})).toBeVisible();}
+async function pendingList(page:Page){await page.getByRole('button',{name:'Pendências',exact:true}).click();await expect(page.getByRole('heading',{name:'Todas as Vendas'})).toBeVisible();}
 
 test('venda vazia recebe número provisório e sair descarta liberando o mesmo número',async({page})=>{
   const {sales,state}=await setup(page);
@@ -89,11 +89,8 @@ test('lista oficial recupera uma pendência sem depender do armazenamento local'
   const {sales}=await setup(page);await openCustomerSale(page);await selectCatalogProduct(page,kitId(1));
   await page.getByLabel('Frete cobrado (R$)',{exact:true}).fill('0,00');await page.getByLabel('OBSERVAÇÕES',{exact:true}).fill('Salvo no servidor');await saved(page);
   await pendingList(page);await page.evaluate(()=>sessionStorage.clear());await page.reload();
-  await page.getByRole('button',{name:'Todas as Vendas',exact:true}).click();
-  await page.getByRole('button',{name:'Consultar detalhes',exact:true}).click();
-  const details=page.getByRole('dialog',{name:'Detalhes da venda'});
-  await expect(details).toBeVisible();
-  await details.getByRole('button',{name:'Editar pendência',exact:true}).click();await saved(page);
+  await page.getByRole('button',{name:'Pendências',exact:true}).click();
+  await page.getByRole('button',{name:/^Pedido 10000$/}).click();await saved(page);
   await expect(page.getByLabel('Quantidade do item 1')).toHaveValue('1');await expect(page.getByLabel('OBSERVAÇÕES',{exact:true})).toHaveValue('Salvo no servidor');
   expect(sales.sales).toHaveLength(1);expect(sales.writes.filter(write=>write.name==='pamda_iniciar_venda')).toHaveLength(1);
 });
@@ -102,7 +99,7 @@ test('vendedor só continua suas pendências e não cancela; servidor rejeita te
   const {sales}=await setup(page,'venda_atendimento');
   await page.getByRole('button',{name:'Nova Venda',exact:true}).last().click();
   const customer=page.getByRole('combobox',{name:'Cliente',exact:true});await customer.fill('350');await expect(page.getByRole('listbox').getByRole('option')).toHaveCount(1);await customer.press('Enter');await selectCatalogProduct(page,kitId(1));await saved(page);
-  await pendingList(page);await expect(page.getByRole('button',{name:'Editar pendência',exact:true})).toBeVisible();await expect(page.getByRole('button',{name:'Cancelar venda',exact:true})).toHaveCount(0);
+  await pendingList(page);await expect(page.getByRole('button',{name:'Abrir venda / recibo',exact:true})).toBeVisible();await expect(page.getByRole('button',{name:'Cancelar venda',exact:true})).toHaveCount(0);
   const result=await page.evaluate(async id=>{
     const path='/src/services/supabase.ts';const {supabase}=await import(path);const {error}=await supabase.rpc('pamda_cancelar_venda',{p_venda_id:id,p_motivo:'Tentativa sem permissão'});return error?.code;
   },sales.sales[0].id);

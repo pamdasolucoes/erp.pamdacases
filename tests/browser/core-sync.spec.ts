@@ -87,12 +87,12 @@ test('administrador revisa pendência legada sem número e só confirma descarte
   const { sales, employee } = await setup(page);
   await sales.handle('/rest/v1/rpc/pamda_iniciar_venda', new URL('https://synthetic.invalid/'), { p_cliente_id: uuid(1), p_filial_id: uuid(1001), p_draft_key: uuid(8888) });
   const sale = sales.sales[0]; sale.order_number = null; sale.customer_snapshot = { code: '000001', name: 'Legado oficial' };
-  await page.getByRole('button', { name: 'Todas as Vendas', exact: true }).click();
+  await page.getByRole('button', { name: 'Pendências', exact: true }).click();
   await expect(page.getByText('Sem número · revisar', { exact: true })).toBeVisible();
   await expect(page.getByText('Código: 000001', { exact: true })).toBeVisible();
-  await page.getByRole('button', { name: 'Editar pendência', exact: true }).click();
+  await page.getByRole('button', { name: 'Abrir venda / recibo', exact: true }).click();
   await expect(page.getByTestId('sale-save-state')).toHaveText('Salvo · Pendente');
-  await page.getByRole('button', { name: 'Todas as Vendas', exact: true }).click();
+  await page.getByRole('button', { name: 'Pendências', exact: true }).click();
   await expect(page.getByText('Sem número · revisar', { exact: true })).toBeVisible();
   expect(sales.sales).toHaveLength(1);
   await page.getByRole('button', { name: 'Revisar descarte', exact: true }).click();
