@@ -13,6 +13,7 @@ export function canAccessTab(user: User | null, tab: string): boolean {
   if(user.permissions){
     if(user.role==='admin_gerencial')return true;
     if(`module.${tab}` in user.permissions&&user.permissions[`module.${tab}`]!==true)return false;
+    if(tab==='produtos'||tab==='kits')return ['sales.read','stock.read','products.manage'].some(key=>user.permissions?.[key]===true);
     const map:Record<string,string>={nova_venda:'sales.draft',vendas:'sales.read',clientes:'customers.manage',produtos:'sales.read',kits:'sales.read',estoque:'stock.read',producao:'production.read',contas_receber:'finance.read',fechamentos:'finance.read',entregas:'deliveries.manage',despesas:'expenses.manage',compras:'purchases.manage',fornecedores:'purchases.manage',relatorio_vendas:'reports.read',relatorio_clientes:'reports.read',lucratividade:'profitability.read',custo_estoque:'stock.cost',usuarios:'users.manage',logs:'audit.read',configuracoes:'settings.manage'};
     return tab==='dashboard'||!!map[tab]&&user.permissions[map[tab]]===true;
   }

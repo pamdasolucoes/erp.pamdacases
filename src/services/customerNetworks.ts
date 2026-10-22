@@ -16,7 +16,7 @@ export interface NetworkReportUnit {
   customer_id: string; customer_name: string; branch_id: string; branch_name: string;
   legacy_customer_code: string; group_display_code: string; billing_cycle: string; collection_mode: string; due_days: number | null;
   orders_started: number; orders_confirmed_real: number; orders_confirmed_test: number; orders_cancelled: number;
-  purchases_real: number | null; purchases_test: number | null; paid_real: null; paid_test: null; payments_integrated: false;
+  purchases_real: number | null; purchases_test: number | null; paid_real: number|null; paid_test: null; payments_integrated: boolean;
 }
 export interface NetworkReport { network_id: string; from: string; to: string; financial_authorized: boolean; units: NetworkReportUnit[] }
 const id = (value: string) => { if (!isUuid(value)) throw new Error('Selecione um cadastro válido.'); };
@@ -33,13 +33,13 @@ export function validatePeriod(start: string, end: string) {
 }
 export function mapNetworkReport(value: unknown, networkId: string, start: string, end: string, finance: boolean): NetworkReport {
   const r = value as NetworkReport & { payments_integrated: boolean };
-  if (!r || r.network_id !== networkId || r.from !== start || r.to !== end || !Array.isArray(r.units) || r.payments_integrated !== false) throw new Error('Contrato de relatório incompatível.');
+  if (!r || r.network_id !== networkId || r.from !== start || r.to !== end || !Array.isArray(r.units) || typeof r.payments_integrated !== 'boolean') throw new Error('Contrato de relatório incompatível.');
   const authorized = finance && r.financial_authorized === true;
   const units = r.units.map(u => {
     if (!isUuid(u.customer_id) || !isUuid(u.branch_id)) throw new Error('Unidade inválida no relatório.');
     const amount = (v: number | null) => { if (v !== null && (typeof v !== 'number' || !Number.isFinite(v) || v < 0)) throw new Error('Valor incompatível.'); return v; };
     return { ...u, purchases_real: authorized ? amount(u.purchases_real) : null, purchases_test: authorized ? amount(u.purchases_test) : null,
-      paid_real: null, paid_test: null, payments_integrated: false } as NetworkReportUnit;
+      paid_real: authorized&&r.payments_integrated ? amount(u.paid_real) : null, paid_test: null, payments_integrated: r.payments_integrated } as NetworkReportUnit;
   });
   return { network_id: networkId, from: start, to: end, financial_authorized: authorized, units };
 }
@@ -121,5 +121,10 @@ export class CustomerNetworksService {
     id(networkId); validatePeriod(start, end);
     const finance = await this.core.hasPermission(userId, 'finance.read');
     return mapNetworkReport(await this.core.rpc(userId, 'pamda_relatorio_rede_clientes', { p_rede_id: networkId, p_inicio: start, p_fim: end }), networkId, start, end, finance);
+  }
+  async close(userId:string,networkId:string,start:string,end:string,mode:string,customerId:string,branchId:string,requestKey:string){
+    id(networkId);id(requestKey);validatePeriod(start,end);if(customerId)id(customerId);if(branchId)id(branchId);
+    if(!['individual','consolidado'].includes(mode))throw new Error('Selecione o modo de fechamento.');
+    await this.core.rpc(userId,'pamda_network_closing',{p_network_id:networkId,p_start:start,p_end:end,p_mode:mode,p_customer_id:customerId||null,p_branch_id:branchId||null,p_request_key:requestKey},true);
   }
 }

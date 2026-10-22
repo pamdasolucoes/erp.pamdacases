@@ -1,7 +1,7 @@
 # Operação real do ERP — 22/10/2026
 
 Projeto Supabase: `onorqcdauhxumbznosxf` (erp-pamda).
-Migration aplicada: `20261022230147_erp_real_operations_and_user_access`.
+Migrations aplicadas: `20261022230147_erp_real_operations_and_user_access`, `20261022230835_erp_real_operations_indexes` `20261022231542_erp_real_network_reconciliation_and_closings`, `20261022231849_erp_individual_customer_read_permissions` e `20261022232024_erp_commercial_audit_in_operations`.
 As fontes em `supabase/review/12_*.sql` a `16_*.sql` compõem a migration importada do banco remoto. Não executar ambas as versões.
 
 ## Fluxos entregues
@@ -44,6 +44,8 @@ Os testes de navegador usam interceptação isolada. Cobrem navegação dos mód
 
 O recebimento bancário é registrado manualmente mediante referência/comprovante. Esta versão não cria cobrança em adquirente nem confirma Pix automaticamente. Entradas não lançam automaticamente uma despesa; registrar despesas separadamente quando aplicável, evitando duplicar custo de mercadoria no resultado.
 
-Cancelamento de pedido pendente continua preservado. Venda confirmada exige processo de estorno, que permanece bloqueado em vez de alterar estoque ou recebimentos indevidamente. Os fechamentos desta entrega são por cliente; o relatório anterior de redes ainda possui conciliação própria pendente.
+Cancelamento de pedido pendente continua preservado. Venda confirmada exige processo de estorno, que permanece bloqueado em vez de alterar estoque ou recebimentos indevidamente. Redes comerciais permitem fechamento individual por loja ou consolidado, com filtros de loja, unidade e período, e consulta dos valores recebidos e saldos reais. As antigas colunas de teste foram retiradas da ficha.
 
 Os avisos de segurança do Supabase sobre funções SECURITY DEFINER autenticadas refletem o padrão de RPCs com autorização interna, `search_path` vazio e execução anônima revogada. As tabelas operacionais têm RLS e não permitem escrita direta pelo navegador. A proteção contra senhas vazadas do projeto permanece desativada no serviço Auth; não foi alterada nesta entrega.
+
+Validação final: 178 testes automatizados, 19 testes de interface dos módulos/vendas e um teste de interface da conciliação e fechamento de redes. Compilação e verificação TypeScript aprovadas. A consulta individual de clientes também foi exercitada sob o papel `authenticated`, com negação após inativação.
