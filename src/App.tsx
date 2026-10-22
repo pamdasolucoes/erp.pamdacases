@@ -38,6 +38,8 @@ export function App() {
   const [historyCustomer, setHistoryCustomer] = useState<CustomerContext | null>(null);
   const [newSaleCustomer, setNewSaleCustomer] = useState<CustomerContext | null>(null);
   const [navigationError,setNavigationError]=useState('');
+  const [newSaleVersion,setNewSaleVersion]=useState(0);
+  const openingNewSale=useRef(false);
   const authenticatedId = useRef<string | null>(null);
   const recoveringSession = useRef(true);
 
@@ -87,19 +89,22 @@ export function App() {
   },[currentTab,currentUser?.id]);
 
   const openNewSale = async(customer: CustomerContext | null = null) => {
+    if(!currentUser||!canAccessTab(currentUser,'nova_venda')||openingNewSale.current)return;
+    openingNewSale.current=true;
     setNavigationError('');
-    if(customer&&currentUser){
+    try{
       const {saleWorkspace}=await import('./services/saleWorkspace');
       const workspace=saleWorkspace(currentUser.id);
-      if(workspace.store.getSnapshot().remote?.status&&workspace.store.getSnapshot().remote?.status!=='draft'){
-        try{await workspace.newDraft();}catch(error){setNavigationError(error instanceof Error?error.message:'Não foi possível abrir outra venda.');return;}
+      await workspace.newDraft();
+      if(customer){
+        workspace.store.update(previous=>({...previous,customerId:customer.id,branchId:'',commercialDefaultsPending:true}));
+        setCustomerContext(customer);
       }
-      // Apply an explicit navigation intent once, outside mount effects/HMR.
-      workspace.store.update(previous=>previous.customerId===customer.id?previous:{...previous,customerId:customer.id,branchId:'',commercialDefaultsPending:true,paymentMethodId:null,paymentTermId:null,pricing:{...previous.pricing,freight:'',freightReason:'',manualFreight:false}});
-    }
-    setNewSaleCustomer(customer);
-    if (customer) setCustomerContext(customer);
-    setCurrentTab('nova_venda');
+      setNewSaleCustomer(customer);
+      setNewSaleVersion(version=>version+1);
+      setCurrentTab('nova_venda');
+    }catch(error){setNavigationError(error instanceof Error?error.message:'Falha ao abrir nova venda.');}
+    finally{openingNewSale.current=false;}
   };
   const openCustomerSales = (customer: CustomerContext) => {
     setCustomerContext(customer);
@@ -168,7 +173,6 @@ export function App() {
         <Header
           currentUser={currentUser}
           onOpenMobileMenu={() => setMobileMenuOpen(true)}
-          onNewSaleClick={() => openNewSale()}
           title={tabTitles[currentTab] || 'PAMDA ERP'}
         />
 
@@ -185,7 +189,7 @@ export function App() {
           )}
 
           {currentTab === 'nova_venda' && (
-            <NewSaleView initialCustomer={newSaleCustomer} onDiscard={()=>setNewSaleCustomer(null)} />
+            <NewSaleView key={newSaleVersion} initialCustomer={newSaleCustomer} onNewSale={()=>openNewSale()} />
           )}
 
           {currentTab === 'vendas' && (

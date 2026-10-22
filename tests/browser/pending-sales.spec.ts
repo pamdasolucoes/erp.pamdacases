@@ -28,7 +28,7 @@ test('início com resposta perdida repete a mesma chave sem duplicar e preserva 
   const {sales}=await setup(page);sales.failStartAfterCommit=true;
   await openCustomerSale(page);await expect(page.getByTestId('sale-save-state')).toHaveText('Erro ao salvar');
   const first=sales.writes.find(write=>write.name==='pamda_iniciar_venda')!;
-  await page.reload();await page.getByRole('button',{name:'Nova Venda',exact:true}).first().click();await saved(page);
+  await page.reload();await saved(page);
   const starts=sales.writes.filter(write=>write.name==='pamda_iniciar_venda');
   expect(starts.length).toBeGreaterThanOrEqual(2);expect(starts.every(write=>write.body.p_draft_key===first.body.p_draft_key)).toBe(true);
   expect(sales.sales).toHaveLength(1);expect(sales.events.filter(e=>e.event_type==='sale_started')).toHaveLength(1);
@@ -68,7 +68,7 @@ test('salva preços, personalização, frete e desconto serialmente e retoma ite
   expect(sales.maxConcurrent).toBe(1);expect(sales.sales[0].total).toBe(35);expect(sales.items).toHaveLength(1);
   expect(sales.items[0].customization).toMatchObject({model:'iPhone 11',color:'Preto',walletFaces:'2'});
   expect(products.find(p=>p.id===kitId(1))!.sale_price).toBe(25);
-  await page.reload();await page.getByRole('button',{name:'Nova Venda',exact:true}).first().click();await saved(page);
+  await page.reload();await saved(page);
   await expect(page.getByLabel('Valor unitário do item 1')).toHaveValue('20,00');await expect(page.getByLabel('Quantidade do item 1')).toHaveValue('2');
   await expect(page.getByLabel('OBSERVAÇÕES',{exact:true})).toHaveValue('Persistir observação');await expect(page.getByTestId('pricing-total')).toContainText('35,00');
   await page.getByRole('button',{name:'Remover item 1',exact:true}).click();
@@ -78,7 +78,6 @@ test('salva preços, personalização, frete e desconto serialmente e retoma ite
   await page.getByRole('button',{name:'Dashboard',exact:true}).click();
   expect(sales.sales).toHaveLength(1);expect(sales.sales[0].order_number).toBe(10000);
   await page.getByRole('button',{name:'Nova Venda',exact:true}).first().click();
-  await page.getByRole('button',{name:'Nova venda',exact:true}).last().click();
   const customer=page.getByRole('combobox',{name:'Cliente',exact:true});await customer.fill('350');await expect(page.getByRole('listbox').getByRole('option')).toHaveCount(1);await customer.press('Enter');
   await saved(page);
   await expect(page.getByText('Pedido nº 10001 · provisório',{exact:true})).toBeVisible();
@@ -106,7 +105,7 @@ test('vendedor só continua suas pendências e não cancela; servidor rejeita te
   expect(result).toBe('42501');expect(sales.sales[0].status).toBe('draft');
 });
 
-test('administrador cancela com motivo, histórico permanece e venda cancelada fica bloqueada',async({page},testInfo)=>{
+test('administrador cancela com motivo, preserva o histórico e Nova Venda abre outro pedido',async({page},testInfo)=>{
   const {sales}=await setup(page);await openCustomerSale(page);await selectCatalogProduct(page,kitId(1));await saved(page);await pendingList(page);
   await page.screenshot({path:testInfo.outputPath('lista-pendencias.png')});
   await page.getByRole('button',{name:'Cancelar venda',exact:true}).click();
@@ -120,7 +119,8 @@ test('administrador cancela com motivo, histórico permanece e venda cancelada f
   await page.getByRole('button',{name:'Fechar detalhes'}).click();await page.getByRole('button',{name:'Histórico',exact:true}).click();
   await expect(page.getByRole('row').filter({hasText:'Loja Árvore'})).toContainText('Cancelada');
   await page.getByRole('button',{name:'Nova Venda',exact:true}).last().click();
-  await expect(page.getByLabel('OBSERVAÇÕES',{exact:true})).toBeDisabled();
+  await expect(page.getByLabel('OBSERVAÇÕES',{exact:true})).toBeEnabled();
+  await expect(page.getByRole('combobox',{name:'Cliente',exact:true})).toHaveValue('');
   expect(sales.inventoryWrites).toBe(0);expect(sales.financialWrites).toBe(0);
 });
 

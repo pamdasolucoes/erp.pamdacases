@@ -26,7 +26,7 @@ import {SaleFinalizationModal as TestSaleFinalizationModal} from './SaleFinaliza
 
 interface NewSaleViewProps {
   initialCustomer?: CustomerContext | null;
-  onDiscard?: () => void;
+  onNewSale?: () => void;
 }
 
 const inputClass = 'w-full px-3 py-2 border border-slate-300 rounded-xl text-sm bg-white';
@@ -37,7 +37,7 @@ function branchLabel(branch: { name: string; active: boolean; isPrimary?: boolea
   return branch.isPrimary ? 'Matriz' : branch.name;
 }
 
-export const NewSaleView: React.FC<NewSaleViewProps> = ({ initialCustomer, onDiscard }) => {
+export const NewSaleView: React.FC<NewSaleViewProps> = ({ initialCustomer, onNewSale }) => {
   const { customers, loading, error, reload } = useCustomers();
   const { products, loading: productsLoading, error: productsError, reload: reloadProducts } = useProducts();
   const userId = authService.getCurrentUser()!.id;
@@ -174,10 +174,7 @@ export const NewSaleView: React.FC<NewSaleViewProps> = ({ initialCustomer, onDis
       {draft.remote&&<button
         type="button"
         className="text-xs text-slate-500 underline underline-offset-2"
-        onClick={async() => {
-          try{const discarded=await workspace.newDraft();onDiscard?.();setNotice(discarded?'Preparação vazia descartada pelo servidor.':'A venda anterior permanece registrada no Supabase.');}
-          catch(error){setNotice(error instanceof Error?error.message:'Não foi possível abrir outra venda.');}
-        }}
+        onClick={onNewSale}
       >
         Nova venda
       </button>}

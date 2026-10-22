@@ -17,7 +17,8 @@ async function refresh(page:Page){
   });
 }
 async function reopenSale(page:Page){
-  await page.getByRole('button',{name:'Nova Venda',exact:true}).first().click();
+  await page.getByRole('navigation').getByRole('button',{name:'Pendências',exact:true}).click();
+  await page.getByRole('button',{name:/^Pedido \d+$/}).first().click();
   await expect(page.getByRole('heading',{name:/NOVA VENDA \|/})).toBeVisible();
 }
 async function prepare(page:Page){
@@ -62,20 +63,22 @@ test('unidade única automática, várias sem marcador exigem escolha e escolha 
   const customer=page.getByRole('combobox',{name:'Cliente',exact:true});
   await customer.fill('350'); await customer.press('Enter'); await expect(branch).toHaveValue('');
   await expect(page.getByText('Selecione a unidade desejada.')).toBeVisible();
-  await branch.selectOption(uuid(1900)); await refresh(page); await expect(branch).toHaveValue(uuid(1900));
+  await branch.selectOption(uuid(1900)); await selectCatalogProduct(page,kitId(1));await expect(page.getByTestId('sale-save-state')).toHaveText('Salvo · Pendente'); await refresh(page); await expect(branch).toHaveValue(uuid(1900));
   await page.reload(); await reopenSale(page); await expect(page.getByRole('combobox',{name:'Unidade / Filial',exact:true})).toHaveValue(uuid(1900));
   await customer.fill('351');await customer.press('Enter');await expect(branch).toHaveValue(uuid(1351));
   expect(state.writes).toEqual([]);
 });
 
-test('recarga, navegação e Nova Venda repetida preservam toda a preparação',async({page})=>{
+test('Nova Venda reinicia a preparação; navegação e recarga permitem retomar pela pendência',async({page})=>{
   const {state,sales}=await setup(page); await prepare(page);await expect(page.getByTestId('sale-save-state')).toHaveText('Salvo · Pendente');
   expect(sales.sales[0].first_product_at).not.toBeNull();
-  await page.getByRole('button',{name:'Nova Venda',exact:true}).first().click(); await preserved(page);
+  await page.getByRole('navigation').getByRole('button',{name:'Nova Venda',exact:true}).click();
+  await expect(page.getByRole('combobox',{name:'Cliente',exact:true})).toHaveValue('');
+  await page.getByRole('navigation').getByRole('button',{name:'Pendências',exact:true}).click();await reopenSale(page);await preserved(page);
   await page.getByRole('button',{name:'Produtos & Serviços',exact:true}).click();
   await reopenSale(page); await preserved(page);
   await page.reload(); await reopenSale(page); await preserved(page);
-  await expect(page.getByRole('button',{name:'Finalizar venda · TESTE',exact:true})).toBeVisible();
+  await expect(page.getByRole('button',{name:'Finalizar venda',exact:true})).toBeVisible();
   expect(state.writes).toEqual([]);expect(state.pageErrors).toEqual([]);
 });
 
@@ -130,7 +133,7 @@ test('falha transitória bloqueia sem apagar; negação de perfil e logout real 
 test('logout entre abas não é ignorado, outro usuário não recupera rascunho e nova venda preserva a pendência anterior',async({page,context})=>{
   const {employee,state,sales}=await setup(page);await prepare(page);
   const other=await context.newPage();await setup(other,'admin_gerencial',{reuseSession:true});
-  await other.getByRole('button',{name:'Sair do ERP',exact:true}).click();
+  await other.getByRole('button',{name:'Sair',exact:true}).click();
   await expect(page.getByRole('heading',{name:'Bem-vindo ao PAMDA ERP'})).toBeVisible();await other.close();
   employee.id=uuid(9001);
   await page.getByLabel('E-mail',{exact:true}).fill('another@example.invalid');await page.locator('#login-password').fill('synthetic-only');
@@ -145,7 +148,7 @@ test('logout entre abas não é ignorado, outro usuário não recupera rascunho 
   await expect(page.getByTestId('sale-save-state')).toHaveText('Salvo · Pendente');
   const previous=sales.sales.find(sale=>sale.created_by===employee.id)!;
   await page.getByRole('button',{name:'Nova venda',exact:true}).click();
-  await expect(page.getByText('Adicione um produto para começar.')).toBeVisible();await page.reload();await reopenSale(page);
+  await expect(page.getByText('Adicione um produto para começar.')).toBeVisible();await page.reload();await page.getByRole('navigation').getByRole('button',{name:'Nova Venda',exact:true}).click();
   await expect(page.getByText('Adicione um produto para começar.')).toBeVisible();
   expect(sales.sales.find(sale=>sale.id===previous.id)?.status).toBe('draft');
   expect(sales.writes.filter(write=>write.name==='pamda_cancelar_venda')).toEqual([]);

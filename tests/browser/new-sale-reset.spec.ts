@@ -1,0 +1,51 @@
+import {test,expect} from '@playwright/test';
+import {setup,selectCatalogProduct} from './support/mockErp';
+import {kitId} from '../fixtures/officialProducts';
+
+test('Nova Venda sempre inicia zerada e a venda anterior só retorna ao editar a pendência',async({page})=>{
+ const {sales,state}=await setup(page);
+ await expect(page.getByRole('banner').getByRole('button',{name:'Nova Venda',exact:true})).toHaveCount(0);
+ await page.getByRole('button',{name:'+ NOVA VENDA',exact:true}).click();
+ await selectCatalogProduct(page,kitId(1));
+ await page.getByLabel('Frete cobrado (R$)',{exact:true}).fill('0,00');
+ await page.getByLabel('OBSERVAÇÕES',{exact:true}).fill('Pedido anterior preservado');
+ await expect(page.getByTestId('sale-save-state')).toHaveText('Salvo · Pendente');
+ const previousId=sales.sales[0].id;
+ await page.getByRole('navigation').getByRole('button',{name:'Nova Venda',exact:true}).click();
+ await expect(page.getByRole('combobox',{name:'Cliente',exact:true})).toHaveValue('');
+ await expect(page.getByLabel('OBSERVAÇÕES',{exact:true})).toHaveValue('');
+ await expect(page.getByLabel('Quantidade do item 1')).toHaveCount(0);
+ expect(sales.sales.find(s=>s.id===previousId)?.status).toBe('draft');
+ await page.getByRole('combobox',{name:'Cliente',exact:true}).fill('000001');
+ await page.getByRole('listbox').getByRole('option').first().click();
+ await expect(page.getByTestId('sale-save-state')).toHaveText('Salvo · Pendente');
+ await selectCatalogProduct(page,kitId(1));
+ await page.getByLabel('Frete cobrado (R$)',{exact:true}).fill('0,00');
+ await page.getByLabel('OBSERVAÇÕES',{exact:true}).fill('Outro pedido');
+ await expect(page.getByTestId('sale-save-state')).toHaveText('Salvo · Pendente');
+ expect(sales.sales).toHaveLength(2);
+ expect(new Set(sales.sales.map(s=>s.order_number)).size).toBe(2);
+ await page.getByRole('button',{name:'Nova venda',exact:true}).click();
+ await expect(page.getByRole('combobox',{name:'Cliente',exact:true})).toHaveValue('');
+ await expect(page.getByLabel('OBSERVAÇÕES',{exact:true})).toHaveValue('');
+ await page.getByRole('button',{name:'Pendências',exact:true}).click();
+ await page.getByRole('button',{name:'Pedido 10000',exact:true}).click();
+ await expect(page.getByLabel('OBSERVAÇÕES',{exact:true})).toHaveValue('Pedido anterior preservado');
+ await expect(page.getByLabel('Quantidade do item 1')).toHaveValue('1');
+ expect(state.pageErrors).toEqual([]);
+});
+
+test('Nova Venda pela ficha do mesmo cliente começa sem itens e mantém somente o cliente selecionado',async({page})=>{
+ const {sales}=await setup(page);
+ await page.getByRole('button',{name:'+ NOVA VENDA',exact:true}).click();
+ await selectCatalogProduct(page,kitId(1));
+ await page.getByLabel('Frete cobrado (R$)',{exact:true}).fill('0,00');
+ await expect(page.getByTestId('sale-save-state')).toHaveText('Salvo · Pendente');
+ await page.getByRole('navigation').getByRole('button',{name:'Clientes e Unidades',exact:true}).click();
+ await page.getByRole('button',{name:'+ NOVA VENDA',exact:true}).click();
+ await expect(page.getByRole('combobox',{name:'Cliente',exact:true})).toHaveValue('000001 - Loja Árvore');
+ await expect(page.getByLabel('Quantidade do item 1')).toHaveCount(0);
+ await expect(page.getByLabel('OBSERVAÇÕES',{exact:true})).toHaveValue('');
+ await expect(page.getByTestId('sale-save-state')).toHaveText('Salvo · Pendente');
+ expect(sales.sales).toHaveLength(2);
+});

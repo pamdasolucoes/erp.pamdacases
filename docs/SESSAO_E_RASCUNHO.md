@@ -12,7 +12,7 @@ Para a mesma identidade, eventos de sessão revalidam usuário e perfil sem publ
 
 `persistSession` e `autoRefreshToken` permanecem habilitados. A recuperação inicial continua validando `auth.getUser()` e consultando `erp_user_profiles`; nenhum perfil vem de metadata ou do rascunho. `SIGNED_OUT`, identidade inválida, perfil ausente/inativo e permissão negada continuam bloqueando acesso. Falha transitória de rede mantém o contexto em memória **com a interface bloqueada**, erro visível e ações para revalidar ou sair. Voltar ao foco, retornar à aba ou recuperar conexão também revalida o perfil; nenhum erro transitório é tratado como sucesso.
 
-O cliente Supabase é reutilizado durante HMR, e a assinatura antiga de Auth é removida ao substituir o módulo. A inicialização do serviço permanece idempotente. O efeito do App remove os próprios listeners ao desmontar. A tela não depende mais de uma `key` artificial para abrir Nova Venda.
+O cliente Supabase é reutilizado durante HMR, e a assinatura antiga de Auth é removida ao substituir o módulo. A inicialização do serviço permanece idempotente. O efeito do App remove os próprios listeners ao desmontar. A renovação de sessão preserva a tela. Por solicitação de 22/10/2026, clicar explicitamente em Nova Venda inicia outra preparação e remonta o formulário para limpar também os estados locais, como a divisão de pagamentos. Retomar pedido existente é uma ação separada em Pendências.
 
 ## Rascunho temporário
 
@@ -38,7 +38,7 @@ A proposta [08_PAMDA_MATRIZ_FUTURA_NAO_EXECUTAR.sql](../supabase/review/08_PAMDA
 
 1. Execute `npm run dev` com a configuração válida em `.env.local` e entre com uma conta ativa.
 2. Em Nova Venda, escolha um cliente com unidade única e confira a seleção automática. Num cliente com várias unidades sem matriz oficial, escolha manualmente e recarregue: a escolha deve permanecer.
-3. Prepare itens, quantidades, preço negociado, frete zero, desconto e observações. Navegue para Produtos e volte à Nova Venda; clique Nova Venda novamente e recarregue. Os valores devem permanecer.
+3. Prepare itens, quantidades, preço negociado, frete zero, desconto e observações. Recarregar ou renovar a sessão preserva a preparação. Ao clicar em Nova Venda, a tela deve iniciar zerada e o pedido anterior com produtos deve permanecer em Pendências. Para retomá-lo, selecione seu pedido em Pendências. Ao iniciar pela ficha de um cliente, somente o cliente e sua unidade padrão são pré-selecionados. O botão redundante no cabeçalho à direita foi removido.
 4. Abra outra aba no mesmo endereço e use o ERP nas duas abas. Alternar entre elas e renovar a sessão não deve voltar ao login nem misturar os rascunhos. Mantenha o mesmo hostname e porta; `localhost` e `127.0.0.1` são origens diferentes no navegador.
 5. Para verificar renovação, acompanhe `token?grant_type=refresh_token` no Network durante o uso, sem copiar tokens/segredos. A tela deve continuar no mesmo módulo após a renovação.
 6. Para simular falha de validação, bloqueie temporariamente a consulta `erp_user_profiles` e retorne à aba: aparecerá o bloqueio de revalidação. Restaure a rede e tente novamente; a preparação deve continuar.
