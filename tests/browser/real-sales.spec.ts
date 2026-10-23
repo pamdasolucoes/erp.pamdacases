@@ -25,10 +25,12 @@ test('finalização real preserva divisão dos pagamentos, confirma no servidor 
  await page.getByRole('button',{name:'Finalizar venda',exact:true}).click();
  const modal=page.getByRole('dialog',{name:'Finalizar venda',exact:true});
  await expect(modal.getByRole('spinbutton')).toHaveCount(2);
+ await expect(modal.getByLabel('Situação',{exact:true})).toHaveCount(0);
+ await expect(modal.getByLabel('Comprovante / referência',{exact:true})).toHaveCount(0);
  await modal.getByRole('button',{name:'Confirmar venda',exact:true}).click();
  await expect(page.getByText('Venda confirmada. Estoque, financeiro e produção atualizados.')).toBeVisible();
  expect(calls).toHaveLength(1);expect(calls[0].p_payments.map((p:any)=>p.amount)).toEqual([10,15]);
- expect(calls[0].p_payments.every((p:any)=>p.channel==='erp'&&p.status==='pending')).toBe(true);
+ expect(calls[0].p_payments.every((p:any)=>p.channel==='erp'&&p.status==='paid'&&p.reference===undefined&&p.scheduled_for===undefined)).toBe(true);
  await expect(page.getByText('DOCUMENTO DE TESTE - SEM VALOR FISCAL',{exact:true})).toHaveCount(0);
  await expect(page.getByRole('article',{name:'Documento do recibo'})).toBeVisible();
 });
