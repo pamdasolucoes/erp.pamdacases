@@ -114,8 +114,8 @@ export function SalePricingPanel({ products, customerId, branchId, draft, onDraf
     {error && <p role="alert" className="m-4 p-3 rounded-xl bg-rose-50 text-rose-800 text-sm">{error}</p>}
     {calculation.errors.map(message => <p key={message} role="alert" className="m-4 text-rose-800 text-sm">{message}</p>)}
     {stock.errors.map(message => <p key={message} role="alert" className="m-4 text-rose-800 text-sm">{message}</p>)}
-    <div className="overflow-x-auto"><table className="w-full text-sm text-left"><thead className="bg-slate-50"><tr><th className="p-2">Produto</th><th className="p-2">Quantidade</th><th className="p-2">Preço unitário</th><th className="p-2 text-right">Subtotal</th>{costPermission.allowed&&<><th className="p-2">Custo unitário</th><th className="p-2">Custo total</th></>}<th className="p-2"> </th></tr></thead>
-      <tbody>{items.length === 0 ? <tr><td colSpan={costPermission.allowed?7:5} className="text-center p-8 text-slate-500">Adicione um produto para começar.</td></tr> : items.map((item, index) => {
+    <div className="overflow-x-auto"><table className="w-full text-sm text-left"><thead className="bg-slate-50"><tr><th className="p-2">Produto</th><th className="p-2">Quantidade</th>{costPermission.allowed&&<th className="p-2">Custo total</th>}<th className="p-2">Preço unitário</th><th className="p-2 text-right">Subtotal</th><th className="p-2"> </th></tr></thead>
+      <tbody>{items.length === 0 ? <tr><td colSpan={costPermission.allowed?6:5} className="text-center p-8 text-slate-500">Adicione um produto para começar.</td></tr> : items.map((item, index) => {
         const line = calculation.lines.find(value => value.item.id === item.id);
         const parsed = parsePriceInput(item.priceInput);
         const changed = parsed !== null && parsed !== item.snapshot.originalUnitPriceCents;
@@ -123,12 +123,13 @@ export function SalePricingPanel({ products, customerId, branchId, draft, onDraf
           <tr className={`border-t border-slate-100 ${changed ? 'bg-amber-50/60' : ''}`}>
             <td className="p-2 min-w-40"><p className="font-semibold">{item.snapshot.productName}</p><p className="text-xs text-slate-500">Cód. {item.snapshot.productCode}</p>{changed && <span className="text-xs font-semibold text-amber-800">Preço negociado</span>}</td>
             <td className="p-2"><input aria-label={`Quantidade do item ${index + 1}`} className="w-16 rounded border p-2" type="number" min="1" step="1" value={item.quantityInput} onChange={event => changeItem(item.id, { quantityInput: event.target.value })} /></td>
+            {costPermission.allowed&&<td className="p-2 whitespace-nowrap" data-testid={`sale-total-cost-${index+1}`}>{costOf(item)===null||!line?'—':formatMoney(Math.round(costOf(item)!*line.quantity))}</td>}
             <td className="p-2"><input aria-label={`Valor unitário do item ${index + 1}`} aria-invalid={parsed === null} className={`w-28 rounded border p-2 ${parsed === null ? 'border-rose-500' : changed ? 'border-amber-500' : ''}`} inputMode="decimal" type="text" value={item.priceInput} onChange={event => changeItem(item.id, { priceInput: event.target.value })} onBlur={() => commitPrice(item)} />{(changed || item.snapshot.originalUnitPriceCents === null) && <button type="button" disabled={item.snapshot.productType === null && item.snapshot.originalUnitPriceCents === null} title={item.snapshot.productType === null ? 'O preço original não consta no histórico deste item.' : undefined} onClick={() => restore(item)} aria-label={`Restaurar preço do item ${index + 1}`} className="mt-1 block text-xs text-blue-700">Restaurar preço</button>}</td>
             <td className="whitespace-nowrap p-2 text-right font-semibold">{line ? formatMoney(line.grossCents) : 'Valor inválido'}</td>
-            <>{costPermission.allowed&&<><td className="p-2 whitespace-nowrap" data-testid={`sale-unit-cost-${index+1}`}>{costOf(item)===null?'Não cadastrado':formatMoney(costOf(item)!)}</td><td className="p-2 whitespace-nowrap">{costOf(item)===null||!line?'—':formatMoney(Math.round(costOf(item)!*line.quantity))}</td></>}</><td className="p-2"><button type="button" aria-label={`Remover item ${index + 1}`} onClick={() => { invalidate(); setItems(previous => previous.filter(row => row.id !== item.id)); committedPrices.current.delete(item.id); committedReasons.current.delete(item.id); }} className="p-2 text-rose-600"><Trash2 className="h-4 w-4" /></button></td>
+<td className="p-2"><button type="button" aria-label={`Remover item ${index + 1}`} onClick={() => { invalidate(); setItems(previous => previous.filter(row => row.id !== item.id)); committedPrices.current.delete(item.id); committedReasons.current.delete(item.id); }} className="p-2 text-rose-600"><Trash2 className="h-4 w-4" /></button></td>
           </tr>
           <tr className="border-b border-slate-100">
-            <td colSpan={5} className="px-2 pb-2">
+            <td colSpan={costPermission.allowed?6:5} className="px-2 pb-2">
               <details className="text-xs">
                 <summary className="cursor-pointer text-slate-600">Personalização e motivo (opcional)</summary>
                 <div className="mt-2 flex flex-wrap gap-2">
