@@ -9,6 +9,7 @@ const SALES_TABS = new Set([
 ]);
 
 export function canAccessTab(user: User | null, tab: string): boolean {
+  if(tab==='redes')return canAccessTab(user,'clientes');
   if (!user?.active || user.mustChangePassword) return false;
   if(user.permissions){
     if(user.role==='admin_gerencial')return true;

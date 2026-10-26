@@ -28,6 +28,7 @@ test('rede selecionada explicitamente, dados financeiros protegidos e fechamento
     }))}});
   });
   await page.reload();
+  await page.getByRole('navigation').getByRole('button',{name:'Rede de Lojas',exact:true}).click();
   const panel=page.getByRole('region',{name:'Rede de lojas',exact:true});
   await panel.getByLabel('Selecionar rede').selectOption(network.id);
   await expect(panel.getByText('Histórico original:',{exact:false}).first()).toBeVisible();

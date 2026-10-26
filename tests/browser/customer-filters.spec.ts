@@ -1,0 +1,31 @@
+import {test,expect} from '@playwright/test';
+import {setup} from './support/mockErp';
+
+test('lista ordena códigos numericamente, filtra revisão e oculta clientes desativados',async({page})=>{
+ const {customers,branches}=await setup(page,'admin_gerencial',{customerListOnly:true});
+ await expect(page.getByRole('group',{name:'Ações do cliente'})).toHaveCount(0);
+ await expect(page.getByRole('region',{name:'Rede de lojas',exact:true})).toHaveCount(0);
+ customers[0].name='Filtro cliente 20';customers[0].customer_code='20';customers[0].active=false;
+ customers[1].name='Filtro cliente 3';customers[1].customer_code='3';branches[1].address_needs_review=false;
+ customers[2].name='Filtro cliente 100';customers[2].customer_code='100';branches[2].address_needs_review=true;
+ await page.getByRole('button',{name:'Atualizar lista',exact:true}).click();
+ const search=page.getByPlaceholder('Código, nome, razão social ou CPF/CNPJ');await search.fill('Filtro cliente');
+ const region=page.getByRole('region',{name:'Lista de clientes',exact:true});
+ await expect(region.locator('tbody tr')).toHaveCount(2);
+ expect(await region.locator('tbody tr td:first-child').allTextContents()).toEqual(['3','100']);
+ await page.getByLabel('Revisão de endereço',{exact:true}).selectOption('revisao');
+ await expect(region.locator('tbody tr')).toHaveCount(1);await expect(region).toContainText('Filtro cliente 100');
+ await page.getByLabel('Revisão de endereço',{exact:true}).selectOption('todos');
+ await page.getByRole('button',{name:'Filtro cliente 100',exact:true}).click();
+ await page.getByRole('button',{name:'Editar cadastro',exact:true}).click();
+ await page.getByRole('checkbox',{name:'Cliente ativo',exact:true}).uncheck();
+ await page.getByRole('button',{name:'Salvar alterações',exact:true}).click();
+ await expect(page.getByText('Cadastro atualizado e confirmado pelo PAMDA CORE.',{exact:true})).toBeVisible();
+ await expect(region.locator('tbody tr')).toHaveCount(1);expect(customers[2].active).toBe(false);
+ await page.getByLabel('Situação dos clientes',{exact:true}).selectOption('inativos');
+ await expect(region.locator('tbody tr')).toHaveCount(2);
+ expect(await region.locator('tbody tr td:first-child').allTextContents()).toEqual(['20','100']);
+ await search.fill('20');await expect(region.locator('tbody tr')).toHaveCount(1);
+ const nav=await page.getByRole('navigation').getByRole('button').allTextContents();
+ expect(nav[nav.indexOf('Clientes e Unidades')+1]).toBe('Rede de Lojas');
+});

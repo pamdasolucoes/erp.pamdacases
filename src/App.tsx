@@ -10,6 +10,7 @@ import { LoginView } from './components/auth/LoginView';
 
 // Views
 const DashboardView = lazy(() => import('./views/DashboardView').then(module => ({ default: module.DashboardView })));
+const CustomerNetworksView=lazy(()=>import('./views/customers/CustomerNetworksView').then(m=>({default:m.CustomerNetworksView})));
 const CustomersView = lazy(() => import('./views/customers/CustomersView').then(module => ({ default: module.CustomersView })));
 const ProductsView = lazy(() => import('./views/products/ProductsView').then(module => ({ default: module.ProductsView })));
 const NewSaleView = lazy(() => import('./views/sales/NewSaleView').then(module => ({ default: module.NewSaleView })));
@@ -136,6 +137,7 @@ export function App() {
     nova_venda: 'Emissão de Nova Venda B2B',
     vendas: 'Todas as Vendas',
     clientes: 'Clientes e Unidades — PAMDA CORE',
+    redes: 'Rede de Lojas',
     produtos: 'Catálogo de Produtos & Serviços',
     kits: 'Kits & Produtos Compostos',
     estoque: 'Controle de Estoque & Movimentações',
@@ -203,6 +205,7 @@ export function App() {
             />
           )}
 
+          {currentTab==='redes'&&<CustomerNetworksView onOpen={customer=>{setCustomerContext(customer);setCurrentTab('clientes');}}/>}
           {currentTab === 'clientes' && <CustomersView initialCustomerId={customerContext?.id} onSelectCustomer={setCustomerContext} onConsultSales={openCustomerSales} onNewSale={openNewSale} />}
 
           {(currentTab === 'produtos' || currentTab === 'kits') && (

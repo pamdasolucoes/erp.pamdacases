@@ -11,7 +11,7 @@ import { CustomerRegistrationModal } from './CustomerRegistrationModal';
 import { customerAdminService } from '../../services/customerAdminService';
 import type { OfficialCustomerBranch } from '../../types/pamdaCore';
 import { useProgressiveRows } from '../../hooks/useProgressiveRows';
-import { CustomerNetworksPanel } from './CustomerNetworksPanel';
+
 
 function Field({ label, value }: { label: string; value: string | null | undefined }) {
   return <div><dt className="text-[11px] font-bold uppercase text-slate-400">{label}</dt><dd className="mt-1 text-sm text-slate-800 break-words whitespace-pre-wrap">{value || 'Não informado'}</dd></div>;
@@ -30,6 +30,8 @@ interface CustomersViewProps {
 }
 export const CustomersView: React.FC<CustomersViewProps> = ({ initialCustomerId, onSelectCustomer, onNewSale, onConsultSales }) => {
   const { customers, loading, refreshing, error, reload } = useCustomers();
+  const [status,setStatus]=useState<'ativos'|'inativos'|'todos'>('ativos');
+  const [review,setReview]=useState<'todos'|'revisao'|'revisados'>('todos');
   const [query, setQuery] = useState('');
   const [selectedId, setSelectedId] = useState(initialCustomerId || '');
   const [editing, setEditing] = useState<OfficialCustomer | null>(null);
@@ -41,11 +43,11 @@ export const CustomersView: React.FC<CustomersViewProps> = ({ initialCustomerId,
   const canAdmin = canEdit && authService.getCurrentUser()!.role === 'admin_gerencial';
   const saved = (updated: OfficialCustomer) => { setSelectedId(updated.id); setQuery(''); setRegistration(null); setNotice(registration?.customer && !registration.branch ? 'Filial cadastrada com sucesso' : 'Cadastro confirmado pelo PAMDA CORE.'); };
 
-  const filtered = useMemo(() => searchCustomers(customers, query), [customers, query]);
-  const list = useProgressiveRows(filtered, query);
-  const selected = filtered.find(customer => customer.id === selectedId) || filtered[0];
+  const filtered = useMemo(() => [...searchCustomers(customers, query)].filter(c=>(status==='todos'||c.active===(status==='ativos'))&&(review==='todos'||c.branches.some(b=>b.addressNeedsReview)===(review==='revisao'))).sort((a,b)=>a.customerCode.localeCompare(b.customerCode,'pt-BR',{numeric:true,sensitivity:'base'})||a.name.localeCompare(b.name,'pt-BR')||a.id.localeCompare(b.id)), [customers, query,status,review]);
+  const list = useProgressiveRows(filtered, JSON.stringify([query,status,review]));
+  const selected = filtered.find(customer => customer.id === selectedId);
   useEffect(() => {
-    if (selected) onSelectCustomer?.({ id: selected.id, customerCode: selected.customerCode });
+    if (selected) {onSelectCustomer?.({ id: selected.id, customerCode: selected.customerCode });document.getElementById('selected-customer-details')?.scrollIntoView({block:'start'});}
   }, [selected?.id, selected?.customerCode, onSelectCustomer]);
   const { units, reviews } = useMemo(() => ({ units: customers.reduce((count, customer) => count + customer.branches.length, 0), reviews: customers.reduce((count, customer) => count + customer.branches.filter(unit => unit.addressNeedsReview).length, 0) }), [customers]);
   return (
@@ -60,34 +62,28 @@ export const CustomersView: React.FC<CustomersViewProps> = ({ initialCustomerId,
       ) : (
         <>
           {notice && <p role="status" className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">{notice}</p>}
-          <CustomerNetworksPanel customers={customers} onOpen={customer => { setQuery(''); setSelectedId(customer.id); }} onEdit={customer => { setNotice(''); setEditing(customer); }} />
           <div className="flex flex-wrap gap-3 text-xs text-slate-600" aria-live="polite"><span>{customers.length} clientes acessíveis</span><span>{units} unidades</span><span className="text-amber-800">{reviews} endereços sinalizados para revisão</span></div>
           <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">As condições comerciais são consultadas no cadastro oficial de cada cliente e unidade. Não agrupe cadastros sem conferência.</div>
           {manage.error&&<p role="alert" className="text-sm text-amber-800">{manage.error} A edição permanece indisponível até validar a permissão.</p>}
+          <div className="flex flex-wrap gap-3"><label className="text-sm font-bold">Situação<select aria-label="Situação dos clientes" value={status} onChange={e=>{setStatus(e.target.value as typeof status);setSelectedId('');}} className="block mt-1 rounded-xl border p-2 bg-white"><option value="ativos">Ativos</option><option value="inativos">Inativos</option><option value="todos">Todos</option></select></label><label className="text-sm font-bold">Revisão de endereço<select aria-label="Revisão de endereço" value={review} onChange={e=>{setReview(e.target.value as typeof review);setSelectedId('');}} className="block mt-1 rounded-xl border p-2 bg-white"><option value="todos">Todos os endereços</option><option value="revisao">Precisam de revisão</option><option value="revisados">Sem revisão pendente</option></select></label></div>
           <label className="block text-sm font-bold text-slate-700">Pesquisar por código comercial, nome ou documento
             <div className="relative mt-2"><Search className="absolute left-3 top-3 h-4 w-4 text-slate-400" /><input type="search" value={query} onChange={event => setQuery(event.target.value)} placeholder="Código, nome, razão social ou CPF/CNPJ" className="w-full rounded-xl border border-slate-300 bg-white py-2.5 pl-10 pr-3 text-sm font-normal" /></div>
           </label>
           {!customers.length ? <p role="status" className="rounded-xl border border-slate-200 bg-white p-8 text-sm text-slate-500">Nenhum cliente foi retornado. Se esta conta deveria ver os 384 clientes oficiais, confira o GRANT SELECT e as políticas RLS de customers e customer_branches.</p> : !filtered.length ? <p role="status" className="rounded-xl border border-slate-200 bg-white p-8 text-sm text-slate-500">Nenhum cliente encontrado para esta pesquisa.</p> : (
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
-              <section aria-label="Lista de clientes" className="lg:col-span-4 rounded-2xl border border-slate-200 bg-white overflow-hidden">
+            <div className="space-y-5">
+              <section aria-label="Lista de clientes" className="w-full rounded-2xl border border-slate-200 bg-white overflow-hidden">
                 <p className="p-4 border-b border-slate-100 text-xs font-bold text-slate-500">{filtered.length} de {customers.length} clientes</p>
-                <div className="max-h-[650px] overflow-y-auto divide-y divide-slate-100">{list.visible.map(customer => (
-                  <button key={customer.id} data-testid={`customer-row-${customer.id}`} onClick={() => setSelectedId(customer.id)} aria-pressed={customer.id === selected?.id} className={`block w-full p-4 text-left border-l-4 ${customer.id === selected?.id ? 'border-blue-600 bg-blue-50' : 'border-transparent hover:bg-slate-50'}`}>
-                    <span className="block font-mono text-xs font-bold text-blue-700 whitespace-pre-wrap">{customer.customerCode}</span>
-                    <span className="block mt-1 text-sm font-bold text-slate-900">{customer.name}</span>
-                    <span className="block mt-1 text-xs text-slate-500">{customer.branches.length} unidade(s) · {customer.active ? 'Ativo' : 'Inativo'}</span>
-                  </button>
-                ))}</div>
+                <div className="max-h-[650px] overflow-auto"><table className="w-full text-left text-sm"><thead className="bg-slate-50"><tr><th className="p-3">Código</th><th className="p-3">Cliente</th><th className="p-3">Situação</th><th className="p-3">Unidades</th><th className="p-3">Endereço</th></tr></thead><tbody>{list.visible.map(customer=><tr key={customer.id} className="border-t hover:bg-emerald-50"><td className="p-3 font-mono">{customer.customerCode}</td><td className="p-3"><button type="button" data-testid={`customer-row-${customer.id}`} onClick={()=>setSelectedId(customer.id)} aria-pressed={customer.id===selected?.id} className="text-left font-bold text-emerald-800 underline underline-offset-2">{customer.name}</button></td><td className="p-3">{customer.active?'Ativo':'Inativo'}</td><td className="p-3">{customer.branches.length}</td><td className="p-3">{customer.branches.some(b=>b.addressNeedsReview)?<span className="text-amber-800">Revisão pendente</span>:'Sem revisão pendente'}</td></tr>)}</tbody></table></div>
                 {list.hasMore && <button type="button" onClick={list.showMore} className="w-full p-3 text-xs font-bold text-blue-700 border-t">Mostrar mais clientes ({list.visible.length} de {filtered.length})</button>}
               </section>
-              {selected && <article className="lg:col-span-8 space-y-5">
+              {selected && <article id="selected-customer-details" className="w-full space-y-5"><button type="button" className="rounded-xl border px-4 py-2 text-sm font-bold" onClick={()=>{setSelectedId('');window.scrollTo({top:0});}}>Voltar à lista de clientes</button>
                 <section className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6">
                   <div className="flex items-start gap-3"><Building2 className="w-7 h-7 text-blue-600 shrink-0" /><div><h2 className="text-xl font-bold text-slate-900">{selected.name}</h2><p className="text-xs text-slate-500 mt-1">{selected.active ? 'Cadastro ativo' : 'Cadastro inativo'}</p></div></div>
                   <div role="group" aria-label="Ações do cliente" className="mt-5 flex flex-col sm:flex-row sm:flex-wrap gap-2">
                     <button disabled={!canEdit} title={canEdit ? 'Editar cadastro' : 'Seu perfil não tem permissão de edição'} onClick={() => { setNotice(''); setEditing(selected); }} className="inline-flex justify-center items-center gap-2 rounded-xl border border-slate-300 px-3 py-2 text-xs font-bold text-slate-700 disabled:opacity-50"><Pencil className="h-4 w-4" />Editar cadastro</button>
                     {canAdmin && <button onClick={() => { setNotice(''); setRegistration({ customer: selected }); }} className="rounded-xl bg-blue-600 px-4 py-2 text-xs font-bold text-white">+ Adicionar filial</button>}
                     <button onClick={() => onConsultSales({ id: selected.id, customerCode: selected.customerCode })} className="inline-flex justify-center items-center gap-2 rounded-xl border border-slate-300 px-3 py-2 text-xs font-bold text-slate-700"><History className="h-4 w-4" />CONSULTAR VENDAS</button>
-                    <button onClick={() => onNewSale({ id: selected.id, customerCode: selected.customerCode })} className="inline-flex justify-center items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-xs font-bold text-white hover:bg-blue-700"><ShoppingCart className="h-4 w-4" />+ NOVA VENDA</button>
+                    <button disabled={!selected.active} onClick={() => onNewSale({ id: selected.id, customerCode: selected.customerCode })} className="inline-flex justify-center items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-xs font-bold text-white hover:bg-blue-700"><ShoppingCart className="h-4 w-4" />+ NOVA VENDA</button>
                   </div>
                   <label className="block mt-5 text-xs font-bold uppercase text-slate-500">Código comercial<input readOnly value={selected.customerCode} className="block w-full mt-1 rounded-lg border border-slate-200 bg-slate-50 p-2.5 font-mono text-base text-slate-900" /></label>
                   <dl className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-5">
