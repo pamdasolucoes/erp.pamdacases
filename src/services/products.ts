@@ -12,7 +12,7 @@ export class ProductsService {
     signal?.throwIfAborted();
     const identity = await this.client.auth.getUser();
     if (identity.error || !identity.data.user || expectedUserId && identity.data.user.id !== expectedUserId) throw new Error('Sessão inválida. Entre novamente.');
-    const load = async <T,>(table: 'products' | 'kit_components', columns: string): Promise<T[]> => readAllPages(async (from, to) => {
+    const load = async <T,>(table: 'erp_product_catalog' | 'kit_components', columns: string): Promise<T[]> => readAllPages(async (from, to) => {
       let request = this.client!.from(table).select(columns, { count: 'exact' }).order('id', { ascending: true }).range(from, to);
       if (signal) request = request.abortSignal(signal);
       const { data, count, error } = await request;
@@ -21,7 +21,7 @@ export class ProductsService {
       if (!Array.isArray(data) || count === null || count === undefined) throw new Error('Leitura incompleta do catálogo. Tente atualizar.');
       return { rows: data as unknown as T[], total: count };
     }, 100, signal);
-    const [rows, components] = await Promise.all([load<ProductRow>('products', PRODUCT_COLUMNS), load<KitComponentRow>('kit_components', KIT_COMPONENT_COLUMNS)]);
+    const [rows, components] = await Promise.all([load<ProductRow>('erp_product_catalog', PRODUCT_COLUMNS), load<KitComponentRow>('kit_components', KIT_COMPONENT_COLUMNS)]);
     signal?.throwIfAborted();
     return mapProductCatalog(rows, components);
   }

@@ -14,12 +14,12 @@ function backend(options: { limit?:number; error?:string; authenticated?:boolean
     from(table:string) {
       let from=0,to=0;
       const request={
-        select(columns:string,config:unknown) { assert.equal(columns,table==='products' ? PRODUCT_COLUMNS : KIT_COMPONENT_COLUMNS); assert.deepEqual(config,{count:'exact'}); return request; },
+        select(columns:string,config:unknown) { assert.equal(columns,table==='erp_product_catalog' ? PRODUCT_COLUMNS : KIT_COMPONENT_COLUMNS); assert.deepEqual(config,{count:'exact'}); return request; },
         order(column:string) { assert.equal(column,'id'); return request; },
         range(start:number,end:number) { from=start;to=end;return request; },abortSignal(){return request;},
         then(resolve:(value:unknown)=>void) {
           calls.push({table,from,to});
-          const rows=options.empty ? [] : table==='products' ? fixture.products : fixture.components;
+          const rows=options.empty ? [] : table==='erp_product_catalog' ? fixture.products : fixture.components;
           resolve({data:options.error ? null : rows.slice(from,Math.min(to+1,from+(options.limit || 100))),count:rows.length,error:options.error ? {code:options.error} : null});
         },
       }; return request;
@@ -34,7 +34,7 @@ test('le 637 produtos oficiais e 634 vinculos sem truncar limite de servidor men
   assert.equal(rows.filter(row=>row.type==='servico').length,4); assert.equal(rows.filter(row=>row.type==='kit').length,317);
   assert.equal(rows.flatMap(row=>row.components).length,634);
   assert.ok(rows.filter(row=>row.type==='kit').every(row=>row.components.length===2));
-  assert.equal(fake.calls.filter(call=>call.table==='products')[1].from,37);
+  assert.equal(fake.calls.filter(call=>call.table==='erp_product_catalog')[1].from,37);
   assert.deepEqual(fake.fixture,before);
 });
 test('componentes, UUIDs, codigo TEXT, SKU, estoque nao conferido e NULL permanecem exatos',()=>{

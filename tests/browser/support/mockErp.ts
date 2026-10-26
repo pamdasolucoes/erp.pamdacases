@@ -37,7 +37,7 @@ export async function setup(page: Page, role: 'admin_gerencial' | 'venda_atendim
     }
     if (url.origin === 'https://images.pamda-test.invalid') return route.fulfill({status:200,contentType:'image/png',body:Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/l9sAAAAASUVORK5CYII=','base64')});
     if (url.origin !== 'https://pamda-test.invalid') return route.abort();
-    if (options.dataDelayMs && /^\/rest\/v1\/(customers|customer_branches|products|kit_components)$/.test(url.pathname)) await new Promise(resolve => setTimeout(resolve, options.dataDelayMs));
+    if (options.dataDelayMs && /^\/rest\/v1\/(customers|customer_branches|erp_product_catalog|kit_components)$/.test(url.pathname)) await new Promise(resolve => setTimeout(resolve, options.dataDelayMs));
     const respond=(body:unknown,status=200,headers:Record<string,string>={}) => route.fulfill({ status,contentType:'application/json',headers:{ 'access-control-allow-origin':'*', 'access-control-expose-headers':'content-range', ...headers },body:JSON.stringify(body) });
     if (url.pathname==='/auth/v1/token') {state.tokenRequests++;if(url.searchParams.get('grant_type')==='refresh_token') state.refreshRequests++;return respond({ access_token:token(),token_type:'bearer',expires_in:state.authLifetimeSeconds,expires_at:expires(),refresh_token:'synthetic-refresh-token',user:employee });}
     if (url.pathname==='/auth/v1/logout') return respond({});
@@ -83,11 +83,11 @@ export async function setup(page: Page, role: 'admin_gerencial' | 'venda_atendim
     if(['/rest/v1/erp_customer_payment_settings','/rest/v1/erp_branch_payment_settings'].includes(url.pathname))return respond([]);
     const saleResult=await sales.handle(url.pathname,url,['POST','PUT','PATCH'].includes(request.method())?request.postDataJSON():null);
     if(saleResult){if(saleResult.abort)return route.abort('failed');return respond(saleResult.body,saleResult.status||200,saleResult.headers);}
-    if (url.pathname==='/rest/v1/products' || url.pathname==='/rest/v1/kit_components') {
+    if (url.pathname==='/rest/v1/erp_product_catalog' || url.pathname==='/rest/v1/kit_components') {
       expect(request.method()).toBe('GET'); state.productReads++;
       if (state.productError==='network') return route.abort('failed');
       if (state.productError) return respond({code:state.productError,message:'Leitura bloqueada'},403);
-      const rows=state.emptyCatalog ? [] : url.pathname.endsWith('/products') ? products : components;
+      const rows=state.emptyCatalog ? [] : url.pathname.endsWith('/erp_product_catalog') ? products : components;
       const from=Number(url.searchParams.get('offset') || 0), size=Math.min(37,Number(url.searchParams.get('limit') || 100));
       const pageRows=rows.slice(from,from+size);
       return respond(pageRows,200,{'content-range':`${from}-${from+pageRows.length-1}/${rows.length}`});

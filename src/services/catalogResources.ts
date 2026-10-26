@@ -19,7 +19,7 @@ export const productCatalog = new SessionCatalog<readonly OfficialProduct[]>((sc
 let permissionSignature = '';
 const unsubscribeAuth = authService.subscribe((user, loading, error) => {
   const valid = user && !error ? user : null;
-  const signature = valid ? JSON.stringify([valid.id, valid.role, valid.canReadCustomers, valid.canViewFinancialMetrics]) : '';
+  const signature = valid ? JSON.stringify([valid.id, valid.role, valid.canReadCustomers, valid.canViewFinancialMetrics,valid.permissions]) : '';
   const changed = signature !== permissionSignature;
   if (changed) { customerCatalog.clear(); productCatalog.clear(); permissionSignature = signature; }
   const scope = valid ? scopeFor(valid.id) : null;

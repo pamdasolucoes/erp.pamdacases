@@ -26,7 +26,7 @@ begin
  doc:=public.pamda_real_sale_document(s);
  if jsonb_array_length(doc->'payments')<>2 or (select sum((x->>'amount')::numeric) from jsonb_array_elements(doc->'payments') x)<>50 then raise exception 'Recibo sem pagamentos atuais'; end if;
  if exists(select 1 from jsonb_array_elements(doc->'payments') x where x->>'method_code'<>'pix') then raise exception 'Recibo com forma antiga'; end if;
- if (public.pamda_sale_movement_read(s)->'items'->0) ? 'unit_cost_snapshot' then raise exception 'Custo exposto à consulta'; end if;
+ if (public.pamda_sale_movement_read(s)->'items'->0) ? 'direct_unit_cost_snapshot' then raise exception 'Custo direto exposto à consulta'; end if;
  select updated_at into nextstamp from public.erp_sales where id=s;
  begin
  perform public.pamda_sale_movement_write(s,'cancel','[]','Cancelamento QA',stamp,gen_random_uuid());
