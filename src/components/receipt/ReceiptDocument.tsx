@@ -191,6 +191,7 @@ export function ReceiptDocument({ data }: { data: ReceiptDocumentData }) {
       {data.notes && <section className="receipt-section receipt-notes"><strong>Observações:</strong><p>{data.notes}</p></section>}
       {showPayment && data.payment && (
         <section className="receipt-section">
+          {data.payment.methods?.map((p,i)=><p key={i}>{p.name}: {formatMoney(p.amountCents)} · {p.status==='paid'?'Recebido':p.status==='scheduled'?'Agendado':'Pendente'}</p>)}
           {data.payment.paid ? (
             <><strong>Pagamento confirmado</strong><p>Valor recebido: {formatMoney(data.payment.amountPaidCents)}</p></>
           ) : (

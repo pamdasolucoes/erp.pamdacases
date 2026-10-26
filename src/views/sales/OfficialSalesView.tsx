@@ -1,3 +1,4 @@
+import {SaleMovementModal} from './SaleMovementModal';
 import React,{useCallback,useEffect,useRef,useState} from 'react';
 import {Search,RefreshCw,X,ChevronDown,ChevronUp} from 'lucide-react';
 import {authService} from '../../services/auth';
@@ -19,6 +20,7 @@ const eventLabels:Record<string,string>={sale_started:'Venda iniciada',draft_sav
 
 export function OfficialSalesView({onContinue,customerId}:{onContinue():void;customerId?:string}){
   const user=authService.getCurrentUser()!;
+  const [movementSale,setMovementSale]=useState<string|null>(null);
   const [history,setHistory]=useState(false),[query,setQuery]=useState('');
   const [rows,setRows]=useState<Row[]>([]),[loading,setLoading]=useState(true),[error,setError]=useState('');
   const [permissions,setPermissions]=useState({draft:false,cancel:false,confirm:false}),[permissionError,setPermissionError]=useState('');
@@ -53,6 +55,7 @@ export function OfficialSalesView({onContinue,customerId}:{onContinue():void;cus
   useEffect(()=>{void reload();return()=>{revision.current++;};},[reload]);
   useEffect(()=>{void loadPermissions();const focus=()=>{void loadPermissions();void reload();};window.addEventListener('focus',focus);return()=>window.removeEventListener('focus',focus);},[loadPermissions,reload]);
   const openDetails=async(row:Row)=>{
+    if(row.status!=='draft'&&row.is_test!==true){setMovementSale(row.id);return;}
     setBusy(true);setError('');setTestPayments([]);setTestReceipt(null);setShowTestReceipt(false);
     try{
       const value=await pendingSalesService.details(user.id,row.id);if(value.sale.status==='confirmed'&&value.sale.is_test===false)setTestReceipt(await realSales.receipt(user.id,value));
@@ -112,7 +115,7 @@ export function OfficialSalesView({onContinue,customerId}:{onContinue():void;cus
     row.status==='draft'&&permissions.draft&&(row.created_by===user.id||permissions.confirm);
   const canCancel=(row:Pick<Row,'status'|'first_product_at'>)=>
     row.status==='draft'&&row.first_product_at!==null&&permissions.cancel;
-  return <div className="space-y-5">
+  return <div className="space-y-5">{movementSale&&<SaleMovementModal saleId={movementSale} onClose={()=>setMovementSale(null)} onChanged={()=>void reload()}/>}
     <div className="flex flex-wrap justify-between items-center gap-3"><div><h1 className="text-2xl font-black text-slate-900">Todas as Vendas</h1><p className="text-sm text-slate-500">Consulte e continue pendências registradas no PAMDA CORE</p></div><button type="button" onClick={()=>{void reload();}} className="rounded-xl border px-4 py-2 flex gap-2 items-center text-sm"><RefreshCw className="w-4 h-4"/>Atualizar vendas</button></div>
     <div className="flex flex-wrap gap-3 items-center"><button type="button" aria-pressed={!history} onClick={()=>setHistory(false)} className={`rounded-xl px-4 py-2 text-sm font-bold ${!history?'bg-slate-900 text-white':'bg-white border'}`}>Pendências</button><button type="button" aria-pressed={history} onClick={()=>setHistory(true)} className={`rounded-xl px-4 py-2 text-sm font-bold ${history?'bg-slate-900 text-white':'bg-white border'}`}>Histórico</button><label className="flex items-center gap-2 bg-white border rounded-xl px-3 py-2"><Search className="w-4 h-4 text-slate-400"/><input aria-label="Pesquisar pendências" placeholder="Cliente, código ou vendedor" value={query} onChange={event=>setQuery(event.target.value)} className="text-sm min-w-0 outline-none"/></label></div>
     {!history&&permissions.confirm&&selected.length>0&&<div className="rounded-xl border bg-emerald-50 p-3 flex gap-3 items-center"><span>{selected.length} pedidos selecionados</span><button type="button" disabled={busy||selected.length<2} onClick={()=>{const chosen=rows.filter(r=>selected.includes(r.id));if(chosen.length!==selected.length||new Set(chosen.map(r=>r.customer_id)).size!==1){setError('Selecione somente pendências do mesmo cliente.');return;}setMergeReview(true);}} className="rounded-lg bg-emerald-700 text-white px-3 py-2 disabled:opacity-50">Mesclar para fechamento</button></div>}

@@ -16,6 +16,6 @@ export const realSales={
    branchName:String(b.name||''),address:[b.address,b.number,b.complement,b.neighborhood,b.city,b.state,b.zip_code].filter(Boolean).join(', '),addressNeedsReview:false,
    salespersonName:s.seller_snapshot,condition:'Recibo de venda',items:details.items.map(i=>({id:i.id,code:i.product_code_snapshot,sku:i.product_sku_snapshot,name:i.description_snapshot,description:null,quantity:Number(i.quantity),unitPriceCents:dbCents(i.negotiated_unit_price),subtotalCents:dbCents(i.line_subtotal),discountCents:0,netCents:dbCents(i.line_subtotal),customization:i.customization as any})),
    subtotalCents:dbCents(s.subtotal),discountCents:dbCents(s.discount_amount),freightCents:dbCents(s.shipping_charged),totalCents:dbCents(s.total),notes:s.notes||'',freightReason:'',
-   payment:{paid:dbCents(record.paid)===dbCents(s.total),amountPaidCents:dbCents(record.paid),balanceCents:dbCents(s.total)-dbCents(record.paid),pixKey:company.pix_key||'',qrCodeUrl:''}};
+   payment:{paid:dbCents(record.paid)===dbCents(s.total),amountPaidCents:dbCents(record.paid),balanceCents:dbCents(s.total)-dbCents(record.paid),pixKey:company.pix_key||'',qrCodeUrl:'',methods:(record.payments||[]).map((p:any)=>({name:p.method_name||p.method_code,amountCents:dbCents(p.amount),status:p.status}))}};
  }
 };

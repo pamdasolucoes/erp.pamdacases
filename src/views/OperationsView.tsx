@@ -1,3 +1,4 @@
+import {SaleMovementModal,CustomerSaleHistoryModal} from './sales/SaleMovementModal';
 import {ProfitabilityReport} from './ProfitabilityReport';
 import type {ProfitabilityInput} from '../services/profitability';
 import React,{useCallback,useEffect,useMemo,useRef,useState} from 'react';
@@ -18,6 +19,7 @@ export function OperationsView({module,suppliers=false,byCustomer=false,costOnly
  const [data,setData]=useState<DataRow|null>(null),[loading,setLoading]=useState(true),[busy,setBusy]=useState(false),[error,setError]=useState(''),[notice,setNotice]=useState('');
  const [search,setSearch]=useState(''),[start,setStart]=useState(localDate().slice(0,7)+'-01'),[end,setEnd]=useState(localDate());
  const [stockKind,setStockKind]=useState('adjustment'),[target,setTarget]=useState<DataRow|null>(null);
+ const [reviewSale,setReviewSale]=useState<string|null>(null),[historyCustomer,setHistoryCustomer]=useState<{id:string;name:string}|null>(null);
  const [settings,setSettings]=useState<DataRow>({});
  const [entryItems,setEntryItems]=useState<DataRow[]>([{product_id:'',quantity:1,unit_cost:''}]);
  const revision=useRef(0),request=useRef({signature:'',key:''});
@@ -45,7 +47,7 @@ export function OperationsView({module,suppliers=false,byCustomer=false,costOnly
   if(!byCustomer)return rows;
   const groups=new Map<string,DataRow>();for(const row of rows){const prev=groups.get(row.customer_id)||{customer_id:row.customer_id,customer_name:row.customer_name,total:0,count:0};prev.total+=Number(row.total);prev.count++;groups.set(row.customer_id,prev);}return [...groups.values()].sort((a,b)=>b.total-a.total);
  },[rows,byCustomer]);
- return <div className="space-y-5">
+ return <div className="space-y-5">{reviewSale&&<SaleMovementModal saleId={reviewSale} onClose={()=>setReviewSale(null)} onChanged={()=>void reload()}/>}{historyCustomer&&<CustomerSaleHistoryModal customerId={historyCustomer.id} name={historyCustomer.name} onClose={()=>setHistoryCustomer(null)} onChanged={()=>void reload()}/>}
   <header className="flex flex-wrap items-center justify-between gap-3"><h1 className="text-2xl font-black">{suppliers?'Fornecedores':byCustomer?'Vendas por cliente':costOnly?'Custo do estoque':names[module]}</h1><button className={buttonClass} disabled={busy||loading} onClick={()=>void reload()}>Atualizar</button></header>
   <div className="flex flex-wrap items-end gap-3"><Input label="Pesquisar" value={search} onChange={e=>setSearch(e.target.value)} required={false}/>{filteredPeriod&&<><Input label="De" type="date" value={start} onChange={e=>setStart(e.target.value)}/><Input label="Até" type="date" value={end} onChange={e=>setEnd(e.target.value)}/></>}</div>
   {error&&<p role="alert" className="rounded-xl bg-rose-50 p-4 text-rose-800">{error}</p>}{notice&&<p role="status" className="text-emerald-800">{notice}</p>}
@@ -91,7 +93,7 @@ export function OperationsView({module,suppliers=false,byCustomer=false,costOnly
   {module==='reports'&&<>
    {cards([['Vendas',String(rows.length)],['Receita',money(rows.reduce((s,r)=>s+Number(r.total),0))],['Ticket médio',money(rows.length?rows.reduce((s,r)=>s+Number(r.total),0)/rows.length:0)]])}
    <button className={buttonClass} onClick={()=>exportToCsv(byCustomer?'vendas-por-cliente':'vendas',['Pedido / Quantidade','Cliente','Valor'],reportRows.map(r=>[byCustomer?r.count:r.order_number,r.customer_name,Number(r.total)]))}>Exportar CSV</button>
-   <Table headers={byCustomer?['Cliente','Vendas','Valor']:['Pedido','Data','Cliente','Valor']} rows={reportRows.filter(matches).map(r=>byCustomer?[r.customer_name,r.count,money(r.total)]:[r.order_number,displayDate(r.confirmed_at),r.customer_name,money(r.total)])}/>
+   <Table headers={byCustomer?['Cliente','Vendas','Valor']:['Pedido','Data','Cliente','Valor']} rows={reportRows.filter(matches).map(r=>byCustomer?[<button type="button" className="text-emerald-800 underline font-semibold" onClick={()=>setHistoryCustomer({id:r.customer_id,name:r.customer_name})}>{r.customer_name}</button>,r.count,money(r.total)]:[<button type="button" className="text-emerald-800 underline font-semibold" onClick={()=>setReviewSale(r.id)}>Pedido {r.order_number}</button>,displayDate(r.confirmed_at),<button type="button" className="text-emerald-800 underline" onClick={()=>setHistoryCustomer({id:r.customer_id,name:r.customer_name})}>{r.customer_name}</button>,money(r.total)])}/>
   </>}
   {module==='profitability'&&<ProfitabilityReport rows={rows.filter(matches) as ProfitabilityInput[]} expenses={Number(data.expenses??0)} filtered={!!search.trim()}/>}
   {module==='audit'&&<Table headers={['Data','Ação','Responsável','Detalhes']} rows={rows.filter(matches).map(r=>[displayDate(r.happened_at),r.action,r.actor_user_id,<details><summary>Consultar</summary><pre className="max-w-lg whitespace-pre-wrap text-xs">{JSON.stringify(r.details,null,2)}</pre></details>])}/>}

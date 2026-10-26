@@ -12,5 +12,5 @@ export interface ReceiptDocumentData {
     customization: { model: string; color: string; walletFaces: '' | '1' | '2' } | null }[];
   readonly subtotalCents: number; readonly discountCents: number; readonly freightCents: number; readonly totalCents: number;
   readonly notes: string; readonly freightReason: string;
-  readonly payment: null | { paid: boolean; amountPaidCents: number; balanceCents: number; pixKey: string; qrCodeUrl: string };
+  readonly payment: null | { paid: boolean; amountPaidCents: number; balanceCents: number; pixKey: string; qrCodeUrl: string; methods?: readonly {name:string;amountCents:number;status:string}[] };
 }
