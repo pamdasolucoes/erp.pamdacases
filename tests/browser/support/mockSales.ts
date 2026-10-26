@@ -17,7 +17,7 @@ export class MockSales {
   private availableOrderNumbers:number[]=[];
   constructor(private identity:()=>{id:string;active:boolean;role:string},private customers:CustomerRow[],private branches:CustomerBranchRow[],private products:ProductRow[]){}
   private allowed(code:string){const user=this.identity();return user.active&&(code in this.permissions?this.permissions[code]:user.role==='admin_gerencial'||user.role==='venda_atendimento'&&['sales.read','sales.draft'].includes(code));}
-  private readAllowed(row:OfficialSaleRow){const user=this.identity();return this.allowed('sales.read')&&(row.created_by===user.id||user.role==='admin_gerencial');}
+  private readAllowed(row:OfficialSaleRow){const user=this.identity();return this.allowed('sales.read')&&(row.created_by===user.id||user.role==='admin_gerencial'||this.allowed('sales.confirm'));}
   private id(){return uuid(++this.sequence);}
   private event(saleId:string,type:string,details:Record<string,unknown>={}){this.events.push({id:this.id(),sale_id:saleId,actor_user_id:this.identity().id,event_type:type,details,occurred_at:new Date().toISOString()});}
   private error(message:string,code='P0001',status=400){return {body:{code,message},status};}

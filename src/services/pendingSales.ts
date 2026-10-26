@@ -25,6 +25,13 @@ function validateSale(row:PendingSaleRow) {
 }
 export class PendingSalesService {
   constructor(private client:SupabaseClient|null){}
+  async merge(userId:string,saleIds:string[],key:string):Promise<SaleDetails>{
+    await this.identity(userId);
+    const {data,error}=await this.client!.rpc('pamda_merge_pending_sales',{p_sale_ids:saleIds,p_request_key:key});
+    if(error)throw saleError(error);
+    if(!isUuid(data))throw new Error('O servidor não confirmou o pedido mesclado.');
+    return this.details(userId,data);
+  }
   async reserveNumber(userId:string,draftKey:string,previousKey:string|null=null):Promise<number>{
     if(!isUuid(draftKey)||previousKey!==null&&!isUuid(previousKey))throw new Error('Chave da preparação inválida.');
     await this.identity(userId);

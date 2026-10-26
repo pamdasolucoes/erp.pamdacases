@@ -56,15 +56,15 @@ begin
  perform public.pamda_finalize_sale(sale2,jsonb_build_array(jsonb_build_object('method_code','pix','amount',30,'status','pending','channel','erp')),gen_random_uuid());
  if (select current_inventory from public.products where id=product)<>10 then raise exception 'Kit não consumiu componentes'; end if;
  if not exists(select 1 from public.erp_sale_items where sale_id=sale2 and unit_cost_snapshot=(select 3*current_cost from public.products where id=product) and cost_verified) then raise exception 'Custo médio do kit divergente'; end if;
- -- Saldo insuficiente reverte também as parcelas já preparadas.
+ -- Saldo insuficiente é registrado como negativo e não impede fechamento autorizado.
  sale2:=public.pamda_iniciar_venda(customer,branch,gen_random_uuid());
  insert into public.erp_sale_items(sale_id,product_id,product_code_snapshot,product_sku_snapshot,description_snapshot,quantity,negotiated_unit_price)
  values(sale2,product,'QA','QA','Validação de saldo',100,1);
  update public.erp_sales set subtotal=100,shipping_charged=0,shipping_confirmed=true where id=sale2;
- begin
- perform public.pamda_finalize_sale(sale2,jsonb_build_array(jsonb_build_object('method_code','pix','amount',100,'status','pending','channel','erp')),gen_random_uuid());
- raise exception 'Aceitou estoque insuficiente' using errcode='XX001'; exception when sqlstate 'P0001' then null;end;
- if exists(select 1 from public.erp_real_payments where sale_id=sale2) then raise exception 'Falha não reverteu pagamentos'; end if;
+ perform public.pamda_finalize_sale(sale2,jsonb_build_array(jsonb_build_object('method_code','pix','amount',100,'status','paid','channel','erp')),gen_random_uuid());
+ if (select current_inventory from public.products where id=product)<>-90 then raise exception 'Falta não registrada'; end if;
+ perform public.pamda_stock_write(jsonb_build_object('kind','entry','date',current_date,'reason','Reposição parcial transacional','items',jsonb_build_array(jsonb_build_object('product_id',product,'quantity',1,'unit_cost',4))),gen_random_uuid());
+ if (select current_inventory from public.products where id=product)<>-89 then raise exception 'Reposição parcial bloqueada'; end if;
  -- Perfis e permissões são controlados no banco, sem confiar em metadata.
  insert into auth.users(id) values(other_user);
  insert into public.erp_user_profiles(user_id,username,display_name,role,active) values(other_user,'qa-'||other_user,'Validação','producao',true);
