@@ -37,6 +37,7 @@ export function App() {
   const [customerContext, setCustomerContext] = useState<CustomerContext | null>(null);
   const [historyCustomer, setHistoryCustomer] = useState<CustomerContext | null>(null);
   const [newSaleCustomer, setNewSaleCustomer] = useState<CustomerContext | null>(null);
+  const [saleSuccess,setSaleSuccess]=useState('');
   const [navigationError,setNavigationError]=useState('');
   const [newSaleVersion,setNewSaleVersion]=useState(0);
   const openingNewSale=useRef(false);
@@ -91,7 +92,7 @@ export function App() {
   const openNewSale = async(customer: CustomerContext | null = null) => {
     if(!currentUser||!canAccessTab(currentUser,'nova_venda')||openingNewSale.current)return;
     openingNewSale.current=true;
-    setNavigationError('');
+    setNavigationError('');setSaleSuccess('');
     try{
       const {saleWorkspace}=await import('./services/saleWorkspace');
       const workspace=saleWorkspace(currentUser.id);
@@ -177,6 +178,7 @@ export function App() {
         />
 
         <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto">
+          {saleSuccess&&<p role="status" className="mb-4 rounded-xl bg-emerald-50 p-4 text-emerald-800">{saleSuccess}</p>}
           {navigationError&&<p role="alert" className="mb-4 text-sm text-rose-800">{navigationError}</p>}
           {!canAccessTab(currentUser, currentTab) ? (
             <p role="alert" className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-rose-800">Acesso não autorizado a este módulo.</p>
@@ -189,7 +191,7 @@ export function App() {
           )}
 
           {currentTab === 'nova_venda' && (
-            <NewSaleView key={newSaleVersion} initialCustomer={newSaleCustomer} onNewSale={()=>openNewSale()} />
+            <NewSaleView key={newSaleVersion} initialCustomer={newSaleCustomer} onNewSale={()=>{setSaleSuccess('');openNewSale();}} onFinalized={()=>{setSaleSuccess('Venda finalizada com sucesso');setHistoryCustomer(null);setNewSaleCustomer(null);setCurrentTab('vendas');}} />
           )}
 
           {currentTab === 'vendas' && (

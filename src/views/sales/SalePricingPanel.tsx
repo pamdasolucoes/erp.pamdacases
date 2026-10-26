@@ -1,5 +1,5 @@
 ﻿import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { ShoppingCart, Trash2, RotateCcw, AlertTriangle } from 'lucide-react';
+import { ShoppingCart, Trash2, RotateCcw } from 'lucide-react';
 import type { OfficialProduct } from '../../types/productCatalog';
 import type { PricePreparationEvent, PricingDraftItem, PricingLine } from '../../types/salePricing';
 import { authService } from '../../services/auth';
@@ -135,14 +135,6 @@ export function SalePricingPanel({ products, customerId, branchId, draft, onDraf
                   <label className="min-w-48 flex-1">Motivo da negociação<input aria-label={`Motivo da alteração do item ${index + 1}`} maxLength={1000} value={item.reason} onChange={event => changeItem(item.id, { reason: event.target.value })} onBlur={() => { if (committedReasons.current.get(item.id) !== item.reason) { if (line) record('reason_changed', line); committedReasons.current.set(item.id, item.reason); } }} className={`${inputClass} mt-1`} /></label>
                 </div>
               </details>
-              {line?.requiresAuthorization && user?.role !== 'admin_gerencial' && (
-                <p role="status" className="mt-1 flex items-start gap-2 text-xs text-rose-800">
-                  <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-                  {line.directCostCents === null
-                    ? 'Preço não validado. Solicite análise gerencial antes de concluir a venda.'
-                    : 'Este preço requer análise gerencial antes de concluir a venda.'}
-                </p>
-              )}
             </td>
           </tr>
         </React.Fragment>;

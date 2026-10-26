@@ -8,7 +8,7 @@ import {productCatalog} from '../../services/catalogResources';
 import {money} from '../../services/operations';
 import type {TestPaymentDraft} from '../../types/testSales';
 import {parsePriceInput} from '../../services/salePricing';
-export function SaleFinalizationModal({userId,details,catalog,initialPayments,onClose,onCompleted}:{userId:string;details:SaleDetails;catalog:PaymentCatalog;initialPayments?:TestPaymentDraft[];onClose():void;onCompleted(details:SaleDetails,receipt:ReceiptDocumentData):void}){
+export function SaleFinalizationModal({userId,details,catalog,initialPayments,onClose,onCompleted}:{userId:string;details:SaleDetails;catalog:PaymentCatalog;initialPayments?:TestPaymentDraft[];onClose():void;onCompleted(details:SaleDetails):void}){
  const methods=catalog.methods.filter(m=>m.active&&m.code!=='credito_cliente');
  const [payments,setPayments]=useState(()=>initialPayments?.length?initialPayments.map(p=>({method_code:p.methodCode,amount:String((parsePriceInput(p.amount)??0)/100)})):[{method_code:methods[0]?.code||'',amount:String(details.sale.total)}]);
  const [busy,setBusy]=useState(false),[error,setError]=useState('');const key=useRef(crypto.randomUUID());
@@ -18,7 +18,7 @@ export function SaleFinalizationModal({userId,details,catalog,initialPayments,on
   const inputs:RealPaymentInput[]=payments.map(p=>({method_code:p.method_code,amount:Number(p.amount),status:'paid',channel:'erp'}));
   await realSales.finalize(userId,details.sale.id,inputs,key.current);
   const confirmed=await pendingSalesService.details(userId,details.sale.id);
-  const receipt=await realSales.receipt(userId,confirmed);productCatalog.invalidate();onCompleted(confirmed,receipt);
+  if(confirmed.sale.status!=='confirmed')throw new Error('O servidor ainda não confirmou a finalização.');productCatalog.invalidate();onCompleted(confirmed);
  }catch(e){setError(e instanceof Error?e.message:'Finalização não confirmada. Tente novamente.');}finally{setBusy(false);}}
  const change=(index:number,field:string,value:string)=>setPayments(rows=>rows.map((row,i)=>i===index?{...row,[field]:value}:row));
  return <div className="fixed inset-0 z-50 bg-slate-900/60 p-5 flex items-center justify-center"><form onSubmit={submit} role="dialog" aria-modal="true" aria-label="Finalizar venda" className="w-full max-w-3xl max-h-[90vh] overflow-auto bg-white rounded-2xl p-6 space-y-4"><h2 className="font-black text-xl">Finalizar pedido {details.sale.order_number}</h2><p>Total: <strong>{money(details.sale.total)}</strong></p><p className="text-sm text-slate-600">A confirmação registra o contas a receber, baixa o estoque e envia o pedido à produção. Todos os pagamentos serão registrados como recebidos. Confirme somente após conferir o recebimento. A falta de estoque não bloqueia o fechamento; o saldo negativo ficará registrado para conferência.</p>

@@ -27,6 +27,7 @@ import {SaleFinalizationModal as TestSaleFinalizationModal} from './SaleFinaliza
 interface NewSaleViewProps {
   initialCustomer?: CustomerContext | null;
   onNewSale?: () => void;
+  onFinalized: () => void;
 }
 
 const inputClass = 'w-full px-3 py-2 border border-slate-300 rounded-xl text-sm bg-white';
@@ -37,7 +38,7 @@ function branchLabel(branch: { name: string; active: boolean; isPrimary?: boolea
   return branch.isPrimary ? 'Matriz' : branch.name;
 }
 
-export const NewSaleView: React.FC<NewSaleViewProps> = ({ initialCustomer, onNewSale }) => {
+export const NewSaleView: React.FC<NewSaleViewProps> = ({ initialCustomer, onNewSale, onFinalized }) => {
   const { customers, loading, error, reload } = useCustomers();
   const { products, loading: productsLoading, error: productsError, reload: reloadProducts } = useProducts();
   const userId = authService.getCurrentUser()!.id;
@@ -53,7 +54,7 @@ export const NewSaleView: React.FC<NewSaleViewProps> = ({ initialCustomer, onNew
   useEffect(()=>{void workspace.ensureNumber().catch(error=>setNotice(error instanceof Error?error.message:'Não foi possível consultar o número da venda.'));},[workspace]);
   const [finalizing,setFinalizing]=useState<SaleDetails|null>(null);
   const [receiptPreview,setReceiptPreview]=useState<ReceiptDocumentData|null>(null);
-  const [testReceipt,setTestReceipt]=useState<ReceiptDocumentData|null>(null);
+
   const [paymentPlan,setPaymentPlan]=useState<SalePaymentDraft[]>([{methodId:null,amount:'0,00',status:'pending',channel:'erp',scheduledFor:''}]);
   const [paymentAmountsEdited,setPaymentAmountsEdited]=useState(false);
   const locked=sync.status==='closed'||!!draft.remote&&draft.remote.status!=='draft';
@@ -115,9 +116,8 @@ export const NewSaleView: React.FC<NewSaleViewProps> = ({ initialCustomer, onNew
       setFinalizing(details);
     }catch(reason){setNotice(reason instanceof Error?reason.message:'Não foi possível preparar a finalização.');}
   };
-  const completeTestFinalization=(details:SaleDetails,receipt:ReceiptDocumentData)=>{
-    workspace.acceptClosed(details);setFinalizing(null);setTestReceipt(receipt);
-    setNotice('Venda confirmada. Estoque, financeiro e produção atualizados.');
+  const completeTestFinalization=(details:SaleDetails)=>{
+    workspace.acceptClosed(details);setFinalizing(null);onFinalized();
   };
   const orderNumber=draft.remote?.orderNumber??draft.numberReservation?.orderNumber??null;
   const numberLabel=orderNumber===null?'':`Nº ${orderNumber.toLocaleString('pt-BR')}`;
@@ -131,7 +131,7 @@ export const NewSaleView: React.FC<NewSaleViewProps> = ({ initialCustomer, onNew
   },[paymentCatalog.data]);
   const paymentTotalCents=useMemo(()=>{
     const calculated=calculateSalePricing(draft.pricing.items,draft.pricing.discount);
-    const freight=draft.pricing.freight.trim()?parsePriceInput(draft.pricing.freight):null;
+    const freight=draft.pricing.freight.trim()?parsePriceInput(draft.pricing.freight):0;
     return calculated.totals&&freight!==null?calculated.totals.netCents+freight:null;
   },[draft.pricing.items,draft.pricing.discount,draft.pricing.freight]);
   useEffect(()=>{
@@ -345,7 +345,7 @@ export const NewSaleView: React.FC<NewSaleViewProps> = ({ initialCustomer, onNew
       </form>
       {finalizing&&paymentCatalog.data&&<TestSaleFinalizationModal userId={userId} details={finalizing} catalog={paymentCatalog.data} initialPayments={finalizationPayments} onClose={()=>setFinalizing(null)} onCompleted={completeTestFinalization}/>}
       {receiptPreview&&<ReceiptPreviewModal data={receiptPreview} onClose={()=>setReceiptPreview(null)}/>}
-      {testReceipt&&<ReceiptPreviewModal data={testReceipt} onClose={()=>setTestReceipt(null)}/>}
+
     </div>
   );
 };

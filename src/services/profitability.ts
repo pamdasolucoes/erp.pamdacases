@@ -8,7 +8,7 @@ export interface ProfitabilityInput {id:string;order_number:number;confirmed_at:
 export function profitabilityLine(row:ProfitabilityInput){
  const gross=dbCents(row.subtotal),discount=dbCents(row.discount_amount),net=gross-discount,shipping=dbCents(row.shipping_charged);
  const cost=row.cost_verified&&row.product_cost!==null?dbCents(row.product_cost):null;
- const delivery=row.delivery_cost===null?null:dbCents(row.delivery_cost);
+ const delivery=row.delivery_cost===null?0:dbCents(row.delivery_cost);
  const profit=cost===null?null:net-cost;
  return {...row,gross,discount,net,shipping,cost,delivery,profit,markup:cost!==null&&cost>0&&profit!==null?profit/cost*100:null,result:profit===null||delivery===null?null:profit+shipping-delivery};
 }

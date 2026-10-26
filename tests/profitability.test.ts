@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {profitabilityLine,profitabilityTotals,type ProfitabilityInput} from '../src/services/profitability';
 const row=(overrides:Partial<ProfitabilityInput>={}):ProfitabilityInput=>({id:'sale',order_number:10000,confirmed_at:'2026-10-23T12:00:00Z',customer_name:'Cliente',subtotal:'25.00',discount_amount:'0.00',shipping_charged:'10.00',delivery_cost:null,product_cost:'5.00',cost_verified:true,...overrides});
 test('capa de 25 com custo gerencial 5 gera lucro 20 e markup 400%, sem confundir frete com receita do produto',()=>{
- const line=profitabilityLine(row());assert.equal(line.profit,2000);assert.equal(line.markup,400);assert.equal(line.net,2500);assert.equal(line.shipping,1000);assert.equal(line.result,null);
+ const line=profitabilityLine(row());assert.equal(line.profit,2000);assert.equal(line.markup,400);assert.equal(line.net,2500);assert.equal(line.shipping,1000);assert.equal(line.result,3000);
 });
 test('descontos e custo real de entrega reduzem resultado, sem descontar duas vezes o frete',()=>{
  const line=profitabilityLine(row({discount_amount:5,delivery_cost:8}));assert.equal(line.net,2000);assert.equal(line.profit,1500);assert.equal(line.markup,300);assert.equal(line.result,1700);

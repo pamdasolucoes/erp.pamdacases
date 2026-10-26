@@ -139,7 +139,7 @@ test('recuperação após interrupção inicial preserva frete confirmado e resp
     const sync = new PendingDraftSync(store, service, () => true);
     await sync.activate(); assert.equal(await sync.flush(), true);
     assert.equal(store.getSnapshot().pricing.freight, manualFreight ? '' : '12,5');
-    assert.equal(backend.sales[0].shipping_confirmed, !manualFreight);
+    assert.equal(backend.sales[0].shipping_confirmed, true);
     assert.equal(backend.sales[0].shipping_charged, manualFreight ? 0 : 12.5);
     sync.dispose();
   }

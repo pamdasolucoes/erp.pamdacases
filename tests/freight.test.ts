@@ -27,7 +27,9 @@ test('padrao 10 permite cobrar 0 ou 15 sem alterar cliente e sem inferir custo r
   assert.equal(saleTotalWithFreight(2000,'15,00').totalCents,3500);
 });
 test('frete invalido nao vira zero e nao se mistura aos descontos dos itens',()=>{
-  for(const input of ['','-1','1,001','NaN','Infinity']) assert.equal(saleTotalWithFreight(3500,input).totalCents,null);
+  for(const input of ['-1','1,001','NaN','Infinity']) assert.equal(saleTotalWithFreight(3500,input).totalCents,null);
+  assert.deepEqual(saleTotalWithFreight(3500,''),{totalCents:3500,error:null});
+  assert.equal(captureSaleFreight(null,pendingCustomerFreight,'','',false).chargedCents,0);
   assert.deepEqual(saleTotalWithFreight(3500,'10,00'),{totalCents:4500,error:null});
   assert.equal(saleTotalWithFreight(null,'10,00').totalCents,null);
   assert.equal(saleTotalWithFreight(Number.MAX_SAFE_INTEGER,'1,00').totalCents,null);

@@ -20,7 +20,7 @@ test('finalização real preserva divisão dos pagamentos, confirma no servidor 
  await paymentSection.getByLabel('Valor da forma de pagamento 1').fill('10,00');
  await paymentSection.getByRole('button',{name:'+ Adicionar forma de pagamento'}).click();
  await paymentSection.getByLabel('Valor da forma de pagamento 2').fill('15,00');
- await page.getByLabel('Frete cobrado (R$)',{exact:true}).fill('0,00');
+ await page.getByLabel('Frete cobrado (R$)',{exact:true}).fill('');
  await expect(page.getByTestId('sale-save-state')).toHaveText('Salvo · Pendente');
  await page.getByRole('button',{name:'Finalizar venda',exact:true}).click();
  const modal=page.getByRole('dialog',{name:'Finalizar venda',exact:true});
@@ -28,11 +28,11 @@ test('finalização real preserva divisão dos pagamentos, confirma no servidor 
  await expect(modal.getByLabel('Situação',{exact:true})).toHaveCount(0);
  await expect(modal.getByLabel('Comprovante / referência',{exact:true})).toHaveCount(0);
  await modal.getByRole('button',{name:'Confirmar venda',exact:true}).click();
- await expect(page.getByText('Venda confirmada. Estoque, financeiro e produção atualizados.')).toBeVisible();
+ await expect(page.getByText('Venda finalizada com sucesso',{exact:true})).toBeVisible();await expect(page.getByRole('heading',{name:'Todas as Vendas'})).toBeVisible();
  expect(calls).toHaveLength(1);expect(calls[0].p_payments.map((p:any)=>p.amount)).toEqual([10,15]);
  expect(calls[0].p_payments.every((p:any)=>p.channel==='erp'&&p.status==='paid'&&p.reference===undefined&&p.scheduled_for===undefined)).toBe(true);
  await expect(page.getByText('DOCUMENTO DE TESTE - SEM VALOR FISCAL',{exact:true})).toHaveCount(0);
- await expect(page.getByRole('article',{name:'Documento do recibo'})).toBeVisible();
+ await expect(page.getByRole('article',{name:'Documento do recibo'})).toHaveCount(0);await expect(page.getByRole('dialog',{name:'Finalizar venda',exact:true})).toHaveCount(0);
 });
 
 test('cadastro e configuração de opções por usuário ficam no ERP',async({page})=>{

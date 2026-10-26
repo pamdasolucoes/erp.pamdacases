@@ -20,11 +20,11 @@ test('início usa exatamente o contrato, repete chave sem duplicação e impede 
   assert.equal(backend.events.filter(e=>e.event_type==='sale_started').length,1);
 });
 
-test('contrato de salvamento aceita vazio/frete nulo, mantém UUID e não aceita retorno divergente',async()=>{
+test('contrato de salvamento converte frete vazio para zero, mantém UUID e não aceita retorno divergente',async()=>{
   const {service,user,backend,setInvalidSaveReturn}=pendingBackend();
   const id=await service.start(user.id,uuid(1),uuid(1001),uuid(8000));
   const draft=emptySalePreparation(user.id);draft.customerId=uuid(1);draft.branchId=uuid(1001);
-  const args=pendingSaleArgs(draft,id);assert.equal(args.p_frete,null);assert.deepEqual(args.p_itens,[]);
+  const args=pendingSaleArgs(draft,id);assert.equal(args.p_frete,0);assert.deepEqual(args.p_itens,[]);
   assert.deepEqual(Object.keys(args).sort(),['p_cliente_id','p_filial_id','p_itens','p_frete','p_desconto','p_motivo','p_observacoes','p_venda_id','p_forma_id','p_prazo_id'].sort());
   await service.save(user.id,args);assert.equal(backend.sales.length,1);
   setInvalidSaveReturn(true);await assert.rejects(()=>service.save(user.id,args),/venda esperada/);

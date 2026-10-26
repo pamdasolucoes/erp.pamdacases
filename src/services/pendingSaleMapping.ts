@@ -21,7 +21,7 @@ export function pendingSaleArgs(draft:SalePreparation,saleId:string):SavePending
   const calc=calculateSalePricing(draft.pricing.items,draft.pricing.discount);
   if(!calc.totals||calc.errors.length) throw new Error('Corrija quantidades, preços e desconto para salvar as alterações.');
   if(calc.totals.additionalDiscountCents>0&&!draft.pricing.discountReason.trim()) throw new Error('Informe o motivo do desconto para salvar.');
-  const freight=draft.pricing.freight.trim()?parsePriceInput(draft.pricing.freight):null;
+  const freight=draft.pricing.freight.trim()?parsePriceInput(draft.pricing.freight):0;
   if(draft.pricing.freight.trim()&&freight===null) throw new Error('Informe um frete válido, ou deixe vazio enquanto não definido.');
   const paymentId=(value:string|null|undefined)=>{if(value&&!isUuid(value))throw new Error('Condição de pagamento inválida.');return value||null;};
   return {p_cliente_id:draft.customerId,p_filial_id:draft.branchId,p_venda_id:saleId,
