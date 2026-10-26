@@ -65,22 +65,29 @@ test('matriz marcada fora da primeira posição herda frete; zero da filial prev
   expect(sales.sales).toHaveLength(1); expect(sales.sales[0].shipping_charged).toBe(12.5);
 });
 
-test('frete padrão e da unidade são gravados por RPC e relidos; vazio e zero permanecem diferentes', async ({ page }) => {
-  const { state } = await setup(page);
-  await page.getByLabel('Frete padrão do cliente (R$)', { exact: true }).fill('12,50');
-  await page.getByLabel('Motivo da alteração de frete').fill('Tabela revisada');
-  await page.getByRole('button', { name: 'Salvar frete do cliente', exact: true }).click();
-  await expect.poll(() => state.customerShipping[uuid(1)]).toBe(12.5);
-  await expect(page.getByRole('status').filter({ hasText: 'Frete confirmado' })).toBeVisible();
-  await page.getByLabel('Frete da unidade (R$)', { exact: true }).fill('0,00');
-  await page.getByLabel('Motivo da alteração de frete').fill('Retirada na loja');
-  await page.getByRole('button', { name: 'Salvar frete da unidade', exact: true }).click();
+test('frete padrão único salva por unidade, preserva outras filiais e dispensa motivo', async ({ page }) => {
+  const { state,branches } = await setup(page);
+  let suggestions=0;page.on('request',r=>{if(r.url().includes('pamda_sugerir_frete'))suggestions++;});
+  await page.getByLabel('Frete padrão (R$)', { exact: true }).fill('5,00');
+  await page.getByRole('button', { name: 'Salvar frete padrão', exact: true }).click();
+  await expect.poll(() => state.branchShipping[uuid(1001)]).toBe(5);
+  await expect(page.getByRole('status').filter({hasText:'Frete padrão salvo com sucesso.'})).toBeVisible();
+  await expect(page.getByLabel('Motivo da alteração de frete')).toHaveCount(0);
+  await expect(page.getByText(/Sugestão automática/)).toHaveCount(0);
+  branches.push(branchRow(800,{customer_id:uuid(1),name:'Filial metropolitana',is_primary:false}));
+  await page.getByRole('button',{name:'Atualizar lista',exact:true}).click();
+  await expect(page.getByText('385 unidades',{exact:true})).toBeVisible();
+  await page.getByLabel('Unidade das condições comerciais').selectOption(uuid(1800));
+  await page.getByLabel('Frete padrão (R$)', { exact: true }).fill('10,00');
+  await page.getByRole('button', { name: 'Salvar frete padrão', exact: true }).click();
+  await expect.poll(() => state.branchShipping[uuid(1800)]).toBe(10);
+  expect(state.branchShipping[uuid(1001)]).toBe(5);
+  await page.getByLabel('Unidade das condições comerciais').selectOption(uuid(1001));
+  await expect(page.getByLabel('Frete padrão (R$)',{exact:true})).toHaveValue('5,00');
+  await page.getByLabel('Frete padrão (R$)', { exact: true }).fill('');
+  await page.getByRole('button', { name: 'Salvar frete padrão', exact: true }).click();
   await expect.poll(() => state.branchShipping[uuid(1001)]).toBe(0);
-  await expect(page.getByLabel('Frete da unidade (R$)', { exact: true })).toHaveValue('0,00');
-  await page.getByLabel('Frete da unidade (R$)', { exact: true }).fill('');
-  await page.getByLabel('Motivo da alteração de frete').fill('Voltar à tabela do cliente');
-  await page.getByRole('button', { name: 'Salvar frete da unidade', exact: true }).click();
-  await expect.poll(() => state.branchShipping[uuid(1001)]).toBeNull();
+  expect(state.branchShipping[uuid(1800)]).toBe(10);expect(suggestions).toBe(0);
 });
 
 test('administrador revisa pendência legada sem número e só confirma descarte após resposta protegida', async ({ page }) => {
