@@ -50,7 +50,7 @@ export function buildCustomerUpdate(customer: OfficialCustomer, form: CustomerFo
     }
     if (draft.active !== branch.active) changed.active = draft.active;
     if (draft.confirmAddressReviewed && branch.addressNeedsReview) {
-      if (['address', 'city', 'state', 'zipCode'].some(key => !draft.values[key as BranchField].trim())) throw new Error('Preencha endereço, cidade, estado e CEP antes de confirmar a revisão.');
+      if (['address', 'city', 'state'].some(key => !draft.values[key as BranchField].trim())) throw new Error('Preencha endereço, cidade e estado antes de confirmar a revisão.');
       changed.addressNeedsReview = false;
     }
     if (Object.keys(changed).length) branches.push({ id: branch.id, expectedUpdatedAt: branch.updatedAt, changes: changed, confirmAddressReviewed: draft.confirmAddressReviewed });

@@ -44,7 +44,7 @@ test('edita telefone e endereco, exige revisao explicita e confirma valores apos
   await form.getByLabel('Endereço',{exact:true}).fill('Rua Testada');
   await form.getByLabel('Cidade',{exact:true}).fill('Curitiba');
   await form.getByLabel('Estado',{exact:true}).fill('PR');
-  await form.getByLabel('CEP',{exact:true}).fill('80000-000');
+  await form.getByLabel('CEP',{exact:true}).fill('');
   await form.getByLabel('Conferi este endereço',{exact:false}).check();
   await page.getByRole('button',{name:'Salvar alterações'}).click();
   await expect(page.getByText('Cadastro atualizado e confirmado pelo PAMDA CORE.')).toBeVisible();
@@ -54,6 +54,7 @@ test('edita telefone e endereco, exige revisao explicita e confirma valores apos
   expect(state.writes[0].body.p_customer_id).toBe(uuid(1));
   await page.reload();
   await expect(page.getByText('384 clientes acessíveis')).toBeVisible();
+  await page.getByTestId(`customer-row-${uuid(1)}`).click();
   await expect(page.getByText('(41) 99999-4321',{exact:true})).toBeVisible();
   await expect(page.getByText('Rua Testada',{exact:true})).toBeVisible();
   await expect(page.getByLabel('Código comercial',{exact:true})).toHaveValue('000001');

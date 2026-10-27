@@ -33,7 +33,7 @@ test('revisao exige confirmacao humana e endereco completo, sem mudanca automati
   assert.deepEqual(buildCustomerUpdate(customer, form).branches[0].changes, { address: 'Rua A' });
   form.branches[0].confirmAddressReviewed = true;
   assert.throws(() => buildCustomerUpdate(customer, form), /Preencha/);
-  Object.assign(form.branches[0].values, { city: 'Curitiba', state: 'PR', zipCode: '80000-000' });
+  Object.assign(form.branches[0].values, { city: 'Curitiba', state: 'PR', zipCode: '' });
   const update = buildCustomerUpdate(customer, form);
   assert.equal(toCustomerUpdateRpc(update).p_branches[0].changes.address_needs_review, false);
   assert.throws(() => toCustomerUpdateRpc({ ...update, branches: [{ ...update.branches[0], confirmAddressReviewed: false }] }), /Confirme/);
