@@ -20,7 +20,7 @@ export class ProductsService {
       if (error) throw new Error(`Não foi possível consultar ${table}. Confira a conexão e as permissões do Supabase.`);
       if (!Array.isArray(data) || count === null || count === undefined) throw new Error('Leitura incompleta do catálogo. Tente atualizar.');
       return { rows: data as unknown as T[], total: count };
-    }, 100, signal);
+    }, 500, signal, 3);
     const [rows, components] = await Promise.all([load<ProductRow>('erp_product_catalog', PRODUCT_COLUMNS), load<KitComponentRow>('kit_components', KIT_COMPONENT_COLUMNS)]);
     signal?.throwIfAborted();
     return mapProductCatalog(rows, components);

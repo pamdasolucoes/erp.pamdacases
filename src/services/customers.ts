@@ -67,7 +67,7 @@ export class CustomersService {
       if (error) throw new Error(`Não foi possível consultar ${table}. Confira a conexão e as permissões no Supabase.`);
       if (!data || count === null) throw new Error('Resposta incompleta do servidor. Tente atualizar a lista.');
       return { rows: data as unknown as T[], total: count };
-    }, 100, signal);
+    }, 500, signal, 3);
     // O JWT da sessão Auth é autorizado exclusivamente pelas políticas RLS.
     const [customers, branches] = await Promise.all([
       load<CustomerRow>('customers', CUSTOMER_COLUMNS),

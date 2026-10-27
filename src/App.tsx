@@ -71,13 +71,15 @@ export function App() {
       }
     });
     void authService.initialize();
-    const revalidate=()=>{if(authService.getCurrentUser()) void authService.refresh();};
+    let revalidationTimer: ReturnType<typeof setTimeout> | undefined;
+    const revalidate=()=>{clearTimeout(revalidationTimer);revalidationTimer=setTimeout(()=>{if(authService.getCurrentUser()) void authService.refresh();},100);};
     const visible=()=>{if(document.visibilityState==='visible') revalidate();};
     window.addEventListener('online',revalidate);
     window.addEventListener('focus',revalidate);
     document.addEventListener('visibilitychange',visible);
 
     return () => {
+      clearTimeout(revalidationTimer);
       unsubscribeAuth();
       window.removeEventListener('online',revalidate);
       window.removeEventListener('focus',revalidate);

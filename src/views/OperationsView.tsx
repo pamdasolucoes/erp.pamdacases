@@ -5,6 +5,7 @@ import React,{useCallback,useEffect,useMemo,useRef,useState} from 'react';
 import {operations,money,localDate,displayDate,type OperationModule,type DataRow} from '../services/operations';
 import {authService} from '../services/auth';
 import {exportToCsv} from '../services/csvExport';
+import {useProgressiveRows} from '../hooks/useProgressiveRows';
 import {productCatalog} from '../services/catalogResources';
 
 const names:Record<OperationModule,string>={stock:'Estoque e movimentos',purchases:'Compras e entradas',expenses:'Despesas',receivables:'Contas a receber',closings:'Fechamentos',production:'Fila de produção',deliveries:'Fretes e entregas',reports:'Relatório de vendas',profitability:'Lucratividade',audit:'Auditoria e logs',settings:'Configurações'};
@@ -13,7 +14,7 @@ const inputClass='w-full rounded-lg border border-slate-300 px-3 py-2 bg-white t
 const buttonClass='rounded-lg bg-blue-700 px-4 py-2 text-sm font-bold text-white disabled:opacity-50';
 function Field({label,children}:{label:string;children:React.ReactNode}){return <label className="grid gap-1 text-sm font-medium">{label}{children}</label>;}
 function Input({label,name,type='text',required=true,value,onChange,min,step}:{label:string;name?:string;type?:string;required?:boolean;value?:string|number;onChange?:(e:React.ChangeEvent<HTMLInputElement>)=>void;min?:number;step?:string}){return <Field label={label}><input className={inputClass} name={name} type={type} required={required} value={value} onChange={onChange} min={min} step={step}/></Field>;}
-function Table({headers,rows}:{headers:string[];rows:React.ReactNode[][]}){return <div className="overflow-auto rounded-xl border bg-white"><table className="w-full text-left text-sm"><thead className="bg-slate-100"><tr>{headers.map(h=><th className="p-3 whitespace-nowrap" key={h}>{h}</th>)}</tr></thead><tbody>{rows.length?rows.map((cells,i)=><tr className="border-t" key={i}>{cells.map((c,j)=><td className="p-3 align-top" key={j}>{c}</td>)}</tr>):<tr><td className="p-8 text-center text-slate-500" colSpan={headers.length}>Nenhum registro encontrado.</td></tr>}</tbody></table></div>;}
+function Table({headers,rows}:{headers:string[];rows:React.ReactNode[][]}){const list=useProgressiveRows(rows, JSON.stringify(headers)+rows.length);return <div className="overflow-auto rounded-xl border bg-white"><table className="w-full text-left text-sm"><thead className="bg-slate-100"><tr>{headers.map(h=><th className="p-3 whitespace-nowrap" key={h}>{h}</th>)}</tr></thead><tbody>{rows.length?list.visible.map((cells,i)=><tr className="border-t" key={i}>{cells.map((c,j)=><td className="p-3 align-top" key={j}>{c}</td>)}</tr>):<tr><td className="p-8 text-center text-slate-500" colSpan={headers.length}>Nenhum registro encontrado.</td></tr>}</tbody></table>{list.hasMore&&<button type="button" className="m-3 rounded-lg border px-4 py-2 text-sm" onClick={list.showMore}>Mostrar mais registros ({list.visible.length} de {rows.length})</button>}</div>;}
 
 export function OperationsView({module,suppliers=false,byCustomer=false,costOnly=false}:{module:OperationModule;suppliers?:boolean;byCustomer?:boolean;costOnly?:boolean}){
  const [data,setData]=useState<DataRow|null>(null),[loading,setLoading]=useState(true),[busy,setBusy]=useState(false),[error,setError]=useState(''),[notice,setNotice]=useState('');
