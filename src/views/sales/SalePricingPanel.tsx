@@ -16,6 +16,8 @@ import { checkDraftStock } from '../../services/draftStock';
 import { createReceiptPreview } from '../../services/receiptPreview';
 import type { PricingPreparation } from '../../types/salePreparation';
 
+import {ItemCustomization} from './ItemCustomization';
+
 const inputClass = 'w-full px-3 py-2 border border-slate-300 rounded-xl text-sm bg-white';
 function usePreparationField<K extends keyof PricingPreparation>(draft:PricingPreparation,update:React.Dispatch<React.SetStateAction<PricingPreparation>>,key:K):[PricingPreparation[K],React.Dispatch<React.SetStateAction<PricingPreparation[K]>>] {
   return [draft[key],value=>update(previous=>({...previous,[key]:typeof value==='function'?(value as (old:PricingPreparation[K])=>PricingPreparation[K])(previous[key]):value}))];
@@ -131,12 +133,9 @@ export function SalePricingPanel({ products, customerId, branchId, draft, onDraf
           <tr className="border-b border-slate-100">
             <td colSpan={costPermission.allowed?6:5} className="px-2 pb-2">
               <details className="text-xs">
-                <summary className="cursor-pointer text-slate-600">Personalização e motivo (opcional)</summary>
+                <summary className="cursor-pointer text-slate-600">Personalização (opcional)</summary>
                 <div className="mt-2 flex flex-wrap gap-2">
-                  <label className="min-w-36 flex-1">Modelo<input aria-label={`Modelo informado do item ${index + 1}`} value={item.customization?.model || ''} maxLength={200} onChange={event => changeItem(item.id, { customization: { ...(item.customization || { model: '', color: '', walletFaces: '' }), model: event.target.value } })} className={`${inputClass} mt-1`} /></label>
-                  <label className="min-w-36 flex-1">Cor<input aria-label={`Cor informada do item ${index + 1}`} value={item.customization?.color || ''} maxLength={100} onChange={event => changeItem(item.id, { customization: { ...(item.customization || { model: '', color: '', walletFaces: '' }), color: event.target.value } })} className={`${inputClass} mt-1`} /></label>
-                  <label className="min-w-36 flex-1">Carteira<select aria-label={`Faces da carteira do item ${index + 1}`} value={item.customization?.walletFaces || ''} onChange={event => changeItem(item.id, { customization: { ...(item.customization || { model: '', color: '', walletFaces: '' }), walletFaces: event.target.value as '' | '1' | '2' } })} className={`${inputClass} mt-1`}><option value="">Não informado / não se aplica</option><option value="1">Uma face</option><option value="2">Duas faces</option></select></label>
-                  <label className="min-w-48 flex-1">Motivo da negociação<input aria-label={`Motivo da alteração do item ${index + 1}`} maxLength={1000} value={item.reason} onChange={event => changeItem(item.id, { reason: event.target.value })} onBlur={() => { if (committedReasons.current.get(item.id) !== item.reason) { if (line) record('reason_changed', line); committedReasons.current.set(item.id, item.reason); } }} className={`${inputClass} mt-1`} /></label>
+                  <ItemCustomization item={item} index={index} onChange={customization=>changeItem(item.id,{customization})}/>
                 </div>
               </details>
             </td>

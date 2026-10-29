@@ -155,6 +155,7 @@ export function ReceiptDocument({ data }: { data: ReceiptDocumentData }) {
                     {item.sku && <p className="receipt-muted receipt-product-code">SKU: {item.sku}</p>}
                     {item.customization?.model && <p className="receipt-muted receipt-product-customization">Modelo: {item.customization.model}</p>}
                     {item.customization?.color && <p className="receipt-muted">Cor: {item.customization.color}</p>}
+                    {item.customization?.customerCases?.slice(1).map((c,i)=><p key={i} className="receipt-muted">{[c.model,c.color].filter(Boolean).join(" · ")}</p>)}
                     {item.customization?.walletFaces && <p className="receipt-muted">Carteira: {item.customization.walletFaces === '1' ? 'uma face' : 'duas faces'}</p>}
                   </td>
                   <td>{item.quantity}</td>
@@ -170,6 +171,7 @@ export function ReceiptDocument({ data }: { data: ReceiptDocumentData }) {
                 <p className="receipt-thermal-product">{item.code} - <strong>{item.name}</strong></p>
                 {item.customization?.model && <p className="receipt-muted">Modelo: {item.customization.model}</p>}
                 {item.customization?.color && <p className="receipt-muted">Cor: {item.customization.color}</p>}
+                    {item.customization?.customerCases?.slice(1).map((c,i)=><p key={i} className="receipt-muted">{[c.model,c.color].filter(Boolean).join(" · ")}</p>)}
                 {item.customization?.walletFaces && <p className="receipt-muted">Carteira: {item.customization.walletFaces === '1' ? 'uma face' : 'duas faces'}</p>}
                 <p className="receipt-thermal-values"><span>Qtd: {item.quantity}</span><strong>Subtotal: {formatMoney(item.subtotalCents)}</strong></p>
               </div>

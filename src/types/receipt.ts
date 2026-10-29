@@ -9,7 +9,7 @@ export interface ReceiptDocumentData {
   readonly salespersonName: string; readonly condition: string;
   readonly items: readonly { id: string; code: string; sku: string | null; name: string; description: string | null;
     quantity: number; unitPriceCents: number; subtotalCents: number; discountCents: number; netCents: number;
-    customization: { model: string; color: string; walletFaces: '' | '1' | '2' } | null }[];
+    customization: { model: string; color: string; walletFaces: '' | '1' | '2'; customerCases?: readonly {model:string;color:string}[] } | null }[];
   readonly subtotalCents: number; readonly discountCents: number; readonly freightCents: number; readonly totalCents: number;
   readonly notes: string; readonly freightReason: string;
   readonly payment: null | { paid: boolean; amountPaidCents: number; balanceCents: number; pixKey: string; qrCodeUrl: string; methods?: readonly {name:string;amountCents:number;status:string}[] };

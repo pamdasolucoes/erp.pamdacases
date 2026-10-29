@@ -23,6 +23,7 @@ export function parseSalePreparation(raw:string|null,userId:string):SalePreparat
         !(s.productType===null||['fisico','kit','servico','insumo'].includes(s.productType)) || !text(s.catalogUpdatedAt,100) || !text(s.capturedAt,100) ||
         ![s.originalUnitPriceCents,s.directUnitCostMicros,s.managerialUnitCostMicros].every(n=>n===null || (Number.isSafeInteger(n)&&n!>=0)) ||
         !(s.productSku===null || text(s.productSku)) || !(s.productDescription===null || text(s.productDescription)) || !Array.isArray(s.components)) return null;
+      if(item.customization?.customerCases && (!Array.isArray(item.customization.customerCases)||item.customization.customerCases.length>30||item.customization.customerCases.some(c=>!c||!text(c.model,200)||!text(c.color,100)))) return null;
       if(item.customization && (!text(item.customization.model,200) || !text(item.customization.color,100) || !['','1','2'].includes(item.customization.walletFaces))) return null;
       ids.add(item.id);
     }

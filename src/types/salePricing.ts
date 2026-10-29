@@ -30,7 +30,7 @@ export interface PricingDraftItem {
   readonly quantityInput: string;
   readonly priceInput: string;
   readonly reason: string;
-  readonly customization?: { readonly model: string; readonly color: string; readonly walletFaces: '' | '1' | '2'; readonly [key:string]:unknown };
+  readonly customization?: { readonly model: string; readonly color: string; readonly walletFaces: '' | '1' | '2'; readonly customerCases?: readonly {model:string;color:string}[]; readonly [key:string]:unknown };
 }
 export interface PricingLine {
   readonly item: PricingDraftItem;
