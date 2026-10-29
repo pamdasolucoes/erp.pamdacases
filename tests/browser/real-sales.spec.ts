@@ -47,6 +47,9 @@ test('cadastro e configuração de opções por usuário ficam no ERP',async({pa
  await page.getByRole('combobox',{name:'Perfil',exact:true}).selectOption('producao');
  await page.getByRole('button',{name:'Cadastrar usuário',exact:true}).click();
  await page.getByRole('button',{name:/Funcionário novo/}).click();
+ await expect(page.getByRole('group',{name:'03 · Estoque e produtos'})).toBeVisible();
+ await expect(page.getByRole('heading',{name:'Telas disponíveis no menu'})).toBeVisible();
+ await expect(page.getByRole('heading',{name:'Ações e informações permitidas'})).toBeVisible();
  await page.getByLabel('Menu: Estoque e movimentos').check();await page.getByLabel('Consultar estoque').check();
  await page.getByRole('button',{name:'Salvar acessos',exact:true}).click();
  await expect(page.getByText('Perfil e permissões salvos no Supabase.')).toBeVisible();
