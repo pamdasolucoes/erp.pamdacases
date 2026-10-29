@@ -44,7 +44,7 @@ test('cadastro e configuração de opções por usuário ficam no ERP',async({pa
  await page.route('**/rest/v1/rpc/pamda_user_save',async r=>{writes.push(r.request().postDataJSON());return r.fulfill({json:null});});
  await page.getByRole('button',{name:'Usuários & Acessos',exact:true}).click();
  await page.getByLabel('Nome',{exact:true}).fill(employee.display_name);await page.getByLabel('E-mail de acesso').fill(employee.username);await page.getByLabel('Senha inicial (mínimo 12 caracteres)').fill('synthetic-password-only');
- await page.getByRole('combobox',{name:'Perfil',exact:true}).selectOption('producao');
+ await page.getByRole('combobox',{name:'Perfil',exact:true}).selectOption('gerencial');
  await page.getByRole('button',{name:'Cadastrar usuário',exact:true}).click();
  await page.getByRole('button',{name:/Funcionário novo/}).click();
  await expect(page.getByRole('group',{name:'03 · Estoque e produtos'})).toBeVisible();

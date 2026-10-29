@@ -10,6 +10,12 @@ function fixture(){
  return {request,calls,deny:()=>{allowed=false;},failProfile:()=>{profileFails=true;}};
 }
 const input={action:'create',email:'employee@example.invalid',name:'Funcionário',role:'producao',password:'temporary-valid-password'};
+
+test('administrador pode criar perfil gerencial e o perfil continua sem privilégios administrativos implícitos',async()=>{
+ const f=fixture();assert.equal((await f.request({...input,role:'gerencial'})).status,201);
+ assert.equal(f.calls.profiles[0].p_role,'gerencial');
+ f.deny();assert.equal((await f.request({...input,role:'gerencial'})).status,403);
+});
 test('cadastro real exige sessão e autorização atual do banco, sem aceitar metadata do pedido',async()=>{
  const f=fixture();assert.equal((await f.request(input,false)).status,401);f.deny();assert.equal((await f.request({...input,role:'admin_gerencial',app_metadata:{role:'admin'}})).status,403);assert.equal(f.calls.creates.length,0);
 });

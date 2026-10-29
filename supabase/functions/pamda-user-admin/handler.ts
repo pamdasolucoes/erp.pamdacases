@@ -17,7 +17,7 @@ return async (req:Request) => {
   const input = await req.json();
   const admin = createClient(url,secret,{auth:{persistSession:false,autoRefreshToken:false}});
   if (input.action === 'create') {
-   if (typeof input.email !== 'string' || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input.email) || typeof input.password !== 'string' || input.password.length<12 || typeof input.name!=='string' || !input.name.trim() || !['admin_gerencial','venda_atendimento','producao','financeiro','estoque_expedicao'].includes(input.role)) return reply(400,{error:'Informe nome, e-mail, perfil e senha com pelo menos 12 caracteres'});
+   if (typeof input.email !== 'string' || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input.email) || typeof input.password !== 'string' || input.password.length<12 || typeof input.name!=='string' || !input.name.trim() || !['admin_gerencial','gerencial','venda_atendimento','producao','financeiro','estoque_expedicao'].includes(input.role)) return reply(400,{error:'Informe nome, e-mail, perfil e senha com pelo menos 12 caracteres'});
    const created=await admin.auth.admin.createUser({email:input.email.trim(),password:input.password,email_confirm:true});
    if(created.error || !created.data.user) return reply(409,{error:'Não foi possível criar a conta. Confira se o e-mail já existe.'});
    const profile=await userClient.rpc('pamda_admin_registrar_perfil',{p_user_id:created.data.user.id,p_username:input.email.trim(),p_display_name:input.name.trim(),p_role:input.role});

@@ -1,6 +1,6 @@
 // PAMDA CASES - Tipagens de Domínio do ERP B2B
 
-export type UserRole = 'admin_gerencial' | 'venda_atendimento' | 'producao' | 'financeiro' | 'estoque_expedicao';
+export type UserRole = 'admin_gerencial' | 'gerencial' | 'venda_atendimento' | 'producao' | 'financeiro' | 'estoque_expedicao';
 
 export interface User {
   permissions?: Record<string,boolean>;

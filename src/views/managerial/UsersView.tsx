@@ -2,7 +2,7 @@ import {groupPermissions} from '../../services/permissionGroups';
 import React,{useEffect,useState} from 'react';
 import {operations,type DataRow} from '../../services/operations';
 import {authService} from '../../services/auth';
-const roles:Record<string,string>={admin_gerencial:'Administrador',venda_atendimento:'Vendas e atendimento',financeiro:'Financeiro',producao:'Produção',estoque_expedicao:'Estoque e expedição'};
+const roles:Record<string,string>={admin_gerencial:'Administrador',gerencial:'Gerencial',venda_atendimento:'Vendas e atendimento',financeiro:'Financeiro',producao:'Produção',estoque_expedicao:'Estoque e expedição'};
 const input='w-full border rounded-lg px-3 py-2 bg-white';
 export function UsersView(){
  const [data,setData]=useState<DataRow|null>(null),[selected,setSelected]=useState<DataRow|null>(null),[permissions,setPermissions]=useState<Record<string,boolean>>({});

@@ -1,7 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { User, UserRole } from '../types/erp';
 
-const ERP_ROLES: UserRole[] = ['admin_gerencial', 'venda_atendimento', 'producao', 'financeiro', 'estoque_expedicao'];
+const ERP_ROLES: UserRole[] = ['admin_gerencial', 'gerencial', 'venda_atendimento', 'producao', 'financeiro', 'estoque_expedicao'];
 
 interface ErpUserProfile {
   user_id: string;

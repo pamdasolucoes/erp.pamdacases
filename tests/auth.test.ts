@@ -7,6 +7,12 @@ import { canAccessTab } from '../src/services/access';
 import { assertNoFrontendSecrets, readSupabaseConfig } from '../src/services/supabaseConfig';
 
 const userId = '6c7da859-74cf-4718-88b7-e573617b8eb4';
+test('perfil gerencial é reconhecido sem acesso administrativo automático',()=>{
+ const user=mapUserProfile(userId,{user_id:userId,username:'gestor',role:'gerencial',active:true,can_view_financial_metrics:false})!;
+ assert.equal(user.role,'gerencial');
+ assert.equal(canAccessTab({...user,permissions:{}},'usuarios'),false);
+ assert.equal(canAccessTab({...user,permissions:{'reports.read':true}},'relatorio_vendas'),true);
+});
 const profile = (overrides: Record<string, unknown> = {}) => ({
   user_id: userId,
   username: 'admin',
