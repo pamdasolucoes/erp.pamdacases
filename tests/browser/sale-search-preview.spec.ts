@@ -69,7 +69,6 @@ test('prévia responsiva imprime documento isolado A4/80 mm sem gravar nem confi
   await page.locator('details').first().locator('summary').click();
   await page.getByLabel('Modelo informado do item 1').fill('iPhone 11');
   await page.getByLabel('Cor informada do item 1').fill('Azul');
-  await page.getByLabel('Faces da carteira do item 1').selectOption('2');
   await page.getByLabel('OBSERVAÇÕES',{exact:true}).fill('<script>teste</script>');
   await expect(page.getByTestId('sale-save-state')).toHaveText('Salvo · Pendente');
   const savedBeforePreview=sales.writes.length;
@@ -78,7 +77,7 @@ test('prévia responsiva imprime documento isolado A4/80 mm sem gravar nem confi
   await expect(dialog).toBeVisible();
   const paper=page.locator('#pamda-receipt-preview-paper');
   for(const text of ['000001','SKU-KIT-1','iPhone 11','Azul','35,00','<script>teste</script>']) await expect(paper).toContainText(text);
-  await expect(paper.locator('.receipt-heading strong')).toHaveText('RECIBO Nº TESTE');
+  await expect(paper.locator('.receipt-heading strong')).toHaveText(/^RECIBO Nº \d+$/);
   await expect(paper.locator('.receipt-customer')).toHaveCSS('text-align','center');
   await expect(paper.locator('.receipt-seller')).toContainText('Vendedor:');
   await expect(paper.locator('.receipt-seller')).toHaveCSS('font-size','14px');
@@ -109,7 +108,7 @@ test('prévia responsiva imprime documento isolado A4/80 mm sem gravar nem confi
   await expect(dialog.getByRole('button',{name:/Padrão A4|Térmica 80mm/})).toHaveCount(0);
   await dialog.getByRole('button',{name:'Imprimir Recibo',exact:true}).click();
   await expect.poll(()=>page.evaluate(()=>(window as Window & {__previewPrintCalls?:number}).__previewPrintCalls)).toBe(1);
-  await expect(page.frameLocator('#pamda-preview-print-frame').locator('body')).toContainText('RECIBO Nº TESTE');
+  await expect(page.frameLocator('#pamda-preview-print-frame').locator('body')).toContainText(/RECIBO Nº \d+/);
   await expect(page.frameLocator('#pamda-preview-print-frame').locator('body')).not.toContainText('VENDA NÃO CONFIRMADA');
   await expect(page.frameLocator('#pamda-preview-print-frame').getByRole('button')).toHaveCount(0);
   const printPage=await page.context().newPage();
@@ -213,7 +212,7 @@ test('prévia estreita adapta recibo, fonte e itens sem composição técnica',a
   await page.screenshot({path:testInfo.outputPath('previa-termica-multiplos-itens.png'),fullPage:true});
   await page.getByRole('button',{name:'Imprimir Recibo',exact:true}).click();
   const printBody=page.frameLocator('#pamda-preview-print-frame').locator('body');
-  await expect(printBody).toContainText('RECIBO Nº TESTE');
+  await expect(printBody).toContainText(/RECIBO Nº \d+/);
   await expect(printBody).not.toContainText('VENDA NÃO CONFIRMADA');
   await expect(printBody).not.toContainText('Documento de teste');
   await expect(printBody).not.toContainText('TÉRMICO');

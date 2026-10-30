@@ -299,6 +299,7 @@ export const NewSaleView: React.FC<NewSaleViewProps> = ({ initialCustomer, onNew
             )
             : (
               <SalePricingPanel
+                orderNumber={draft.remote?.orderNumber}
                 draft={draft.pricing}
                 onDraftChange={setPricing}
                 products={products}

@@ -6,11 +6,13 @@ import type { ReceiptDocumentData } from '../types/receipt';
 import { calculateSalePricing } from './salePricing';
 
 export function createReceiptPreview(input: {
+  orderNumber?: number | null;
   customer: OfficialCustomer | null; branch: OfficialCustomerBranch | null;
   items: readonly PricingDraftItem[]; discount: string; freight: SaleFreightSnapshot;
   notes: string; seller: User | null; generatedAt: string; paymentCondition?: string;
 }): ReceiptDocumentData {
   const { customer, branch, seller } = input;
+  if(input.orderNumber!=null&&(!Number.isSafeInteger(input.orderNumber)||input.orderNumber<1))throw new Error("Número de pedido inválido.");
   if (!customer) throw new Error('Selecione o cliente para visualizar a prévia.');
   if (customer.branches.length && !branch) throw new Error('Selecione a unidade/filial para visualizar a prévia.');
   if (branch && (branch.customerId !== customer.id || !customer.branches.some(unit => unit.id === branch.id))) throw new Error('A filial não corresponde ao cliente selecionado.');
@@ -34,7 +36,7 @@ export function createReceiptPreview(input: {
     branch?.zipCode ? `CEP ${branch.zipCode}` : null,
     phone ? `Contato: ${phone}` : null,
   ].filter(Boolean).join(' | ') || null;
-  return structuredClone({ kind: 'preview', receiptNumber: null, generatedAt: input.generatedAt,
+  return structuredClone({ kind: 'preview', receiptNumber: input.orderNumber == null ? null : String(input.orderNumber), generatedAt: input.generatedAt,
     company: { name: 'PAMDA CASES', cnpj: null, phone: null },
     customerName: customer.name, customerCode: customer.customerCode,
     customerContact,

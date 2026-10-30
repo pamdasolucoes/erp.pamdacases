@@ -3,7 +3,7 @@ import {setup,selectCatalogProduct} from './support/mockErp';
 import {serviceId} from '../fixtures/officialProducts';
 
 test('capas do cliente preservam vários modelos e cores na pendência e no recibo',async({page})=>{
- const {products}=await setup(page);
+ const {products,sales}=await setup(page);
  products.find(p=>p.id===serviceId(1))!.name='Impressão DTF UV em Capa Fornecida pelo Cliente';
  await page.getByRole('button',{name:'+ NOVA VENDA',exact:true}).click();
  await selectCatalogProduct(page,serviceId(1));
@@ -21,5 +21,7 @@ test('capas do cliente preservam vários modelos e cores na pendência e no reci
  await page.getByText('Personalização (opcional)',{exact:true}).click();
  await expect(page.getByLabel('Modelo informado do item 1 capa 2')).toHaveValue('Moto G56');
  await page.getByRole('button',{name:'Ver / imprimir recibo',exact:true}).click();
+ await expect(page.locator('#pamda-receipt-preview-paper .receipt-heading strong')).toHaveText(`RECIBO Nº ${sales.sales[0].order_number}`);
+ await expect(page.locator('#pamda-receipt-preview-paper')).not.toContainText('TESTE');
  await expect(page.getByText('Moto G56 · Azul',{exact:true}).first()).toBeVisible();
 });

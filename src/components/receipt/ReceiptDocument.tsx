@@ -77,7 +77,7 @@ export const receiptStyles = `
 export function ReceiptDocument({ data }: { data: ReceiptDocumentData }) {
   const preview = data.kind === 'preview';
   const title = preview
-    ? 'RECIBO Nº TESTE'
+    ? data.receiptNumber ? `RECIBO Nº ${data.receiptNumber}` : 'PEDIDO · PRÉVIA'
     : data.kind === 'demo'
       ? 'DEMONSTRAÇÃO - RECIBO LOCAL'
       : `RECIBO Nº ${data.receiptNumber ?? ''}`;
@@ -117,6 +117,7 @@ export function ReceiptDocument({ data }: { data: ReceiptDocumentData }) {
         <div className="receipt-heading">
           <strong>{title}</strong>
           {data.kind === 'demo' && <p>Número local não oficial: {data.receiptNumber}</p>}
+          {preview && <p>Pedido pendente · pagamento não confirmado</p>}
           <p className="receipt-date">{date}</p>
         </div>
       </header>

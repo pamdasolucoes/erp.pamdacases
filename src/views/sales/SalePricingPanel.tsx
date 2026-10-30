@@ -23,7 +23,7 @@ function usePreparationField<K extends keyof PricingPreparation>(draft:PricingPr
   return [draft[key],value=>update(previous=>({...previous,[key]:typeof value==='function'?(value as (old:PricingPreparation[K])=>PricingPreparation[K])(previous[key]):value}))];
 }
 
-export function SalePricingPanel({ products, customerId, branchId, draft, onDraftChange, sellerName, paymentCondition, customerFreight = pendingCustomerFreight, selectedCustomer = null, selectedBranch = null, onFirstProductAdded, freightEditable = false, paymentSection, finalizationAction, onReceiptPreview }: { products: readonly OfficialProduct[]; customerId: string | null; branchId: string | null; draft:PricingPreparation; onDraftChange:React.Dispatch<React.SetStateAction<PricingPreparation>>; sellerName?:string; paymentCondition?:string; customerFreight?: CustomerFreightSetting; selectedCustomer?: OfficialCustomer | null; selectedBranch?: OfficialCustomerBranch | null; onFirstProductAdded():Promise<void>; freightEditable?:boolean; paymentSection:React.ReactNode; finalizationAction?:React.ReactNode; onReceiptPreview(data:ReceiptDocumentData):void }) {
+export function SalePricingPanel({ products, customerId, branchId, draft, onDraftChange, sellerName, paymentCondition, orderNumber, customerFreight = pendingCustomerFreight, selectedCustomer = null, selectedBranch = null, onFirstProductAdded, freightEditable = false, paymentSection, finalizationAction, onReceiptPreview }: { products: readonly OfficialProduct[]; customerId: string | null; branchId: string | null; draft:PricingPreparation; onDraftChange:React.Dispatch<React.SetStateAction<PricingPreparation>>; sellerName?:string; paymentCondition?:string; orderNumber?:number|null; customerFreight?: CustomerFreightSetting; selectedCustomer?: OfficialCustomer | null; selectedBranch?: OfficialCustomerBranch | null; onFirstProductAdded():Promise<void>; freightEditable?:boolean; paymentSection:React.ReactNode; finalizationAction?:React.ReactNode; onReceiptPreview(data:ReceiptDocumentData):void }) {
   const [items, setItems] = usePreparationField(draft,onDraftChange,'items');
   const [discount, setDiscount] = usePreparationField(draft,onDraftChange,'discount');
   const [discountReason, setDiscountReason] = usePreparationField(draft,onDraftChange,'discountReason');
@@ -231,6 +231,7 @@ export function SalePricingPanel({ products, customerId, branchId, draft, onDraf
             try {
               if (stock.errors.length) throw new Error(stock.errors.join(' '));
               onReceiptPreview(createReceiptPreview({
+                orderNumber,
                 customer: selectedCustomer,
                 branch: selectedBranch,
                 items,

@@ -20,6 +20,13 @@ const customer=mapCustomer(customerRow(350,{customer_code:'350',name:'Cristal Ce
 const item:PricingDraftItem={id:'item-1',snapshot:captureProductPricing(products.find(p=>p.id===kitId(1))!,products,'2026-10-16T12:00:00Z'),quantityInput:'2',priceInput:'20,00',reason:'Negociação',customization:{model:'iPhone 11',color:'Azul',walletFaces:'2'}};
 const input={customer,branch,items:[item],discount:'5,00',freight:{customerId:customer.id,defaultFreight:{status:'integration_pending' as const},chargedCents:0,source:'manual' as const,reason:'Retirada',realDeliveryCostCents:null},notes:'<script>alert(1)</script>',seller:{id:uuid(999),username:'vendedor',name:'Vendedor Teste',role:'venda_atendimento' as const,active:true,createdAt:'2026-10-16'},generatedAt:'2026-10-16T12:00:00Z'};
 
+test('impressão pendente usa número reservado sem simular confirmação ou inventar numeração',()=>{
+ const receipt=createReceiptPreview({...input,orderNumber:10015});
+ assert.equal(receipt.receiptNumber,'10015');assert.equal(receipt.kind,'preview');assert.equal(receipt.payment,null);
+ assert.equal(createReceiptPreview(input).receiptNumber,null);
+ assert.throws(()=>createReceiptPreview({...input,orderNumber:-1}),/Número/);
+});
+
 test('código exato não confunde documentos, nomes nem zeros à esquerda; nomes mantêm UUIDs',()=>{
   const others=[mapCustomer(customerRow(1,{customer_code:'000350',name:'Cristal Norte'}),[]),mapCustomer(customerRow(2,{name:'Loja 350',cnpj:'35000000000100'}),[])];
   assert.deepEqual(searchSaleCustomers([customer,...others],'350').map(c=>c.id),[customer.id]);
