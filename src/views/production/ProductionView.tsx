@@ -1,3 +1,3 @@
-import React from 'react';
-import {OperationsView} from '../OperationsView';
-export function ProductionView(props:any){return <OperationsView module="production" {...props}/>;}
+import {SharedProductionQueue} from '../../components/SharedProductionQueue';
+import {sharedProductionApi} from '../../services/sharedProductionApi';
+export function ProductionView(){return <SharedProductionQueue api={sharedProductionApi}/>;}

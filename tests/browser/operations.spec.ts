@@ -9,6 +9,7 @@ test('módulos reais exibem consultas, ajuste de estoque e entradas sem forneced
   const empty={rows:[],products:[{id:'00000000-0000-4000-8000-000000000001',code:'101',name:'Capa',balance:8,verified:true,min:1,cost:2}],movements:[],suppliers:[],entries:[],customers:[],methods:[],expenses:0};
   return route.fulfill({json:module==='settings'?{company_name:'Pamda',phone:'',cnpj:'',pix_key:'',production_after_payment:false}:empty});
  });
+ await page.route('**/rest/v1/rpc/pamda_shared_production_read',route=>route.fulfill({json:{rows:[],can_manage:true}}));
  await page.route('**/rest/v1/rpc/pamda_stock_write',async route=>{writes.push(route.request().postDataJSON());return route.fulfill({json:'00000000-0000-4000-8000-000000000002'});});
  await page.getByRole('button',{name:'Estoque & Movimentos',exact:true}).click();
  await page.getByRole('combobox',{name:'Produto',exact:true}).selectOption('00000000-0000-4000-8000-000000000001');
@@ -29,6 +30,7 @@ test('permissão negada oculta módulos e falha de consulta não exibe sucesso',
  await expect(page.getByRole('button',{name:'Usuários & Acessos',exact:true})).toHaveCount(0);
  await expect(page.getByRole('button',{name:'Contas a Receber',exact:true})).toHaveCount(0);
  await page.route('**/rest/v1/rpc/pamda_operation_read',route=>route.fulfill({status:403,json:{code:'42501',message:'Negado'}}));
+ await page.route('**/rest/v1/rpc/pamda_shared_production_read',route=>route.fulfill({status:403,json:{code:'42501',message:'Negado'}}));
  await page.getByRole('button',{name:'Fila de Produção',exact:true}).click();
  await expect(page.getByRole('alert')).toContainText('permissão');
  await expect(page.getByText('Operação confirmada no Supabase.')).toHaveCount(0);
