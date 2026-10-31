@@ -5,6 +5,7 @@
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
   "rewrites": [
+    { "source": "/messenger/:path*", "destination": "https://pamdamessenger.vercel.app/:path*" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
