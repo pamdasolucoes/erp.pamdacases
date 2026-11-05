@@ -50,7 +50,6 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, sessionErr
 
           {/* Top Brand */}
           <div className="relative z-10">
-            <PamdaLogo size="lg" variant="light" />
             <p className="text-xs text-slate-300 font-medium mt-2">
               ERP Especialista B2B & Personalização DTF UV
             </p>
