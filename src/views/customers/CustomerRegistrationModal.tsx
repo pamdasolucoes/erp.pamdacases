@@ -9,7 +9,7 @@ export function CustomerRegistrationModal({ customer, branch, onClose, onSaved }
   customer?: OfficialCustomer; branch?: OfficialCustomerBranch; onClose(review?: boolean): void; onSaved(customer: OfficialCustomer): void;
 }) {
   const [form, setForm] = useState({ customerCode: customer?.customerCode || '', name: branch?.name || '', address: branch?.address || '',
-    number: branch?.number || '', neighborhood: branch?.neighborhood || '', city: branch?.city || '', state: branch?.state || '', zipCode: branch?.zipCode || '', phone: branch?.phone || '' });
+    number: branch?.number || '', neighborhood: branch?.neighborhood || '', city: branch?.city || '', state: branch?.state || '', zipCode: branch?.zipCode || '', phone: branch?.phone || '',cpf:'',cnpj:'',email:'' });
   const [busy, setBusy] = useState(false), [error, setError] = useState(''), [uncertain, setUncertain] = useState(false);
   const addingBranch = !!customer && !branch;
   const title = !customer ? 'Novo cliente e matriz' : branch ? 'Editar unidade' : 'Adicionar filial';
@@ -36,12 +36,12 @@ export function CustomerRegistrationModal({ customer, branch, onClose, onSaved }
       </div>}
       {addingBranch && <p className="text-xs text-slate-600">Os campos marcados com * são obrigatórios. A matriz atual será preservada.</p>}
       <fieldset disabled={busy || uncertain} className="grid sm:grid-cols-2 gap-3">
-        {Object.entries({ ...(!customer ? { customerCode: 'Código comercial' } : {}), name: !customer ? 'Nome do cliente' : addingBranch ? 'Nome da filial' : 'Nome da unidade', address: 'Endereço', number: 'Número', neighborhood: 'Bairro', city: 'Cidade', state: 'Estado', zipCode: 'CEP', phone: 'Telefone' }).map(([key, label]) => {
+        {Object.entries({ ...(!customer ? { customerCode: 'Código comercial' } : {}), name: !customer ? 'Nome do cliente' : addingBranch ? 'Nome da filial' : 'Nome da unidade', ...(!customer?{cpf:'CPF',cnpj:'CNPJ',email:'E-mail'}:{}),address: 'Endereço', number: 'Número', neighborhood: 'Bairro', city: 'Cidade', state: 'Estado', zipCode: 'CEP', phone: !customer?'Telefone de contato':'Telefone' }).map(([key, label]) => {
           const required = key === 'name' || key === 'customerCode' || addingBranch && ['address', 'city', 'state'].includes(key);
-          return <label key={key} className="text-xs font-bold text-slate-600">{label}{required ? ' *' : ''}<input aria-label={label} readOnly={key==='customerCode'} required={required} value={form[key as keyof typeof form]} onChange={event => setForm(previous => ({ ...previous, [key]: event.target.value }))} className="block mt-1 w-full rounded-xl border border-slate-300 p-2 text-sm font-normal" /></label>;
+          return <label key={key} className="text-xs font-bold text-slate-600">{label}{required ? ' *' : ''}<input type={key==='email'?'email':key==='phone'?'tel':'text'} aria-label={label} readOnly={key==='customerCode'} required={required} value={form[key as keyof typeof form]} onChange={event => setForm(previous => ({ ...previous, [key]: event.target.value }))} className="block mt-1 w-full rounded-xl border border-slate-300 p-2 text-sm font-normal" /></label>;
         })}
       </fieldset>
-      {!customer && <p className="text-xs text-slate-500">Código livre sugerido automaticamente e confirmado ao salvar, evitando duplicidade entre cadastros simultâneos.</p>}
+      {!customer && <p className="text-xs text-slate-500">Código livre sugerido a partir de 2339 e confirmado ao salvar. CPF, CNPJ, telefone e e-mail são opcionais.</p>}
       {error && <p role="alert" className="text-sm text-rose-800">{error}</p>}
       {!customer&&!codeLoading&&!form.customerCode&&<button type="button" className="underline" onClick={()=>setCodeRevision(v=>v+1)}>Buscar código novamente</button>}
       {busy && <p role="status" className="text-sm text-slate-600">Salvando...</p>}

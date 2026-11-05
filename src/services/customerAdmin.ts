@@ -9,7 +9,7 @@ export interface BranchRegistration {
   name: string; address: string; number: string; neighborhood: string;
   city: string; state: string; zipCode: string; phone: string;
 }
-export interface CustomerRegistration extends BranchRegistration { customerCode: string; autoCode?:boolean }
+export interface CustomerRegistration extends BranchRegistration { customerCode: string; autoCode?:boolean;cpf?:string;cnpj?:string;email?:string }
 const fields = (input: BranchRegistration) => {
   if (!input.name.trim()) throw new Error('Informe o nome.');
   return { p_nome: input.name, p_endereco: input.address, p_numero: input.number,
@@ -36,10 +36,11 @@ export class CustomerAdminService {
   }
   async createCustomer(userId: string, input: CustomerRegistration): Promise<OfficialCustomer> {
     if (!input.customerCode.trim()) throw new Error('Informe o código comercial, preservando seu texto exato.');
-    const result = await this.core.rpc(userId, input.autoCode?'pamda_create_customer_auto':'pamda_admin_cadastrar_cliente_com_matriz', { ...(!input.autoCode?{p_codigo:input.customerCode}:{}), ...fields(input) }, true);
+    const result = await this.core.rpc(userId, input.autoCode?'pamda_create_customer_contact':'pamda_admin_cadastrar_cliente_com_matriz', { ...(!input.autoCode?{p_codigo:input.customerCode}:{p_cpf:input.cpf||'',p_cnpj:input.cnpj||'',p_email:input.email||''}), ...fields(input) }, true);
     const row = Array.isArray(result) && result.length === 1 ? result[0] : null;
     if (!row || !isUuid(row.cliente_id) || !isUuid(row.matriz_id)) throw uncertain();
     const customer = await this.read(userId, row.cliente_id, input.autoCode?String(row.codigo):input.customerCode);
+    if(input.autoCode&&(['cpf','cnpj','email'] as const).some(key=>(customer[key]||'')!==(input[key]||'').trim()))throw uncertain();
     if (!customer.branches.some(branch => branch.id === row.matriz_id && branch.customerId === customer.id && branch.isPrimary)) throw uncertain();
     customerCatalogChanged({ client: this.client, userId, customer }); return customer;
   }

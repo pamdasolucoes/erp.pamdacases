@@ -22,11 +22,11 @@ export class CoreAdminBackend {
       const count = rows.length, from = Number(url.searchParams.get('offset') || 0), limit = Math.min(2, Number(url.searchParams.get('limit') || 100));
       return { body: rows.slice(from, from + limit), headers: { 'content-range': `${from}-${Math.min(from + limit, count) - 1}/${count}` } };
     }
-    const nextCode=()=>{let n=1;while(this.customers.some(c=>Number(c.customer_code)===n))n++;return String(n);};
+    const nextCode=()=>{let n=2339;while(this.customers.some(c=>Number(c.customer_code)===n))n++;return String(n);};
     if(table==='pamda_next_customer_code')return this.isAdmin()?{body:nextCode()}:{body:{code:'42501'},status:403};
-    const automatic=table==='pamda_create_customer_auto';
+    const automatic=table==='pamda_create_customer_auto'||table==='pamda_create_customer_contact';
     if(automatic)body={...body,p_codigo:nextCode()};
-    const names = ['pamda_create_customer_auto','pamda_admin_cadastrar_cliente_com_matriz', 'pamda_admin_cadastrar_filial', 'pamda_admin_atualizar_filial', 'pamda_admin_definir_matriz', 'pamda_admin_configurar_pagamento_cliente', 'pamda_admin_configurar_pagamento_filial', 'pamda_admin_salvar_forma_pagamento', 'pamda_admin_salvar_prazo_pagamento'];
+    const names = ['pamda_create_customer_contact','pamda_create_customer_auto','pamda_admin_cadastrar_cliente_com_matriz', 'pamda_admin_cadastrar_filial', 'pamda_admin_atualizar_filial', 'pamda_admin_definir_matriz', 'pamda_admin_configurar_pagamento_cliente', 'pamda_admin_configurar_pagamento_filial', 'pamda_admin_salvar_forma_pagamento', 'pamda_admin_salvar_prazo_pagamento'];
     if (!names.includes(table)) return null;
     this.writes.push({ name: table, args: body });
     if (!this.isAdmin()) return { body: { code: '42501', message: 'Sem permissão administrativa' }, status: 403 };
@@ -34,7 +34,7 @@ export class CoreAdminBackend {
     const setBranch = (branch: CustomerBranchRow) => Object.assign(branch, { name: body.p_nome, address: body.p_endereco, number: body.p_numero, neighborhood: body.p_bairro, city: body.p_cidade, state: body.p_estado, zip_code: body.p_cep, phone: body.p_telefone, updated_at: new Date().toISOString() });
     if (automatic || table === 'pamda_admin_cadastrar_cliente_com_matriz') {
       if (this.customers.some(row => row.customer_code === body.p_codigo)) return { body: { code: '23505' }, status: 409 };
-      const customer = customerRow(++this.next, { customer_code: body.p_codigo, name: body.p_nome });
+      const customer = customerRow(++this.next, { customer_code: body.p_codigo, name: body.p_nome,...(table==='pamda_create_customer_contact'?{cpf:body.p_cpf?.trim()||null,cnpj:body.p_cnpj?.trim()||null,email:body.p_email?.trim()||null,phone:body.p_telefone||''}:{}) });
       const branch = setBranch(branchRow(++this.next, { customer_id: customer.id, is_primary: true, import_source_customer_code: null }));
       this.customers.push(customer); this.branches.push(branch); result = [{ cliente_id: customer.id, matriz_id: branch.id, ...(automatic?{codigo:body.p_codigo}:{}) }];
     } else if (table === 'pamda_admin_cadastrar_filial') {
