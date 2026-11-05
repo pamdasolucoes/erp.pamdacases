@@ -9,7 +9,7 @@ export interface BranchRegistration {
   name: string; address: string; number: string; neighborhood: string;
   city: string; state: string; zipCode: string; phone: string;
 }
-export interface CustomerRegistration extends BranchRegistration { customerCode: string }
+export interface CustomerRegistration extends BranchRegistration { customerCode: string; autoCode?:boolean }
 const fields = (input: BranchRegistration) => {
   if (!input.name.trim()) throw new Error('Informe o nome.');
   return { p_nome: input.name, p_endereco: input.address, p_numero: input.number,
@@ -22,6 +22,11 @@ export class CustomerAdminService {
   private core: CoreService;
   private customers: CustomersService;
   constructor(private client: SupabaseClient | null) { this.core = new CoreService(client); this.customers = new CustomersService(client); }
+  async nextCustomerCode(userId:string):Promise<string>{
+    const code=await this.core.rpc(userId,'pamda_next_customer_code',{});
+    if(typeof code!=='string'||!/^\d+$/.test(code))throw new Error('Não foi possível obter um código disponível.');
+    return code;
+  }
   private async read(userId: string, id: string, code: string): Promise<OfficialCustomer> {
     try {
       const row = await this.customers.get(id, userId);
@@ -31,10 +36,10 @@ export class CustomerAdminService {
   }
   async createCustomer(userId: string, input: CustomerRegistration): Promise<OfficialCustomer> {
     if (!input.customerCode.trim()) throw new Error('Informe o código comercial, preservando seu texto exato.');
-    const result = await this.core.rpc(userId, 'pamda_admin_cadastrar_cliente_com_matriz', { p_codigo: input.customerCode, ...fields(input) }, true);
+    const result = await this.core.rpc(userId, input.autoCode?'pamda_create_customer_auto':'pamda_admin_cadastrar_cliente_com_matriz', { ...(!input.autoCode?{p_codigo:input.customerCode}:{}), ...fields(input) }, true);
     const row = Array.isArray(result) && result.length === 1 ? result[0] : null;
     if (!row || !isUuid(row.cliente_id) || !isUuid(row.matriz_id)) throw uncertain();
-    const customer = await this.read(userId, row.cliente_id, input.customerCode);
+    const customer = await this.read(userId, row.cliente_id, input.autoCode?String(row.codigo):input.customerCode);
     if (!customer.branches.some(branch => branch.id === row.matriz_id && branch.customerId === customer.id && branch.isPrimary)) throw uncertain();
     customerCatalogChanged({ client: this.client, userId, customer }); return customer;
   }

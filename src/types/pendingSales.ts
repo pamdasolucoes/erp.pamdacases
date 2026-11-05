@@ -9,6 +9,7 @@ export interface PendingSaleRow {
   order_number:number|null; first_product_at:string|null;
 }
 export interface OfficialSaleRow extends PendingSaleRow {
+  internal_notes?:string|null;
   status:OfficialSaleStatus; confirmed_at:string|null; payment_method_id:string|null;
   payment_term_id:string|null; discount_reason:string|null; shipping_actual_cost:DbNumeric|null;
   draft_key:string|null; cancelled_at:string|null; cancelled_by:string|null; cancellation_reason:string|null;

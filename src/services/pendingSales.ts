@@ -5,7 +5,7 @@ import { dbCents } from './pendingSaleMapping';
 import { readAllPages } from './readPages';
 
 export const PENDING_COLUMNS='id,order_number,first_product_at,customer_id,branch_id,created_by,created_at,updated_at,customer_snapshot,branch_snapshot,seller_snapshot,subtotal,discount_amount,shipping_charged,shipping_confirmed,total,notes';
-export const SALE_COLUMNS=PENDING_COLUMNS+',status,confirmed_at,payment_method_id,payment_term_id,discount_reason,shipping_actual_cost,draft_key,cancelled_at,cancelled_by,cancellation_reason,is_test';
+export const SALE_COLUMNS=PENDING_COLUMNS+',internal_notes,status,confirmed_at,payment_method_id,payment_term_id,discount_reason,shipping_actual_cost,draft_key,cancelled_at,cancelled_by,cancellation_reason,is_test';
 export const ITEM_COLUMNS='id,sale_id,product_id,product_code_snapshot,product_sku_snapshot,description_snapshot,quantity,negotiated_unit_price,line_subtotal,customization,created_at';
 export const EVENT_COLUMNS='id,sale_id,actor_user_id,event_type,details,occurred_at';
 export class SaleAccessError extends Error {}

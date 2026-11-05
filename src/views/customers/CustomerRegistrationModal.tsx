@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect,useState } from 'react';
 import { Modal } from '../../components/common/Modal';
 import type { OfficialCustomer, OfficialCustomerBranch } from '../../types/pamdaCore';
 import { customerAdminService } from '../../services/customerAdminService';
@@ -13,12 +13,17 @@ export function CustomerRegistrationModal({ customer, branch, onClose, onSaved }
   const [busy, setBusy] = useState(false), [error, setError] = useState(''), [uncertain, setUncertain] = useState(false);
   const addingBranch = !!customer && !branch;
   const title = !customer ? 'Novo cliente e matriz' : branch ? 'Editar unidade' : 'Adicionar filial';
-  return <Modal isOpen onClose={() => { if (!busy) onClose(); }} title={title} subtitle="Gravação oficial por RPC protegida. Confira os dados antes de salvar.">
+  const [codeLoading,setCodeLoading]=useState(!customer),[codeRevision,setCodeRevision]=useState(0);
+  useEffect(()=>{if(customer)return;let active=true;setCodeLoading(true);setError('');
+    void customerAdminService.nextCustomerCode(authService.getCurrentUser()!.id).then(code=>{if(active)setForm(previous=>({...previous,customerCode:code}));}).catch(reason=>{if(active)setError(reason instanceof Error?reason.message:'Não foi possível sugerir o código.');}).finally(()=>{if(active)setCodeLoading(false);});
+    return()=>{active=false;};
+  },[customer,codeRevision]);
+  return <Modal isOpen onClose={() => { if (!busy) onClose(); }} title={title} subtitle="Preencha os dados cadastrais do cliente e da unidade.">
     <form aria-label={title} className="space-y-4" onSubmit={async event => {
       event.preventDefault(); if (busy || uncertain) return; setBusy(true); setError('');
       try {
         const userId = authService.getCurrentUser()!.id;
-        const saved = !customer ? await customerAdminService.createCustomer(userId, form)
+        const saved = !customer ? await customerAdminService.createCustomer(userId, {...form,autoCode:true})
           : branch ? await customerAdminService.updateBranch(userId, customer, branch, form) : await customerAdminService.createBranch(userId, customer, form);
         onSaved(saved);
       } catch (reason) { setError(reason instanceof Error ? reason.message : 'Falha ao confirmar o cadastro.'); setUncertain(reason instanceof UnconfirmedWriteError); }
@@ -33,13 +38,14 @@ export function CustomerRegistrationModal({ customer, branch, onClose, onSaved }
       <fieldset disabled={busy || uncertain} className="grid sm:grid-cols-2 gap-3">
         {Object.entries({ ...(!customer ? { customerCode: 'Código comercial' } : {}), name: !customer ? 'Nome do cliente' : addingBranch ? 'Nome da filial' : 'Nome da unidade', address: 'Endereço', number: 'Número', neighborhood: 'Bairro', city: 'Cidade', state: 'Estado', zipCode: 'CEP', phone: 'Telefone' }).map(([key, label]) => {
           const required = key === 'name' || key === 'customerCode' || addingBranch && ['address', 'city', 'state'].includes(key);
-          return <label key={key} className="text-xs font-bold text-slate-600">{label}{required ? ' *' : ''}<input aria-label={label} required={required} value={form[key as keyof typeof form]} onChange={event => setForm(previous => ({ ...previous, [key]: event.target.value }))} className="block mt-1 w-full rounded-xl border border-slate-300 p-2 text-sm font-normal" /></label>;
+          return <label key={key} className="text-xs font-bold text-slate-600">{label}{required ? ' *' : ''}<input aria-label={label} readOnly={key==='customerCode'} required={required} value={form[key as keyof typeof form]} onChange={event => setForm(previous => ({ ...previous, [key]: event.target.value }))} className="block mt-1 w-full rounded-xl border border-slate-300 p-2 text-sm font-normal" /></label>;
         })}
       </fieldset>
-      {!customer && <p className="text-xs text-slate-500">O código é texto e será preservado exatamente. A unidade inicial será criada pelo servidor como matriz. Nenhuma condição comercial será presumida.</p>}
+      {!customer && <p className="text-xs text-slate-500">Código livre sugerido automaticamente e confirmado ao salvar, evitando duplicidade entre cadastros simultâneos.</p>}
       {error && <p role="alert" className="text-sm text-rose-800">{error}</p>}
+      {!customer&&!codeLoading&&!form.customerCode&&<button type="button" className="underline" onClick={()=>setCodeRevision(v=>v+1)}>Buscar código novamente</button>}
       {busy && <p role="status" className="text-sm text-slate-600">Salvando...</p>}
-      <div className="flex gap-3"><button disabled={busy || uncertain} className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-bold text-white disabled:opacity-50">{busy ? 'Salvando...' : addingBranch ? 'Cadastrar filial' : 'Salvar cadastro'}</button><button type="button" disabled={busy} onClick={() => onClose(uncertain)} className="text-sm underline">{uncertain ? 'Fechar e revisar a lista' : 'Cancelar'}</button></div>
+      <div className="flex gap-3"><button disabled={busy || uncertain || codeLoading || !customer&&!form.customerCode} className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-bold text-white disabled:opacity-50">{busy ? 'Salvando...' : addingBranch ? 'Cadastrar filial' : 'Salvar cadastro'}</button><button type="button" disabled={busy} onClick={() => onClose(uncertain)} className="text-sm underline">{uncertain ? 'Fechar e revisar a lista' : 'Cancelar'}</button></div>
     </form>
   </Modal>;
 }

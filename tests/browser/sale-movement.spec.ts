@@ -4,7 +4,7 @@ import {uuid} from '../fixtures/customerRows';
 
 test('relatórios abrem histórico, corrigem pagamento, reimprimem e cancelam sem alterar os produtos',async({page})=>{
  const {employee}=await setup(page,'admin_gerencial',{stayOnDashboard:true});
- const sale={id:uuid(77001),customer_id:uuid(1),order_number:10009,status:'confirmed',is_test:false,updated_at:'2026-10-26T12:00:00Z',confirmed_at:'2026-10-26T12:00:00Z',created_at:'2026-10-26T12:00:00Z',customer_snapshot:{code:'350',name:'Cristalcel QA'},branch_snapshot:{name:'Matriz',address:'Rua QA',number:'1',city:'Curitiba'},seller_snapshot:'Operador QA',subtotal:25,discount_amount:0,shipping_charged:5,total:30,notes:'Conferir modelo'};
+ const sale={id:uuid(77001),customer_id:uuid(1),order_number:10009,status:'confirmed',is_test:false,updated_at:'2026-10-26T12:00:00Z',confirmed_at:'2026-10-26T12:00:00Z',created_at:'2026-10-26T12:00:00Z',customer_snapshot:{code:'350',name:'Cristalcel QA'},branch_snapshot:{name:'Matriz',address:'Rua QA',number:'1',city:'Curitiba'},seller_snapshot:'Operador QA',subtotal:25,discount_amount:0,shipping_charged:5,total:30,internal_notes:'Mensagem interna do Messenger: NOME DÉIA',notes:'Conferir modelo'};
  const item={id:uuid(77002),product_code_snapshot:'KIT-QA',product_sku_snapshot:'SKU-QA',description_snapshot:'Capa personalizada QA',quantity:1,negotiated_unit_price:25,line_subtotal:25,customization:{model:'Samsung A26',color:'Transparente'}};
  const payment={id:uuid(77003),method_code:'dinheiro',method_name:'Dinheiro',amount:30,status:'paid',channel:'erp'};
  const events:any[]=[];const writes:any[]=[];
@@ -33,6 +33,8 @@ test('relatórios abrem histórico, corrigem pagamento, reimprimem e cancelam se
  await expect(page.getByRole('dialog',{name:'Consultar pedido'}).getByRole('status')).toHaveText('Forma de pagamento atualizada.');
  await page.getByRole('button',{name:'Ver / reimprimir recibo',exact:true}).click();
  await expect(page.getByRole('article',{name:'Documento do recibo'})).toContainText('Pix: R$ 30,00');
+ await expect(page.getByRole('article',{name:'Documento do recibo'})).not.toContainText('Mensagem interna do Messenger');
+ await expect(page.getByRole('article',{name:'Documento do recibo'})).toContainText('Conferir modelo');
  await page.getByRole('button',{name:'Fechar recibo',exact:true}).click();
  await page.getByRole('button',{name:'Cancelar venda fechada',exact:true}).click();
  await page.getByLabel('Motivo da manutenção').fill('Cancelamento solicitado pela direção');

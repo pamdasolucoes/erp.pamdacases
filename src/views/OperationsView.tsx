@@ -1,3 +1,5 @@
+import {auditAction} from '../services/auditPresentation';
+import {AuditDetails} from '../components/AuditDetails';
 import {SaleMovementModal,CustomerSaleHistoryModal} from './sales/SaleMovementModal';
 import {ProfitabilityReport} from './ProfitabilityReport';
 import type {ProfitabilityInput} from '../services/profitability';
@@ -97,7 +99,7 @@ export function OperationsView({module,suppliers=false,byCustomer=false,costOnly
    <Table headers={byCustomer?['Cliente','Vendas','Valor']:['Pedido','Data','Cliente','Valor']} rows={reportRows.filter(matches).map(r=>byCustomer?[<button type="button" className="text-emerald-800 underline font-semibold" onClick={()=>setHistoryCustomer({id:r.customer_id,name:r.customer_name})}>{r.customer_name}</button>,r.count,money(r.total)]:[<button type="button" className="text-emerald-800 underline font-semibold" onClick={()=>setReviewSale(r.id)}>Pedido {r.order_number}</button>,displayDate(r.confirmed_at),<button type="button" className="text-emerald-800 underline" onClick={()=>setHistoryCustomer({id:r.customer_id,name:r.customer_name})}>{r.customer_name}</button>,money(r.total)])}/>
   </>}
   {module==='profitability'&&<ProfitabilityReport rows={rows.filter(matches) as ProfitabilityInput[]} expenses={Number(data.expenses??0)} filtered={!!search.trim()}/>}
-  {module==='audit'&&<Table headers={['Data','Ação','Responsável','Detalhes']} rows={rows.filter(matches).map(r=>[displayDate(r.happened_at),r.action,r.actor_user_id,<details><summary>Consultar</summary><pre className="max-w-lg whitespace-pre-wrap text-xs">{JSON.stringify(r.details,null,2)}</pre></details>])}/>}
+  {module==='audit'&&<Table headers={['Data','Ação realizada','Responsável','Cliente / venda / registro','Detalhes']} rows={rows.filter(r=>matches({...r,action_name:auditAction(r.action)})).map(r=>[displayDate(r.happened_at),auditAction(r.action),r.actor_name||'Responsável não identificado',r.entity_label||'Registro operacional',<AuditDetails details={r.details} references={r.reference_names}/>])}/>}
   {module==='settings'&&<form className="grid sm:grid-cols-2 gap-3 border rounded-xl bg-white p-4" onSubmit={e=>{e.preventDefault();void write('settings',settings);}}>{[['company_name','Empresa'],['cnpj','CNPJ'],['phone','Telefone'],['pix_key','Chave Pix']].map(([key,label])=><Input key={key} label={label} value={settings[key]||''} required={key==='company_name'} onChange={e=>setSettings(s=>({...s,[key]:e.target.value}))}/>)}<label className="sm:col-span-2"><input type="checkbox" checked={settings.production_after_payment===true} onChange={e=>setSettings(s=>({...s,production_after_payment:e.target.checked}))}/> Liberar novas produções somente após pagamento integral</label><button className={buttonClass} disabled={busy}>Salvar configurações</button></form>}
   </>}
  </div>;
