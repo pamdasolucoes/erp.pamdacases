@@ -3,20 +3,21 @@ import { setup, selectCatalogProduct } from './support/mockErp';
 import { uuid } from '../fixtures/customerRows';
 import { kitId } from '../fixtures/officialProducts';
 
-test('cria cliente com matriz, preserva código TEXT e relê após atualizar a página', async ({ page }) => {
+test('cria cliente com matriz e código automático e relê após atualizar a página', async ({ page }) => {
   const { admin, customers } = await setup(page);
   await page.getByRole('button', { name: 'Novo cliente', exact: true }).click();
   const form = page.getByRole('form', { name: 'Novo cliente e matriz' });
-  await form.getByLabel('Código comercial', { exact: true }).fill('000048-A');
+  await expect(form.getByLabel('Código comercial', { exact: true })).toHaveValue('2339');
   await form.getByLabel('Nome do cliente', { exact: true }).fill('Cliente oficial teste isolado');
   await form.getByLabel('Endereço', { exact: true }).fill('Rua conferida');
   await form.getByRole('button', { name: 'Salvar cadastro' }).click();
   await expect(page.getByRole('heading', { name: 'Cliente oficial teste isolado', exact: true, level: 2 })).toBeVisible();
-  await expect(page.getByLabel('Código comercial', { exact: true })).toHaveValue('000048-A');
+  await expect(page.getByLabel('Código comercial', { exact: true })).toHaveValue('2339');
   await expect(page.getByLabel('Código comercial', { exact: true })).toHaveAttribute('readonly', '');
-  expect(customers.at(-1)?.customer_code).toBe('000048-A'); expect(admin.writes).toHaveLength(1);
+  expect(customers.at(-1)?.customer_code).toBe('2339'); expect(admin.writes).toHaveLength(1);
   await page.reload();
-  await page.getByRole('searchbox').fill('000048-A');
+  await page.getByRole('searchbox').fill('2339');
+  await page.getByRole('button',{name:'Cliente oficial teste isolado',exact:true}).click();
   await expect(page.getByRole('heading', { name: 'Cliente oficial teste isolado', exact: true, level: 2 })).toBeVisible();
   expect(admin.writes).toHaveLength(1);
 });
@@ -50,7 +51,7 @@ test('resposta perdida na criação exige revisar lista e não repete a operaç�
   const { admin, customers } = await setup(page); admin.failure = 'lost';
   await page.getByRole('button', { name: 'Novo cliente', exact: true }).click();
   const form = page.getByRole('form', { name: 'Novo cliente e matriz' });
-  await form.getByLabel('Código comercial', { exact: true }).fill('00099999');
+  await expect(form.getByLabel('Código comercial', { exact: true })).toHaveValue('2339');
   await form.getByLabel('Nome do cliente', { exact: true }).fill('Resposta perdida');
   await form.getByRole('button', { name: 'Salvar cadastro' }).click();
   await expect(form.getByRole('alert')).toContainText('Resultado não confirmado');
@@ -58,7 +59,8 @@ test('resposta perdida na criação exige revisar lista e não repete a operaç�
   expect(customers).toHaveLength(385); expect(admin.writes).toHaveLength(1);
   admin.failure = '';
   await form.getByRole('button', { name: 'Fechar e revisar a lista' }).click();
-  await page.getByRole('searchbox').fill('00099999');
+  await page.getByRole('searchbox').fill('2339');
+  await page.getByRole('button',{name:'Resposta perdida',exact:true}).click();
   await expect(page.getByRole('heading', { name: 'Resposta perdida', exact: true, level: 2 })).toBeVisible();
   expect(admin.writes).toHaveLength(1);
 });
@@ -128,6 +130,7 @@ test('pagamento da filial prevalece no contexto e limite explícito zero permane
   state.financialPermission = true;
   admin.methods.push({ id: uuid(7103), code: 'boleto', name: 'Boleto conferido', active: true, created_at: '2026-10-19T00:00:00Z' });
   await page.reload();
+  await page.getByRole('button',{name:'Loja Árvore',exact:true}).click();
   await page.getByLabel('Forma padrão do cliente', { exact: true }).selectOption(uuid(7101));
   await page.getByLabel('Limite de crédito (R$)', { exact: true }).fill('0,00');
   await page.getByRole('button', { name: 'Salvar pagamento do cliente', exact: true }).click();

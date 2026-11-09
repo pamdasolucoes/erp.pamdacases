@@ -1,3 +1,4 @@
+import { hasAnyPermission, customerReadPermissions } from './permissions';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { User, UserRole } from '../types/erp';
 
@@ -148,7 +149,7 @@ export class AuthService {
         if(generation!==this.generation)return null;
         if(permissionError||!permissions||typeof permissions!=='object'||Array.isArray(permissions))throw new Error('Não foi possível validar permissões.');
         user.permissions=permissions as Record<string,boolean>;
-        user.canReadCustomers=user.role==='admin_gerencial'||user.permissions['customers.manage']===true;
+        user.canReadCustomers=hasAnyPermission(user, customerReadPermissions);
       }
       this.publish(
         user,
@@ -249,12 +250,12 @@ export class AuthService {
   public canViewFinancialMetrics(user = this.currentUser): boolean {
     return !!user && user.canViewFinancialMetrics === true;
   }
-  public canAccessFinancials(): boolean { return this.isAdminGerencial(); }
+  public canAccessFinancials(): boolean { return hasAnyPermission(this.currentUser, ['finance.read','finance.manage']); }
   public canAccessSales(): boolean {
-    return this.currentUser?.role === 'admin_gerencial' || this.currentUser?.role === 'venda_atendimento';
+    return hasAnyPermission(this.currentUser, ['sales.read','sales.draft','sales.confirm']);
   }
-  public canAccessProduction(): boolean { return !!this.currentUser; }
+  public canAccessProduction(): boolean { return hasAnyPermission(this.currentUser, ['production.read','production.manage']); }
   public canReadCustomers(): boolean {
-    return this.canAccessSales() && this.currentUser?.canReadCustomers === true;
+    return this.currentUser?.permissions ? hasAnyPermission(this.currentUser, customerReadPermissions) : this.currentUser?.active === true && this.currentUser.canReadCustomers === true;
   }
 }

@@ -52,7 +52,7 @@ export const Header: React.FC<HeaderProps> = ({
                 ? 'Gerencial'
                 : currentUser?.role === 'venda_atendimento'
                 ? 'Vendas'
-                : currentUser?.role === 'financeiro' ? 'Financeiro'
+                : currentUser?.role === 'gerencial' ? 'Gerencial' : currentUser?.role === 'financeiro' ? 'Financeiro'
                 : currentUser?.role === 'estoque_expedicao' ? 'Estoque / Expedição' : 'Produção'}
             </p>
           </div>

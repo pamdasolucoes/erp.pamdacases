@@ -1,3 +1,4 @@
+import {permissionVersion} from './services/permissions';
 import React, { useState, useEffect, useRef, lazy, Suspense } from 'react';
 import { User } from './types/erp';
 import type { CustomerContext } from './types/pamdaCore';
@@ -74,11 +75,13 @@ export function App() {
     let revalidationTimer: ReturnType<typeof setTimeout> | undefined;
     const revalidate=()=>{clearTimeout(revalidationTimer);revalidationTimer=setTimeout(()=>{if(authService.getCurrentUser()) void authService.refresh();},100);};
     const visible=()=>{if(document.visibilityState==='visible') revalidate();};
+    const permissionTimer = setInterval(visible, 30000);
     window.addEventListener('online',revalidate);
     window.addEventListener('focus',revalidate);
     document.addEventListener('visibilitychange',visible);
 
     return () => {
+      clearInterval(permissionTimer);
       clearTimeout(revalidationTimer);
       unsubscribeAuth();
       window.removeEventListener('online',revalidate);
@@ -187,7 +190,7 @@ export function App() {
           {!canAccessTab(currentUser, currentTab) ? (
             <p role="alert" className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-rose-800">Acesso não autorizado a este módulo.</p>
           ) : (
-          <ViewBoundary key={currentTab}><Suspense fallback={<p role="status" className="rounded-xl border bg-white p-6 text-slate-600">Carregando tela...</p>}>
+          <ViewBoundary key={currentTab+permissionVersion(currentUser)}><Suspense fallback={<p role="status" className="rounded-xl border bg-white p-6 text-slate-600">Carregando tela...</p>}>
           {currentTab === 'dashboard' && (
             <DashboardView
               onNavigate={navigate}

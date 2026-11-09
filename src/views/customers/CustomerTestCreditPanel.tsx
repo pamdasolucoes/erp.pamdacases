@@ -1,3 +1,4 @@
+import {hasPermission} from '../../services/permissions';
 import React,{useCallback,useEffect,useState} from 'react';
 import {authService} from '../../services/auth';
 import {formatMoney,parsePriceInput} from '../../services/salePricing';
@@ -5,7 +6,7 @@ import {testSalesService} from '../../services/testSales';
 
 export function CustomerTestCreditPanel({customerId}:{customerId:string}){
   const user=authService.getCurrentUser()!;
-  const admin=user.active&&user.role==='admin_gerencial';
+  const admin=hasPermission(user,'finance.manage');
   const [balance,setBalance]=useState<number|null>(null),[loading,setLoading]=useState(true);
   const [amount,setAmount]=useState(''),[reason,setReason]=useState(''),[reference,setReference]=useState('');
   const [requestKey,setRequestKey]=useState(()=>crypto.randomUUID());

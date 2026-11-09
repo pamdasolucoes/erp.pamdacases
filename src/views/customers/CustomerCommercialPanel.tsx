@@ -51,7 +51,7 @@ export function CustomerCommercialPanel({ customer }: { customer: OfficialCustom
     </>}
     {catalog.loading && <p role="status" className="text-xs text-slate-500">Consultando catálogo de pagamentos…</p>}
     {catalog.error && <p role="alert" className="text-xs text-rose-800">{catalog.error} <button type="button" onClick={catalog.reload} className="underline">Atualizar catálogo</button></p>}
-    {catalog.data && <CustomerPaymentPanel userId={user.id} customerId={customer.id} branchId={branchId} catalog={catalog.data} canEdit={manage.allowed && user.role === 'admin_gerencial'} financial={financial.allowed} onSaved={context.reload} reloadCatalog={catalog.reload} />}
+    {catalog.data && <CustomerPaymentPanel userId={user.id} customerId={customer.id} branchId={branchId} catalog={catalog.data} canEdit={manage.allowed} financial={financial.allowed} onSaved={context.reload} reloadCatalog={catalog.reload} />}
     {busy&&<p role="status" className="text-xs text-slate-500">Confirmando frete no servidor…</p>}
     {notice&&<p role="status" className="text-xs text-emerald-800">{notice}</p>}
     {error&&<p role="alert" className="text-xs text-rose-800">{error}</p>}

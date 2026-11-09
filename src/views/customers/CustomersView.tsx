@@ -38,9 +38,9 @@ export const CustomersView: React.FC<CustomersViewProps> = ({ initialCustomerId,
   const [notice, setNotice] = useState('');
   const [registration, setRegistration] = useState<{ customer?: OfficialCustomer; branch?: OfficialCustomerBranch } | null>(null);
   const [primaryBusy, setPrimaryBusy] = useState(false);
-  const manage = useCorePermission(authService.getCurrentUser()!.id, 'customers.manage');
+  const manage = useCorePermission(authService.getCurrentUser()?.id || '', 'customers.manage');
   const canEdit = manage.allowed;
-  const canAdmin = canEdit && authService.getCurrentUser()!.role === 'admin_gerencial';
+  const canAdmin = canEdit;
   const saved = (updated: OfficialCustomer) => { setSelectedId(updated.id); setQuery(''); setRegistration(null); setNotice(registration?.customer && !registration.branch ? 'Filial cadastrada com sucesso' : 'Cadastro confirmado pelo PAMDA CORE.'); };
 
   const filtered = useMemo(() => [...searchCustomers(customers, query)].filter(c=>(status==='todos'||c.active===(status==='ativos'))&&(review==='todos'||c.branches.some(b=>b.addressNeedsReview)===(review==='revisao'))).sort((a,b)=>a.customerCode.localeCompare(b.customerCode,'pt-BR',{numeric:true,sensitivity:'base'})||a.name.localeCompare(b.name,'pt-BR')||a.id.localeCompare(b.id)), [customers, query,status,review]);

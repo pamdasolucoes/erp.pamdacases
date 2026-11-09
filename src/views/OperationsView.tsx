@@ -1,3 +1,4 @@
+import {hasPermission} from '../services/permissions';
 import {auditAction} from '../services/auditPresentation';
 import {AuditDetails} from '../components/AuditDetails';
 import {SaleMovementModal,CustomerSaleHistoryModal} from './sales/SaleMovementModal';
@@ -27,7 +28,7 @@ export function OperationsView({module,suppliers=false,byCustomer=false,costOnly
  const [entryItems,setEntryItems]=useState<DataRow[]>([{product_id:'',quantity:1,unit_cost:''}]);
  const revision=useRef(0),request=useRef({signature:'',key:''});
  const filteredPeriod=['reports','profitability','expenses','audit'].includes(module);
- const allowed=(permission:string)=>authService.getCurrentUser()?.role==='admin_gerencial'||authService.getCurrentUser()?.permissions?.[permission]===true;
+ const allowed=(permission:string)=>!authService.getError() && hasPermission(authService.getCurrentUser(),permission);
  const reload=useCallback(async()=>{
   const version=++revision.current;setLoading(true);setError('');
   try{const value=await operations.read(module,filteredPeriod?start:'',filteredPeriod?end:'');if(version===revision.current){setData(value);if(module==='settings')setSettings(value);}}

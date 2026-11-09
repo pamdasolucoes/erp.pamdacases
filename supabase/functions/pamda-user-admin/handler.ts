@@ -12,8 +12,8 @@ return async (req:Request) => {
   const userClient = createClient(url,key,{global:{headers:{Authorization:authorization}},auth:{persistSession:false,autoRefreshToken:false}});
   const identity = await userClient.auth.getUser();
   if (identity.error || !identity.data.user) return reply(401,{error:'Sessão inválida'});
-  const check = await userClient.rpc('pamda_is_admin');
-  if (check.error || check.data !== true) return reply(403,{error:'Apenas administradores podem gerenciar contas'});
+  const check = await userClient.rpc('pamda_has_permission',{p_permission:'users.manage'});
+  if (check.error || check.data !== true) return reply(403,{error:'Seu usuário não tem permissão para gerenciar contas'});
   const input = await req.json();
   const admin = createClient(url,secret,{auth:{persistSession:false,autoRefreshToken:false}});
   if (input.action === 'create') {

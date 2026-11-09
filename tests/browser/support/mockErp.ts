@@ -25,7 +25,7 @@ export async function setup(page: Page, role: 'admin_gerencial' | 'gerencial' | 
   const expires=()=>Math.floor(Date.now()/1000)+state.serverClockSeconds+state.authLifetimeSeconds;
   const token = ()=>`${Buffer.from(JSON.stringify({alg:'HS256',typ:'JWT'})).toString('base64url')}.${Buffer.from(JSON.stringify({sub:employee.id,aud:'authenticated',role:'authenticated',exp:expires()})).toString('base64url')}.test`;
   const sales=new MockSales(()=>({id:employee.id,active:state.profileActive,role}),customers,branches,products);
-  const admin = new CoreAdminBackend(customers, branches, () => role === 'admin_gerencial' && state.profileActive);
+  const admin = new CoreAdminBackend(customers, branches, () => (role === 'admin_gerencial' || options.permissions?.['customers.manage'] === true) && state.profileActive);
   await page.route('**/*', async route => {
     const request=route.request(); const url=new URL(request.url());
     if (url.origin === 'http://127.0.0.1:4317') {
@@ -52,6 +52,7 @@ export async function setup(page: Page, role: 'admin_gerencial' | 'gerencial' | 
       if(state.coreError)return respond({code:state.coreError,message:'Resumo indisponível'},403);
       return respond({as_of:'2026-10-19T12:00:00Z',pending_sales:sales.sales.filter(s=>s.status==='draft').length,pending_with_product_history:sales.sales.filter(s=>s.status==='draft'&&s.first_product_at!==null).length,pending_never_with_product:sales.sales.filter(s=>s.status==='draft'&&s.first_product_at===null).length,confirmed_sales:sales.sales.filter(s=>s.status==='confirmed'&&s.is_test!==true).length,test_confirmed_sales:sales.sales.filter(s=>s.status==='confirmed'&&s.is_test===true).length,cancelled_sales:sales.sales.filter(s=>s.status==='cancelled').length,official_receipts:0,test_receipts:sales.testReceipts.length,catalog_active:637,physical_items:316,physical_stock_verified:0,production_queue_count:null,confirmed_revenue_today:state.financialPermission?123.45:null,confirmed_revenue_month:state.financialPermission?234.56:null,receivables_balance:null});
     }
+    if (url.pathname === '/rest/v1/rpc/pamda_has_permission' && options.permissions && request.postDataJSON().p_permission in options.permissions) return respond(state.profileActive && options.permissions[request.postDataJSON().p_permission] === true);
     if (url.pathname === '/rest/v1/rpc/pamda_has_permission' && request.postDataJSON().p_permission === 'finance.read') return respond(state.financialPermission);
     const adminResult = admin.handle(url.pathname, url, ['POST','PUT','PATCH'].includes(request.method()) ? request.postDataJSON() : null);
     if (adminResult) { if (adminResult.abort) return route.abort('failed'); return respond(adminResult.body, adminResult.status || 200, adminResult.headers); }

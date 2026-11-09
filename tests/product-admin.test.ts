@@ -59,11 +59,11 @@ test('serviço restringe administrador ativo, identidade e falhas; invalida cach
     rpc: async (name: string, args: object) => { calls.push({ name, args }); return { data: { produto_id: 'new-id' }, error: failure }; } } as unknown as SupabaseClient;
   const service = new ProductAdminService(client, () => user, () => invalidations++);
   const draft = { ...productDraft(), name: 'Produto isolado', sku: 'NEW-SKU' };
-  await assert.rejects(service.save('basic', draft, products), /administrador/); assert.equal(calls.length, 0);
+  await assert.rejects(service.save('basic', draft, products), /permissão/); assert.equal(calls.length, 0);
   user = { ...user, role: 'admin_gerencial' };
   await service.save('basic', draft, products); assert.equal(invalidations, 1);
   user = { ...user, active: false };
-  await assert.rejects(service.save('basic', draft, products), /administrador ativo/); assert.equal(invalidations, 1);
+  await assert.rejects(service.save('basic', draft, products), /permissão/); assert.equal(invalidations, 1);
   user = { ...user, active: true };
   failure = { code: '23505', message: 'duplicate' };
   await assert.rejects(service.save('basic', draft, products), /SKU/); assert.equal(invalidations, 1);
@@ -92,8 +92,8 @@ test('Nilu com permissão pode cadastrar; revogação e troca de sessão bloquei
   const service = new ProductAdminService(client, () => user, () => {});
   const draft = { ...productDraft(), name: 'Produto isolado', sku: 'NILU-TEST' };
   await service.save('basic', draft, products); assert.equal(calls, 1);
-  await assert.rejects(service.save('clone', { ...draft, confirmed: true }, products), /administrador/);
-  await assert.rejects(service.model('kit-test'), /administrador/);
-  revoke = true; await assert.rejects(service.save('basic', draft, products), /sessão mudou/); assert.equal(calls, 1);
-  await assert.rejects(service.save('basic', draft, products)); assert.equal(calls, 1);
+  await service.save('clone', { ...draft, confirmed: true }, products); assert.equal(calls,2);
+
+  revoke = true; await assert.rejects(service.save('basic', draft, products), /sessão mudou/); assert.equal(calls, 2);
+  await assert.rejects(service.save('basic', draft, products)); assert.equal(calls, 2);
 });

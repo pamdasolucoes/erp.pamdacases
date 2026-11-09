@@ -1,3 +1,4 @@
+import { hasPermission } from './permissions';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { User } from '../types/erp';
 import type { OfficialProduct } from '../types/productCatalog';
@@ -152,22 +153,22 @@ export function validateAssetFile(file: Pick<File, 'size' | 'type'>, mask: boole
   if (mask && file.type !== 'image/png') throw new Error('A máscara deve ser PNG com transparência alfa.');
 }
 export function canCreateProduct(user: User | null): boolean {
-  return user?.active === true && (user.role === 'admin_gerencial' || user.permissions?.['products.manage'] === true);
+  return hasPermission(user, 'products.manage');
 }
 
 export class ProductAdminService {
   constructor(private client: SupabaseClient | null, private currentUser: () => User | null, private invalidate: () => void) {}
-  private async admin(create = false) {
+  private async admin() {
     const user = this.currentUser();
-    const allowed = (value: User | null) => create ? canCreateProduct(value) : value?.active === true && value.role === 'admin_gerencial';
-    if (!this.client || !user || !allowed(user)) throw new Error('Somente administrador ativo pode alterar produtos.');
+    const allowed = canCreateProduct;
+    if (!this.client || !user || !allowed(user)) throw new Error('Seu usuário não tem permissão para gerenciar produtos.');
     const identity = await this.client.auth.getUser();
     if (identity.error || identity.data.user?.id !== user.id || this.currentUser()?.id !== user.id || !allowed(this.currentUser())) throw new Error('A sessão mudou. Entre novamente.');
     return this.client;
   }
   async save(mode: ProductMode, draft: ProductDraft, products: readonly OfficialProduct[], original?: OfficialProduct) {
     const command = productCommand(mode, draft, products, original);
-    const client = await this.admin(mode === 'basic');
+    const client = await this.admin();
     const { data, error } = await client.rpc(command.name, command.args);
     if (error) throw adminError(error);
     this.invalidate(); return data;

@@ -1,0 +1,182 @@
+[
+  {
+    "key": "customers.manage",
+    "description": "Cadastrar e alterar clientes e filiais"
+  },
+  {
+    "key": "customers.shipping.manage",
+    "description": "Configurar frete padrão"
+  },
+  {
+    "key": "products.manage",
+    "description": "Gerenciar cadastro de produtos"
+  },
+  {
+    "key": "sales.draft",
+    "description": "Preparar pedidos"
+  },
+  {
+    "key": "sales.confirm",
+    "description": "Confirmar vendas reais"
+  },
+  {
+    "key": "sales.discount",
+    "description": "Aplicar descontos em vendas"
+  },
+  {
+    "key": "sales.shipping.override",
+    "description": "Alterar frete cobrado"
+  },
+  {
+    "key": "sales.read",
+    "description": "Consultar vendas"
+  },
+  {
+    "key": "stock.manage",
+    "description": "Gerenciar conferência e estoque"
+  },
+  {
+    "key": "finance.read",
+    "description": "Consultar financeiro"
+  },
+  {
+    "key": "finance.manage",
+    "description": "Gerenciar lançamentos financeiros"
+  },
+  {
+    "key": "users.manage",
+    "description": "Gerenciar usuários e permissões"
+  },
+  {
+    "key": "sales.cancel",
+    "description": "Cancelar vendas pendentes mediante autorização explícita"
+  },
+  {
+    "key": "stock.read",
+    "description": "Consultar estoque"
+  },
+  {
+    "key": "expenses.manage",
+    "description": "Gerenciar despesas"
+  },
+  {
+    "key": "purchases.manage",
+    "description": "Registrar entradas e fornecedores"
+  },
+  {
+    "key": "deliveries.manage",
+    "description": "Gerenciar entregas"
+  },
+  {
+    "key": "reports.read",
+    "description": "Relatórios de vendas"
+  },
+  {
+    "key": "profitability.read",
+    "description": "Consultar lucratividade"
+  },
+  {
+    "key": "audit.read",
+    "description": "Consultar auditoria"
+  },
+  {
+    "key": "settings.manage",
+    "description": "Configurações"
+  },
+  {
+    "key": "module.nova_venda",
+    "description": "Menu: Nova venda"
+  },
+  {
+    "key": "module.vendas",
+    "description": "Menu: Vendas e pendências"
+  },
+  {
+    "key": "module.clientes",
+    "description": "Menu: Clientes"
+  },
+  {
+    "key": "module.produtos",
+    "description": "Menu: Produtos"
+  },
+  {
+    "key": "module.kits",
+    "description": "Menu: Kits"
+  },
+  {
+    "key": "module.estoque",
+    "description": "Menu: Estoque e movimentos"
+  },
+  {
+    "key": "module.producao",
+    "description": "Menu: Fila de produção"
+  },
+  {
+    "key": "module.contas_receber",
+    "description": "Menu: Contas a receber"
+  },
+  {
+    "key": "module.fechamentos",
+    "description": "Menu: Fechamentos"
+  },
+  {
+    "key": "module.entregas",
+    "description": "Menu: Fretes e entregas"
+  },
+  {
+    "key": "module.despesas",
+    "description": "Menu: Despesas"
+  },
+  {
+    "key": "module.compras",
+    "description": "Menu: Compras e entradas"
+  },
+  {
+    "key": "module.fornecedores",
+    "description": "Menu: Fornecedores"
+  },
+  {
+    "key": "module.relatorio_vendas",
+    "description": "Menu: Relatório de vendas"
+  },
+  {
+    "key": "module.relatorio_clientes",
+    "description": "Menu: Vendas por cliente"
+  },
+  {
+    "key": "module.lucratividade",
+    "description": "Menu: Lucratividade"
+  },
+  {
+    "key": "module.custo_estoque",
+    "description": "Menu: Custo do estoque"
+  },
+  {
+    "key": "module.usuarios",
+    "description": "Menu: Usuários e acessos"
+  },
+  {
+    "key": "module.logs",
+    "description": "Menu: Auditoria"
+  },
+  {
+    "key": "module.configuracoes",
+    "description": "Menu: Configurações"
+  },
+  {
+    "key": "sales.maintain",
+    "description": "Manutenção de movimento: corrigir pagamento e cancelar venda fechada"
+  },
+  {
+    "key": "stock.cost",
+    "description": "Visualizar custos dos produtos, vendas e estoque"
+  },
+  {
+    "key": "production.read",
+    "description": "Consultar fila de produção do ERP e Messenger"
+  },
+  {
+    "key": "production.manage",
+    "description": "Produção: separar, imprimir, conferir, embalar e registrar erros"
+  }
+]

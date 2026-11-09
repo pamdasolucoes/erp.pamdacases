@@ -216,5 +216,24 @@ test('RPCs reais em PostgreSQL isolado: criação, autorização, concorrência 
       assert.deepEqual(await snapshot(), before);
       assert.deepEqual((await db.query('SELECT * FROM kit_components WHERE kit_product_id<>$1 ORDER BY id', [created.kit_id])).rows, linksBefore);
     });
+    await t.test('products.manage permite gerencial criar capa+kit e editar com validações existentes',async()=>{
+      await db.exec(`CREATE TABLE erp_user_permission_overrides(user_id uuid,permission_key text,allowed boolean);
+       CREATE FUNCTION public.pamda_has_permission(p_key text) RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path='' AS $permission$
+       SELECT EXISTS(SELECT 1 FROM public.erp_user_profiles p WHERE p.user_id=auth.uid() AND p.active AND (p.role='admin_gerencial' OR EXISTS(SELECT 1 FROM public.erp_user_permission_overrides o WHERE o.user_id=p.user_id AND o.permission_key=p_key AND o.allowed))) $permission$;`);
+      await db.query(`UPDATE erp_user_profiles SET role='gerencial' WHERE user_id=$1`,[employee]);
+      await db.query(`INSERT INTO erp_user_permission_overrides VALUES ($1,'products.manage',true)`,[employee]);
+      const full=await readFile(new URL('../supabase/review/assigned_permissions.sql',import.meta.url),'utf8');
+      let patch=full.slice(full.indexOf('DO $patch$'),full.indexOf('END $patch$;')+'END $patch$;'.length);
+      const productRows=[...full.matchAll(/\('(?:public|private)','[^']+','products.manage'\)/g)].map(m=>m[0]);
+      patch=patch.replace(/FROM \(VALUES[\s\S]*?\) AS target/,()=> 'FROM (VALUES\n'+productRows.join(',\n')+'\n) AS target');
+      await db.exec(patch);
+      const delegated=(await create(employee,'TEST-GERENCIAL')).rows[0].result;
+      await asUser(employee,`SELECT pamda_admin_editar_produto($1,$2,$3::jsonb,$4)`,[delegated.case_id,await versionOf(delegated.case_id),JSON.stringify({name:'Capa revisada pelo gerencial'}),'Correção autorizada']);
+      assert.equal((await db.query<any>('SELECT name FROM products WHERE id=$1',[delegated.case_id])).rows[0].name,'Capa revisada pelo gerencial');
+      const kits=(await db.query<any>('SELECT component_product_id FROM kit_components WHERE kit_product_id=$1',[delegated.kit_id])).rows;
+      assert.equal(kits.length,2);assert.ok(kits.some(r=>r.component_product_id===delegated.case_id));
+      await db.exec('UPDATE erp_user_permission_overrides SET allowed=false');
+      await assert.rejects(create(employee,'TEST-GERENCIAL-REVOGADO'),/administrador|autorizado/);
+    });
   } finally { await db.close(); }
 });

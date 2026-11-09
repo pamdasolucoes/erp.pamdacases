@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {createUserAdminHandler} from '../supabase/functions/pamda-user-admin/handler';
 function fixture(){
  const calls={creates:[] as any[],deletes:[] as string[],profiles:[] as any[]};let allowed=true,profileFails=false;
- const user={auth:{async getUser(){return {data:{user:{id:'admin-id'}},error:null};}},async rpc(name:string,args:any){if(name==='pamda_is_admin')return {data:allowed,error:null};calls.profiles.push(args);return {error:profileFails?new Error('profile'):null};}};
+ const user={auth:{async getUser(){return {data:{user:{id:'admin-id'}},error:null};}},async rpc(name:string,args:any){if(name==='pamda_has_permission'){assert.equal(args.p_permission,'users.manage');return {data:allowed,error:null};} if(name==='pamda_is_admin')return {data:allowed,error:null};calls.profiles.push(args);return {error:profileFails?new Error('profile'):null};}};
  const admin={auth:{admin:{async createUser(input:any){calls.creates.push(input);return {data:{user:{id:'new-id'}},error:null};},async deleteUser(id:string){calls.deletes.push(id);return {error:null};}}}};
  const handler=createUserAdminHandler({url:'https://synthetic.invalid',key:'public',secret:'private',createClient:(_url,key)=>key==='public'?user:admin});
  const request=(body:any,token=true)=>handler(new Request('https://synthetic.invalid',{method:'POST',headers:{...(token?{authorization:'Bearer synthetic'}:{}),'content-type':'application/json'},body:JSON.stringify(body)}));

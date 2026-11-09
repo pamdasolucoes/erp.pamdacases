@@ -22,7 +22,7 @@ export function CustomerNetworksPanel({ customers, onOpen, onEdit }: { customers
   const finance = useCorePermission(userId, 'finance.read');
   const receive = useCorePermission(userId, 'finance.manage');
   const closingRequest=useRef({signature:'',key:''});
-  const admin = manage.allowed && authService.getCurrentUser()?.role === 'admin_gerencial';
+  const admin = manage.allowed;
   const [catalog, setCatalog] = useState<NetworkCatalog>({ networks: [], members: [] });
   const [networkId, setNetworkId] = useState('');
   const [ready, setReady] = useState(false);

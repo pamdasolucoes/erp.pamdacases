@@ -54,8 +54,8 @@ export class CustomerNetworksService {
     const { data, error } = await this.client.auth.getUser();
     if (error || data.user?.id !== userId) throw new Error('A sessão mudou.');
   }
-  private async manage(userId: string, admin = false) {
-    if (!await this.core.hasPermission(userId, 'customers.manage') || admin && await this.core.rpc(userId, 'pamda_is_admin') !== true) throw new Error('Acesso negado.');
+  private async manage(userId: string) {
+    if (!await this.core.hasPermission(userId, 'customers.manage')) throw new Error('Acesso negado.');
   }
   private async rows<T>(userId: string, table: string, columns: string, key = 'id', target?: string): Promise<T[]> {
     await this.identity(userId);
@@ -77,7 +77,7 @@ export class CustomerNetworksService {
   async create(userId: string, name: string, code: string, headquarters: string, kind: string) {
     id(headquarters);
     if (!name.trim() || !/^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/.test(code.trim()) || !['rede','franquia','grupo_comercial'].includes(kind)) throw new Error('Nome, código ou tipo da rede inválido.');
-    await this.manage(userId, true);
+    await this.manage(userId);
     const result = await this.core.rpc(userId, 'pamda_admin_criar_rede', { p_nome: name.trim(), p_codigo: code.trim(), p_matriz_cliente_id: headquarters, p_tipo: kind }, true);
     if (typeof result !== 'string' || !isUuid(result)) throw new UnconfirmedWriteError('Criação não confirmada. Atualize antes de repetir.');
     const catalog = await this.catalog(userId);
@@ -87,7 +87,7 @@ export class CustomerNetworksService {
   async link(userId: string, networkId: string, customerIds: string[]) {
     id(networkId); customerIds.forEach(id);
     if (!customerIds.length || new Set(customerIds).size !== customerIds.length) throw new Error('Seleção vazia ou duplicada.');
-    await this.manage(userId, true);
+    await this.manage(userId);
     const before = await this.catalog(userId);
     if (customerIds.some(c => before.members.some(m => m.customer_id === c))) throw new Error('Cliente já vinculado a uma rede. Atualize a lista.');
     // Each RPC is atomic; a multi-selection is not one transaction. Never retry the batch.
@@ -109,7 +109,7 @@ export class CustomerNetworksService {
       'billing_cycle,default_collection_mode,due_days,notes', target === 'cliente' ? 'customer_id' : 'branch_id', targetId))[0] ?? null;
   }
   async savePolicy(userId: string, target: 'rede' | 'cliente' | 'filial', targetId: string, policy: BillingPolicy) {
-    id(targetId); validatePolicy(policy, target === 'filial'); await this.manage(userId, target === 'rede');
+    id(targetId); validatePolicy(policy, target === 'filial'); await this.manage(userId);
     await this.core.rpc(userId, 'pamda_admin_configurar_cobranca_' + target, {
       ['p_' + (target === 'rede' ? 'rede' : target === 'cliente' ? 'cliente' : 'filial') + '_id']: targetId,
       p_ciclo: policy.billing_cycle, p_modo: policy.default_collection_mode, p_dias: policy.due_days, p_observacoes: policy.notes,

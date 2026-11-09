@@ -1,0 +1,158 @@
+[
+  {
+    "cmd": "SELECT",
+    "qual": "(EXISTS ( SELECT 1\n   FROM erp_user_profiles p\n  WHERE ((p.user_id = ( SELECT auth.uid() AS uid)) AND p.active AND (p.role = ANY (ARRAY['admin_gerencial'::text, 'venda_atendimento'::text])))))",
+    "roles": [
+      "authenticated"
+    ],
+    "tablename": "customer_branches",
+    "permissive": "PERMISSIVE",
+    "policyname": "erp_branches_read_by_staff",
+    "schemaname": "public",
+    "with_check": null
+  },
+  {
+    "cmd": "SELECT",
+    "qual": "(EXISTS ( SELECT 1\n   FROM erp_user_profiles p\n  WHERE ((p.user_id = ( SELECT auth.uid() AS uid)) AND p.active AND (p.role = ANY (ARRAY['admin_gerencial'::text, 'venda_atendimento'::text])))))",
+    "roles": [
+      "authenticated"
+    ],
+    "tablename": "customers",
+    "permissive": "PERMISSIVE",
+    "policyname": "erp_customers_read_by_staff",
+    "schemaname": "public",
+    "with_check": null
+  },
+  {
+    "cmd": "SELECT",
+    "qual": "pamda_has_permission('sales.draft'::text)",
+    "roles": [
+      "authenticated"
+    ],
+    "tablename": "erp_payment_methods",
+    "permissive": "PERMISSIVE",
+    "policyname": "erp_payment_methods_staff_select",
+    "schemaname": "public",
+    "with_check": null
+  },
+  {
+    "cmd": "SELECT",
+    "qual": "pamda_has_permission('sales.draft'::text)",
+    "roles": [
+      "authenticated"
+    ],
+    "tablename": "erp_payment_terms",
+    "permissive": "PERMISSIVE",
+    "policyname": "erp_payment_terms_staff_select",
+    "schemaname": "public",
+    "with_check": null
+  },
+  {
+    "cmd": "SELECT",
+    "qual": "pamda_has_permission('sales.draft'::text)",
+    "roles": [
+      "authenticated"
+    ],
+    "tablename": "erp_customer_payment_settings",
+    "permissive": "PERMISSIVE",
+    "policyname": "erp_customer_payment_staff_select",
+    "schemaname": "public",
+    "with_check": null
+  },
+  {
+    "cmd": "SELECT",
+    "qual": "pamda_has_permission('sales.draft'::text)",
+    "roles": [
+      "authenticated"
+    ],
+    "tablename": "erp_branch_payment_settings",
+    "permissive": "PERMISSIVE",
+    "policyname": "erp_branch_payment_staff_select",
+    "schemaname": "public",
+    "with_check": null
+  },
+  {
+    "cmd": "SELECT",
+    "qual": "pamda_is_admin()",
+    "roles": [
+      "authenticated"
+    ],
+    "tablename": "erp_sale_events",
+    "permissive": "PERMISSIVE",
+    "policyname": "erp_sale_events_admin_read",
+    "schemaname": "public",
+    "with_check": null
+  },
+  {
+    "cmd": "SELECT",
+    "qual": "(pamda_has_permission('sales.read'::text) OR (pamda_has_permission('sales.draft'::text) AND (created_by = ( SELECT auth.uid() AS uid))))",
+    "roles": [
+      "authenticated"
+    ],
+    "tablename": "erp_sales",
+    "permissive": "PERMISSIVE",
+    "policyname": "erp_sales_staff_read",
+    "schemaname": "public",
+    "with_check": null
+  },
+  {
+    "cmd": "SELECT",
+    "qual": "pamda_is_admin()",
+    "roles": [
+      "authenticated"
+    ],
+    "tablename": "erp_sale_test_receipts",
+    "permissive": "PERMISSIVE",
+    "policyname": "sale_test_receipts_admin_read",
+    "schemaname": "public",
+    "with_check": null
+  },
+  {
+    "cmd": "SELECT",
+    "qual": "pamda_is_admin()",
+    "roles": [
+      "authenticated"
+    ],
+    "tablename": "erp_sale_test_payments",
+    "permissive": "PERMISSIVE",
+    "policyname": "sale_test_payments_admin_read",
+    "schemaname": "public",
+    "with_check": null
+  },
+  {
+    "cmd": "SELECT",
+    "qual": "pamda_is_admin()",
+    "roles": [
+      "authenticated"
+    ],
+    "tablename": "erp_panda_ia_phone_models",
+    "permissive": "PERMISSIVE",
+    "policyname": "erp_panda_ia_models_staff_admin_read",
+    "schemaname": "public",
+    "with_check": null
+  },
+  {
+    "cmd": "SELECT",
+    "qual": "(pamda_has_permission('production.read'::text) OR ((channel_id IS NOT NULL) AND messenger_private.messenger_access(channel_id)))",
+    "roles": [
+      "authenticated"
+    ],
+    "tablename": "erp_production_tasks",
+    "permissive": "PERMISSIVE",
+    "policyname": "production_tasks_read",
+    "schemaname": "public",
+    "with_check": null
+  },
+  {
+    "cmd": "SELECT",
+    "qual": "pamda_has_permission('production.read'::text)",
+    "roles": [
+      "authenticated"
+    ],
+    "tablename": "erp_production_task_events",
+    "permissive": "PERMISSIVE",
+    "policyname": "production_task_events_read",
+    "schemaname": "public",
+    "with_check": null
+  }
+]

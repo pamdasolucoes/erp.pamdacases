@@ -1,3 +1,4 @@
+import { hasPermission } from './permissions';
 import type { CustomerUpdate } from '../types/pamdaCore';
 import type { User } from '../types/erp';
 
@@ -11,7 +12,7 @@ const branchFields = {
   contactName: 'contact_name', notes: 'notes', active: 'active', addressNeedsReview: 'address_needs_review',
 };
 export const isUuid = (value: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
-export const canEditCustomers = (user: User | null): boolean => !!user?.active && user.role === 'admin_gerencial' && user.canReadCustomers === true;
+export const canEditCustomers = (user: User | null): boolean => hasPermission(user, 'customers.manage');
 
 function mapChanges(changes: object, fields: Record<string, string>, nullable: string[]) {
   const mapped: Record<string, string | boolean | null> = {};

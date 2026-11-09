@@ -15,7 +15,7 @@ const money = (value: number | null) => value === null ? 'Não informado' : valu
 export const ProductsView: React.FC = () => {
   const { products, loading, refreshing, error, reload } = useProducts();
   const user = authService.getCurrentUser();
-  const admin = !authService.getError() && user?.active === true && user.role === 'admin_gerencial';
+  const admin = !authService.getError() && canCreateProduct(user);
   const canCreate = !authService.getError() && canCreateProduct(user);
   const [action, setAction] = useState<ProductAction | null>(null);
   const [detailId, setDetailId] = useState('');

@@ -14,8 +14,8 @@ for (const allowed of [true,false]) test('gerencial: Novo Produto com products.m
  await page.getByRole('button',{name:'Produtos & Serviços',exact:true}).click();
  await page.getByRole('button',{name:'Produtos Físicos',exact:true}).click();
  const create=page.getByRole('button',{name:'Novo Produto',exact:true});
- await expect(page.getByRole('button',{name:'Nova Capa + Kit',exact:true})).toBeDisabled();
- await expect(page.getByTestId('product-'+productId(1)).getByRole('button',{name:/^Editar /})).toBeDisabled();
+ await expect(page.getByRole('button',{name:'Nova Capa + Kit',exact:true})).toBeEnabled({enabled:allowed});
+ if(allowed)await expect(page.getByTestId('product-'+productId(1)).getByRole('button',{name:/^Editar /})).toBeEnabled();else await expect(page.getByTestId('product-'+productId(1)).getByRole('button',{name:/^Editar /})).toBeDisabled();
  if(!allowed){await expect(create).toBeDisabled();expect(calls).toHaveLength(0);return;}
  await create.click(); await page.getByLabel('Nome',{exact:true}).fill('Produto Nilu isolado');
  await page.getByLabel('SKU novo',{exact:true}).fill('NILU-UI-TEST');
