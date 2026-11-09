@@ -11,7 +11,7 @@ export async function selectCatalogProduct(page: Page, id: string) {
 }
 
 // API inteiramente sintetica e interceptada. Nenhuma chamada ao projeto real.
-export async function setup(page: Page, role: 'admin_gerencial' | 'venda_atendimento' | 'producao' | 'financeiro' | 'estoque_expedicao' = 'admin_gerencial', options:{reuseSession?:boolean;strictMode?:boolean;stayOnDashboard?:boolean;customerListOnly?:boolean;dataDelayMs?:number}={}) {
+export async function setup(page: Page, role: 'admin_gerencial' | 'gerencial' | 'venda_atendimento' | 'producao' | 'financeiro' | 'estoque_expedicao' = 'admin_gerencial', options:{permissions?:Record<string,boolean>;reuseSession?:boolean;strictMode?:boolean;stayOnDashboard?:boolean;customerListOnly?:boolean;dataDelayMs?:number}={}) {
   const customers = Array.from({ length:384 }, (_,index) => customerRow(index + 1));
   customers[0] = customerRow(1,{ name:'Loja Árvore',company_name:'Comércio Teste',cpf:'123.456.789-01',notes:'  legado  ' });
   customers[349]=customerRow(350,{customer_code:'350',name:'Cristal Centro'});
@@ -42,7 +42,7 @@ export async function setup(page: Page, role: 'admin_gerencial' | 'venda_atendim
     if (url.pathname==='/auth/v1/token') {state.tokenRequests++;if(url.searchParams.get('grant_type')==='refresh_token') state.refreshRequests++;return respond({ access_token:token(),token_type:'bearer',expires_in:state.authLifetimeSeconds,expires_at:expires(),refresh_token:'synthetic-refresh-token',user:employee });}
     if (url.pathname==='/auth/v1/logout') return respond({});
     if (url.pathname==='/auth/v1/user') return state.identityRevoked?respond({msg:'Invalid session',code:'session_not_found'},401):respond(employee);
-    if(url.pathname==='/rest/v1/rpc/pamda_my_permissions') return respond({'sales.read':role==='admin_gerencial'||role==='venda_atendimento','sales.draft':role==='admin_gerencial'||role==='venda_atendimento','sales.confirm':role==='admin_gerencial'||role==='venda_atendimento','customers.manage':role==='admin_gerencial','finance.read':state.financialPermission,'stock.read':role==='admin_gerencial'||role==='estoque_expedicao'||role==='venda_atendimento','production.read':true,'production.manage':role==='admin_gerencial'||role==='producao'});
+    if(url.pathname==='/rest/v1/rpc/pamda_my_permissions') return respond({'sales.read':role==='admin_gerencial'||role==='venda_atendimento','sales.draft':role==='admin_gerencial'||role==='venda_atendimento','sales.confirm':role==='admin_gerencial'||role==='venda_atendimento','customers.manage':role==='admin_gerencial','finance.read':state.financialPermission,'stock.read':role==='admin_gerencial'||role==='estoque_expedicao'||role==='venda_atendimento','production.read':true,'production.manage':role==='admin_gerencial'||role==='producao',...options.permissions});
     if (url.pathname==='/rest/v1/erp_user_profiles') {
       if(state.profileError==='network') return route.abort('failed');
       if(state.profileError) return respond({code:state.profileError,message:'Profile denied'},403);

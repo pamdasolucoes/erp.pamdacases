@@ -151,18 +151,23 @@ export function validateAssetFile(file: Pick<File, 'size' | 'type'>, mask: boole
   if (!['image/png', 'image/jpeg', 'image/webp'].includes(file.type)) throw new Error('Envie imagens PNG, JPEG ou WebP.');
   if (mask && file.type !== 'image/png') throw new Error('A máscara deve ser PNG com transparência alfa.');
 }
+export function canCreateProduct(user: User | null): boolean {
+  return user?.active === true && (user.role === 'admin_gerencial' || user.permissions?.['products.manage'] === true);
+}
+
 export class ProductAdminService {
   constructor(private client: SupabaseClient | null, private currentUser: () => User | null, private invalidate: () => void) {}
-  private async admin() {
+  private async admin(create = false) {
     const user = this.currentUser();
-    if (!this.client || !user?.active || user.role !== 'admin_gerencial') throw new Error('Somente administrador ativo pode alterar produtos.');
+    const allowed = (value: User | null) => create ? canCreateProduct(value) : value?.active === true && value.role === 'admin_gerencial';
+    if (!this.client || !user || !allowed(user)) throw new Error('Somente administrador ativo pode alterar produtos.');
     const identity = await this.client.auth.getUser();
-    if (identity.error || identity.data.user?.id !== user.id || this.currentUser()?.id !== user.id || this.currentUser()?.role !== 'admin_gerencial' || !this.currentUser()?.active) throw new Error('A sessão mudou. Entre novamente.');
+    if (identity.error || identity.data.user?.id !== user.id || this.currentUser()?.id !== user.id || !allowed(this.currentUser())) throw new Error('A sessão mudou. Entre novamente.');
     return this.client;
   }
   async save(mode: ProductMode, draft: ProductDraft, products: readonly OfficialProduct[], original?: OfficialProduct) {
     const command = productCommand(mode, draft, products, original);
-    const client = await this.admin();
+    const client = await this.admin(mode === 'basic');
     const { data, error } = await client.rpc(command.name, command.args);
     if (error) throw adminError(error);
     this.invalidate(); return data;
@@ -193,7 +198,7 @@ export class ProductAdminService {
 export function adminError(error: { code?: string; message: string }) {
   if (/fetch|network|timeout|connection/i.test(error.message)) return new Error('Falha de conexão. Atualize o catálogo para conferir se a operação foi concluída antes de tentar novamente.');
   if (error.code === '23505' || /SKU.*existe/i.test(error.message)) return new Error('SKU ou kit já cadastrado. Atualize o catálogo e escolha uma nova referência.');
-  if (error.code === '42501') return new Error('Acesso restrito ao administrador ativo.');
+  if (error.code === '42501') return new Error('Seu usuário não tem permissão para esta operação.');
   if (/outra sess|concorr/i.test(error.message)) return new Error('Este produto foi alterado em outra sessão. Feche o formulário, atualize o catálogo e revise as alterações.');
   return new Error(error.message || 'Não foi possível salvar. Confira a conexão e tente novamente.');
 }

@@ -2,7 +2,7 @@
 import { Layers, Plus, Copy, Sparkles, Edit2, Search, RefreshCw, Tag, Archive } from 'lucide-react';
 import { useProducts } from '../../hooks/useProducts';
 import { selectCatalogProducts, type ProductStatusFilter } from '../../services/productMapping';
-import { skuEditProduct } from '../../services/productAdmin';
+import { canCreateProduct, skuEditProduct } from '../../services/productAdmin';
 import { ProductThumbnail } from '../../components/common/ProductThumbnail';
 import { useProgressiveRows } from '../../hooks/useProgressiveRows';
 
@@ -16,6 +16,7 @@ export const ProductsView: React.FC = () => {
   const { products, loading, refreshing, error, reload } = useProducts();
   const user = authService.getCurrentUser();
   const admin = !authService.getError() && user?.active === true && user.role === 'admin_gerencial';
+  const canCreate = !authService.getError() && canCreateProduct(user);
   const [action, setAction] = useState<ProductAction | null>(null);
   const [detailId, setDetailId] = useState('');
   const [duplicatePicker, setDuplicatePicker] = useState(false);
@@ -43,11 +44,11 @@ export const ProductsView: React.FC = () => {
         <div className="flex flex-wrap items-center gap-2">
           <button disabled={!admin} onClick={() => setDuplicatePicker(true)} className="flex items-center gap-1.5 px-3 py-2 bg-purple-50 text-purple-700 border border-purple-200 text-xs font-bold rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed"><Sparkles className="w-4 h-4 text-purple-600" /><span>Duplicar Produto + Kit</span></button>
           <button disabled={!admin} onClick={() => setAction({ mode: 'kit' })} className="flex items-center gap-1.5 px-3 py-2 bg-indigo-50 text-indigo-700 border border-indigo-200 text-xs font-bold rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed"><Layers className="w-4 h-4 text-indigo-600" /><span>Novo Kit Composto</span></button>
-          <button disabled={!admin} onClick={() => setAction({ mode: 'basic' })} className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 text-white text-xs font-bold rounded-xl shadow-xs transition-colors disabled:opacity-50 disabled:cursor-not-allowed"><Plus className="w-4 h-4" /><span>Novo Produto</span></button>
+          <button disabled={!canCreate} onClick={() => setAction({ mode: 'basic' })} className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 text-white text-xs font-bold rounded-xl shadow-xs transition-colors disabled:opacity-50 disabled:cursor-not-allowed"><Plus className="w-4 h-4" /><span>Novo Produto</span></button>
         </div>
       </div>
       <button disabled={!admin} onClick={() => setAction({ mode: 'case' })} className="bg-blue-600 text-white rounded-xl px-4 py-2 text-xs font-bold disabled:opacity-50">Nova Capa + Kit</button>
-      <p className="text-xs text-slate-500">PAMDA CORE · {admin ? 'Administração do catálogo oficial' : 'Acesso somente de leitura'}</p>
+      <p className="text-xs text-slate-500">PAMDA CORE · {admin ? 'Administração do catálogo oficial' : canCreate ? 'Cadastro de novos produtos autorizado' : 'Acesso somente de leitura'}</p>
       {notice && <p role="status" className="text-sm text-emerald-800">{notice}</p>}
       {refreshing && <p role="status" className="text-xs text-slate-500">Atualizando catálogo oficial...</p>}
       {!loading && !error && <p aria-live="polite" className="text-xs text-slate-600">{products.length} itens oficiais · {countType('fisico')} físicos · {countType('servico')} serviços · {countType('kit')} kits · {countType('insumo')} insumos · {products.reduce((sum, product) => sum + product.components.length, 0)} vínculos de componentes</p>}
@@ -82,7 +83,7 @@ export const ProductsView: React.FC = () => {
         </table></div>
         {list.hasMore && <button type="button" onClick={list.showMore} className="w-full border-t p-3 text-xs font-bold text-blue-700">Mostrar mais produtos ({list.visible.length} de {filteredProducts.length})</button>}
       </div>}
-      {admin && action && <ProductAdminModal action={action} products={products} onClose={() => setAction(null)} onSaved={() => { setAction(null); setDetailId(''); setNotice('Produto salvo no PAMDA CORE. Catálogo sendo atualizado.'); }} />}
+      {action && (admin || canCreate && action.mode === 'basic') && <ProductAdminModal action={action} products={products} onClose={() => setAction(null)} onSaved={() => { setAction(null); setDetailId(''); setNotice('Produto salvo no PAMDA CORE. Catálogo sendo atualizado.'); }} />}
       {admin && duplicatePicker && <Modal isOpen title="Duplicar Produto + Kit" onClose={() => setDuplicatePicker(false)}><label className="block text-sm">Produto original<select className="block w-full border rounded-lg p-2 mt-2" value="" onChange={e => { const product = products.find(p => p.id === e.target.value); if (product) { setDuplicatePicker(false); setAction({ mode: 'case', product, duplicate: true }); } }}><option value="">Selecione uma capa ou kit...</option>{products.filter(p => p.active && (p.type === 'kit' || p.type === 'fisico')).map(p => <option key={p.id} value={p.id}>{p.code} · {p.name}</option>)}</select></label></Modal>}
       {detail && !action && <Modal isOpen title={detail.name} subtitle={detail.code + ' · ' + detail.sku} onClose={() => setDetailId('')}><div className="space-y-4 text-sm"><p>{detail.description || 'Sem descrição'}</p><p>{detail.brand} · {detail.category} · {detail.active ? 'Ativo' : 'Inativo'}</p><p>Preço: {money(detail.salePrice)}</p>{detail.type === 'kit' && <ul>{detail.components.map(c => <li key={c.id}>{c.quantity} · {c.componentName}</li>)}</ul>}{admin && <div className="flex flex-wrap gap-2">{detail.active && <><button className="border rounded-lg p-2" onClick={() => setAction({ mode: 'edit', product: detail })}>Editar Produto</button><button className="border rounded-lg p-2" onClick={() => changeSku(detail)}>Alterar SKU</button><button className="border rounded-lg p-2" title="Arquivamento lógico; não exclui o histórico" onClick={() => setAction({ mode: 'archive', product: detail })}>Arquivar produto</button></>}<button className="border rounded-lg p-2" onClick={() => clone(detail)}>Clonar Produto</button>{['fisico','kit'].includes(detail.type) && <button className="border rounded-lg p-2" onClick={() => setAction({ mode: 'case', product: detail, duplicate: true })}>Duplicar Produto + Kit</button>}</div>}{admin && detail.type === 'kit' && <PandaModelPanel key={detail.id} kit={detail} onSaved={() => setNotice('Modelo técnico salvo. Catálogo sendo atualizado.')} />}</div></Modal>}
     </div>

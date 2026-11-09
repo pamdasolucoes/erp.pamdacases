@@ -84,3 +84,16 @@ test('arquivos e estados técnicos: tamanho, formato, máscara e requisitos de p
   validatePublication(kit, { ...assets, technical_verified: true, published: true });
   assert.throws(() => validatePublication({ ...kit, active: false }, { ...assets, technical_verified: true, published: true }), /ativo/);
 });
+
+test('Nilu com permissão pode cadastrar; revogação e troca de sessão bloqueiam', async () => {
+  let user: User = { id: 'nilu-test', username: 'nilu', name: 'Nilu', role: 'gerencial', active: true, canViewFinancialMetrics: false, createdAt: '', permissions: { 'products.manage': true } };
+  let calls = 0, revoke = false;
+  const client = { auth: { getUser: async () => { if (revoke) user = { ...user, permissions: { 'products.manage': false } }; return { data: { user: { id: 'nilu-test' } }, error: null }; } }, rpc: async () => { calls++; return { data: {}, error: null }; } } as unknown as SupabaseClient;
+  const service = new ProductAdminService(client, () => user, () => {});
+  const draft = { ...productDraft(), name: 'Produto isolado', sku: 'NILU-TEST' };
+  await service.save('basic', draft, products); assert.equal(calls, 1);
+  await assert.rejects(service.save('clone', { ...draft, confirmed: true }, products), /administrador/);
+  await assert.rejects(service.model('kit-test'), /administrador/);
+  revoke = true; await assert.rejects(service.save('basic', draft, products), /sessão mudou/); assert.equal(calls, 1);
+  await assert.rejects(service.save('basic', draft, products)); assert.equal(calls, 1);
+});
