@@ -184,7 +184,7 @@ export function App() {
           title={tabTitles[currentTab] || 'PAMDA ERP'}
         />
 
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto">
+        <main className={`flex-1 min-w-0 p-4 sm:p-6 lg:p-8 w-full mx-auto ${['dashboard','nova_venda','configuracoes'].includes(currentTab)?'max-w-7xl':''}`}>
           {saleSuccess&&<p role="status" className="mb-4 rounded-xl bg-emerald-50 p-4 text-emerald-800">{saleSuccess}</p>}
           {navigationError&&<p role="alert" className="mb-4 text-sm text-rose-800">{navigationError}</p>}
           {!canAccessTab(currentUser, currentTab) ? (
