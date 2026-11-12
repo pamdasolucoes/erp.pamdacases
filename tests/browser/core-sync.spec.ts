@@ -97,7 +97,7 @@ test('administrador revisa pendência legada sem número e só confirma descarte
   await page.getByRole('button', { name: 'Pendências', exact: true }).click();
   await expect(page.getByText('Sem número · revisar', { exact: true })).toBeVisible();
   await expect(page.getByText('Código: 000001', { exact: true })).toBeVisible();
-  await page.getByRole('button', { name: 'Abrir venda / recibo', exact: true }).click();
+  await page.getByRole('button', { name: 'Sem número · revisar', exact: true }).click();
   await expect(page.getByTestId('sale-save-state')).toHaveText('Salvo · Pendente');
   await page.getByRole('button', { name: 'Pendências', exact: true }).click();
   await expect(page.getByText('Sem número · revisar', { exact: true })).toBeVisible();

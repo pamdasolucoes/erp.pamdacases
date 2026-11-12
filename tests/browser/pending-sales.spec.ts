@@ -5,7 +5,7 @@ import {uuid} from '../fixtures/customerRows';
 
 async function openCustomerSale(page:Page){await page.getByRole('button',{name:'+ NOVA VENDA',exact:true}).click();}
 async function saved(page:Page){await expect(page.getByTestId('sale-save-state')).toHaveText('Salvo · Pendente');}
-async function pendingList(page:Page){await page.getByRole('button',{name:'Pendências',exact:true}).click();await expect(page.getByRole('heading',{name:'Todas as Vendas'})).toBeVisible();}
+async function pendingList(page:Page){await page.getByRole('button',{name:'Pendências',exact:true}).click();await expect(page.getByRole('heading',{name:'Todas as Vendas',level:1})).toBeVisible();}
 
 test('venda vazia recebe número provisório e sair descarta liberando o mesmo número',async({page})=>{
   const {sales,state}=await setup(page);
@@ -98,7 +98,7 @@ test('vendedor só continua suas pendências e não cancela; servidor rejeita te
   const {sales}=await setup(page,'venda_atendimento');
   await page.getByRole('button',{name:'Nova Venda',exact:true}).last().click();
   const customer=page.getByRole('combobox',{name:'Cliente',exact:true});await customer.fill('350');await expect(page.getByRole('listbox').getByRole('option')).toHaveCount(1);await customer.press('Enter');await selectCatalogProduct(page,kitId(1));await saved(page);
-  await pendingList(page);await expect(page.getByRole('button',{name:'Abrir venda / recibo',exact:true})).toBeVisible();await expect(page.getByRole('button',{name:'Cancelar venda',exact:true})).toHaveCount(0);
+  await pendingList(page);await expect(page.getByRole('button',{name:'Imprimir recibo do pedido 10000',exact:true})).toBeVisible();await expect(page.getByRole('button',{name:'Cancelar venda',exact:true})).toHaveCount(0);
   const result=await page.evaluate(async id=>{
     const path='/src/services/supabase.ts';const {supabase}=await import(path);const {error}=await supabase.rpc('pamda_cancelar_venda',{p_venda_id:id,p_motivo:'Tentativa sem permissão'});return error?.code;
   },sales.sales[0].id);
@@ -161,4 +161,28 @@ test('salvamento negado não anuncia sucesso, conserva edição e não descarta 
   await expect(page.getByLabel('Frete cobrado (R$)',{exact:true})).toHaveValue('15,00');expect(sales.sales[0].shipping_confirmed).toBe(false);
   sales.permissions['sales.shipping.override']=true;await page.getByRole('button',{name:'Tentar salvar novamente',exact:true}).click();await saved(page);
   expect(sales.sales[0].shipping_charged).toBe(15);expect(sales.sales).toHaveLength(1);
+});
+
+
+test('ícone imprime o recibo salvo sem abrir ou alterar a venda e lista ocupa a largura disponível',async({page},testInfo)=>{
+  await page.setViewportSize({width:1920,height:1080});
+  const {sales}=await setup(page);await openCustomerSale(page);await selectCatalogProduct(page,kitId(1));
+  await page.getByLabel('Frete cobrado (R$)',{exact:true}).fill('0,00');
+  await page.getByLabel('OBSERVAÇÕES',{exact:true}).fill('Recibo direto da pendência');await saved(page);
+  await pendingList(page);
+  await expect(page.getByRole('button',{name:'Consultar detalhes',exact:true})).toHaveCount(0);
+  const main=await page.locator('main').boundingBox();expect(main!.width).toBeGreaterThan(1280);
+  await page.screenshot({path:testInfo.outputPath('pendencias-amplas.png')});
+  const before=JSON.stringify(sales.writes);
+  await page.getByRole('button',{name:'Imprimir recibo do pedido 10000',exact:true}).click();
+  await expect(page.getByRole('dialog',{name:'Prévia do recibo'})).toContainText('Recibo direto da pendência');
+  await expect(page.locator('#pamda-preview-print-frame')).toHaveCount(1);
+  await expect(page.getByTestId('sale-save-state')).toHaveCount(0);
+  expect(JSON.stringify(sales.writes)).toBe(before);
+  await page.getByRole('button',{name:'Fechar recibo',exact:true}).click();
+  await expect(page.getByRole('heading',{name:'Todas as Vendas',level:1})).toBeVisible();
+  await page.setViewportSize({width:390,height:844});
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+  await page.getByRole('button',{name:'Pedido 10000',exact:true}).click();await saved(page);
+  await expect(page.getByLabel('OBSERVAÇÕES',{exact:true})).toHaveValue('Recibo direto da pendência');
 });
