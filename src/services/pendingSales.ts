@@ -27,7 +27,7 @@ export class PendingSalesService {
   constructor(private client:SupabaseClient|null){}
   private async mergeLinks(){
     return readAllPages<{sale_id:string;source_ids:string[]}>(async(from,to)=>{
-      const {data,error,count}=await this.client!.from('erp_sale_merges').select('sale_id,source_ids',{count:'exact'}).order('sale_id').range(from,to);
+      const {data,error,count}=await this.client!.from('erp_sale_merges').select('sale_id,source_ids',{count:'exact'}).eq('preserve_originals',true).order('sale_id').range(from,to);
       if(error)throw saleError(error);if(!data||count===null)throw new Error('Não foi possível consultar os vínculos de fechamento.');
       return {rows:data,total:count};
     });

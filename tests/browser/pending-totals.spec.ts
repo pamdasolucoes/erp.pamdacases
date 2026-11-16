@@ -1,0 +1,38 @@
+import {test,expect} from '@playwright/test';
+import {setup,selectCatalogProduct} from './support/mockErp';
+import {kitId} from '../fixtures/officialProducts';
+import {uuid} from '../fixtures/customerRows';
+
+test('totais das pendências acompanham a pesquisa e a seleção sem perder centavos',async({page},testInfo)=>{
+ const {sales}=await setup(page);await page.getByRole('button',{name:'+ NOVA VENDA',exact:true}).click();
+ await selectCatalogProduct(page,kitId(1));await page.getByLabel('Frete cobrado (R$)',{exact:true}).fill('5,00');
+ await expect(page.getByTestId('sale-save-state')).toHaveText('Salvo · Pendente');
+ const first=sales.sales[0];
+ sales.sales.push({...first,id:uuid(99009),order_number:10009,draft_key:uuid(98009),subtotal:12.34,total:17.34});
+ sales.sales.push({...first,id:uuid(99010),order_number:10010,draft_key:uuid(98010),customer_id:uuid(2),customer_snapshot:{name:'Outra Loja',code:'000002'},subtotal:9.99,shipping_charged:0,total:9.99});
+ await page.getByRole('button',{name:'Pendências',exact:true}).click();
+ const visible=page.getByTestId('pending-visible-total'),selected=page.getByTestId('pending-selected-total');
+ await expect(visible).toContainText('57,33');await expect(selected).toContainText('0,00');
+ await page.getByRole('checkbox',{name:'Selecionar pedido 10000',exact:true}).check();await expect(selected).toContainText('30,00');
+ await page.getByRole('checkbox',{name:'Selecionar pedido 10009',exact:true}).check();await expect(selected).toContainText('47,34');
+ await page.getByRole('checkbox',{name:'Selecionar pedido 10000',exact:true}).uncheck();await expect(selected).toContainText('17,34');
+ await page.getByRole('checkbox',{name:'Selecionar pedido 10000',exact:true}).check();
+ await page.getByRole('textbox',{name:'Pesquisar pendências'}).fill('Outra Loja');
+ await expect(visible).toContainText('9,99');await expect(selected).toContainText('47,34');
+ await expect(page.getByText('Inclui 2 pedido(s) selecionado(s) fora da pesquisa atual.',{exact:true})).toBeVisible();
+ await page.getByRole('button',{name:'Limpar seleção',exact:true}).click();await expect(selected).toContainText('0,00');
+ await page.getByRole('textbox',{name:'Pesquisar pendências'}).fill(String(first.customer_snapshot.code));await expect(visible).toContainText('47,34');
+ await page.getByRole('textbox',{name:'Pesquisar pendências'}).fill('Sem resultado');await expect(visible).toContainText('0,00');
+ await page.getByRole('textbox',{name:'Pesquisar pendências'}).fill('');await expect(visible).toContainText('57,33');
+ await page.getByRole('checkbox',{name:'Selecionar pedido 10009',exact:true}).check();
+ sales.sales.splice(sales.sales.findIndex(s=>s.id===uuid(99009)),1);
+ await page.getByRole('button',{name:'Atualizar vendas',exact:true}).click();
+ await expect(visible).toContainText('39,99');await expect(selected).toContainText('0,00');
+ await page.screenshot({path:testInfo.outputPath('totais-pendencias-desktop.png')});
+ await page.setViewportSize({width:390,height:844});
+ await expect(visible).toBeVisible();await expect(selected).toBeVisible();
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+ await page.screenshot({path:testInfo.outputPath('totais-pendencias-celular.png')});
+ await page.getByRole('button',{name:'Histórico',exact:true}).click();
+ await expect(page.getByRole('region',{name:'Resumo das pendências'})).toHaveCount(0);
+});
