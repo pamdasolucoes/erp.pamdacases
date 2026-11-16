@@ -89,3 +89,10 @@ O agrupamento recebe a identificação de fechamento e links para cada pedido or
 Relatórios e lucratividade exibem os originais uma única vez depois que o fechamento for confirmado, usando a data original. O documento agregado não acrescenta outra venda. Os custos de produto são vinculados às cópias efetivamente fechadas; o custo de entrega do fechamento é rateado pelo frete de cada origem (ou igualmente quando todos os fretes são zero), com ajuste de centavos para preservar o total. Cancelar o fechamento retira seus originais dos totais. Cobrança, estoque e produção continuam sendo movimentados uma única vez pelo fechamento.
 
 A correção vale somente para mesclagens criadas após sua publicação. Os agrupamentos existentes, inclusive seus itens, fretes e comportamento nos relatórios, são preservados integralmente. A coluna preserve_originals distingue os novos fechamentos dos legados. Testes: `node --import tsx --test tests/merge-closing-sql.test.ts` e `npx playwright test tests/browser/pending-closing.spec.ts`.
+
+
+## Fechar pedido diretamente pela lista
+
+A ação **Fechar pedido** aparece somente em pendências e para usuários com `sales.confirm`, incluindo administradores e operadores autorizados pelas permissões existentes. Ao clicar, a permissão é revalidada, alterações locais são sincronizadas e o pedido é relido antes de abrir a confirmação de pagamento. Pedidos sem número, produtos ou frete confirmado continuam acessíveis para correção pela edição.
+
+A janela reutiliza a finalização oficial, apresenta cliente, número e total, permite escolher formas de pagamento e dividir o valor, e só confirma quando a soma corresponde ao pedido. O usuário pode voltar sem fechar. Depois da confirmação oficial, a pendência sai da lista e os totais exibidos/selecionados são atualizados. A permissão e as regras de fechamento continuam sendo verificadas pelo servidor; não há novas permissões nem alteração no banco.
