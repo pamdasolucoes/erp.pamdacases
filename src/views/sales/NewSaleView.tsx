@@ -159,9 +159,10 @@ export const NewSaleView: React.FC<NewSaleViewProps> = ({ initialCustomer, onNew
   return (
     <div className="space-y-5">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <h1 className="text-2xl font-black tracking-tight text-slate-900">NOVA VENDA {numberLabel&&<span className="sale-number-badge whitespace-nowrap">{numberLabel}</span>}</h1>
+        <h1 className="text-2xl font-black tracking-tight text-slate-900">{draft.remote?.mergeSourceIds?.length?'FECHAMENTO DE PEDIDOS':'NOVA VENDA'} {numberLabel&&<span className="sale-number-badge whitespace-nowrap">{numberLabel}</span>}</h1>
       </div>
 
+      {draft.remote?.mergeSourceIds?.length&&<p className="rounded-xl border bg-blue-50 p-4 text-sm">Fechamento de {draft.remote.mergeSourceIds.length} pedidos originais. Produtos, descontos e fretes foram preservados; selecione o pagamento para concluir. Os originais permanecem no histórico do cliente.</p>}
       {notice && <p role="alert" className="text-sm text-amber-900">{notice}</p>}
       {storageError && <p role="alert" className="text-sm text-rose-800">{storageError}</p>}
       <div className="flex flex-wrap items-center justify-between gap-3 text-xs">
@@ -188,7 +189,7 @@ export const NewSaleView: React.FC<NewSaleViewProps> = ({ initialCustomer, onNew
         className="space-y-4"
       >
         <fieldset disabled={locked} inert={locked} className="space-y-4 min-w-0">
-        <section className="space-y-4 rounded-2xl border border-slate-200 bg-white p-5">
+        <fieldset disabled={!!draft.remote?.mergeSourceIds?.length} className="space-y-4 rounded-2xl border border-slate-200 bg-white p-5">
           <SearchDropdown
             label="Cliente"
             placeholder="Pesquisar por código ou nome"
@@ -284,7 +285,7 @@ export const NewSaleView: React.FC<NewSaleViewProps> = ({ initialCustomer, onNew
               )}
             </>
           )}
-        </section>
+        </fieldset>
         {commercial.loading&&<p role="status" className="text-sm text-slate-500">Consultando frete e condições comerciais…</p>}
         {commercial.error&&<p role="alert" className="text-sm text-rose-800">{commercial.error} <button type="button" onClick={commercial.reload} className="underline">Atualizar condições comerciais</button></p>}
         {shippingPermission.error&&<p role="alert" className="text-sm text-amber-800">{shippingPermission.error} A alteração do frete está bloqueada até validar a permissão.</p>}
@@ -299,6 +300,7 @@ export const NewSaleView: React.FC<NewSaleViewProps> = ({ initialCustomer, onNew
             )
             : (
               <SalePricingPanel
+                readOnly={!!draft.remote?.mergeSourceIds?.length}
                 orderNumber={draft.remote?.orderNumber}
                 draft={draft.pricing}
                 onDraftChange={setPricing}

@@ -5,6 +5,7 @@ import {uuid} from '../../fixtures/customerRows';
 
 export class MockSales {
   sales:OfficialSaleRow[]=[];items:OfficialSaleItemRow[]=[];events:OfficialSaleEventRow[]=[];
+  merges:{sale_id:string;source_ids:string[];request_key:string}[]=[];
   writes:{name:string;body:any}[]=[];
   permissions:Record<string,boolean>={};startDelay=0;saveDelay=0;failStartAfterCommit=false;failSave=false;
   concurrent=0;maxConcurrent=0;inventoryWrites=0;financialWrites=0;
@@ -27,6 +28,28 @@ export class MockSales {
     if(name==='pamda_has_permission'){
       if(Object.keys(body).join(',')!=='p_permission')return this.error('Wrong permission argument');
       return {body:this.allowed(body.p_permission)};
+    }
+    if(name==='erp_sale_merges'){
+      const from=Number(url.searchParams.get('offset')||0),limit=Number(url.searchParams.get('limit')||100);
+      return {body:this.merges.slice(from,from+limit),headers:{'content-range':from+'-'+(this.merges.length-1)+'/'+this.merges.length}};
+    }
+    if(name==='pamda_sale_movement_read'){
+      const sale=this.sales.find(s=>s.id===body.p_sale_id);if(!sale||!this.readAllowed(sale))return this.error('Sem acesso','42501',403);
+      const m=this.merges.find(m=>m.sale_id===sale.id||m.source_ids.includes(sale.id));
+      const merge=m?{role:m.sale_id===sale.id?'closing':'source',target:this.sales.find(s=>s.id===m.sale_id),sources:this.sales.filter(s=>m.source_ids.includes(s.id))}:null;
+      return {body:{sale,merge,items:this.items.filter(i=>i.sale_id===sale.id),payments:[],methods:[],events:[],can_maintain:false,can_view_cost:false}};
+    }
+    if(name==='pamda_merge_pending_sales'){
+      if(!this.allowed('sales.confirm'))return this.error('Sem permissão','42501',403);
+      const existing=this.merges.find(m=>m.request_key===body.p_request_key);if(existing)return {body:existing.sale_id};
+      const sources=this.sales.filter(s=>body.p_sale_ids.includes(s.id));
+      if(sources.length!==body.p_sale_ids.length||sources.length<2||new Set(sources.map(s=>s.customer_id)).size!==1)return this.error('Mescle somente pedidos do mesmo cliente');
+      if(sources.some(s=>s.status!=='draft'||!s.shipping_confirmed||s.shipping_charged===null))return this.error('Informe o frete de todos os pedidos');
+      const target={...sources[0],id:this.id(),order_number:this.nextOrderNumber++,created_by:this.identity().id,draft_key:body.p_request_key,created_at:new Date().toISOString()};
+      target.subtotal=sources.reduce((sum,s)=>sum+Number(s.subtotal),0);target.discount_amount=sources.reduce((sum,s)=>sum+Number(s.discount_amount),0);target.shipping_charged=sources.reduce((sum,s)=>sum+Number(s.shipping_charged),0);target.total=Number(target.subtotal)-Number(target.discount_amount)+Number(target.shipping_charged);
+      const sourceIds=sources.map(s=>s.id);const sourceItems=this.items.filter(i=>sourceIds.includes(i.sale_id));this.items.push(...sourceItems.map(i=>({...i,id:this.id(),sale_id:target.id})));
+      for(const source of sources){source.status='cancelled';source.cancellation_reason='Mesclada no pedido '+target.order_number;this.event(source.id,'sale_merged',{target_sale_id:target.id});}
+      this.sales.push(target);this.merges.push({sale_id:target.id,source_ids:sourceIds,request_key:body.p_request_key});this.event(target.id,'sale_merge_created',{source_sale_ids:sourceIds});this.writes.push({name,body:structuredClone(body)});return {body:target.id};
     }
     if(['erp_pending_sales','erp_sales','erp_sale_items','erp_sale_events','erp_sale_test_payments','erp_sale_test_receipts'].includes(name)){
       let rows:any[]=name==='erp_pending_sales'?this.sales.filter(row=>row.status==='draft'&&this.readAllowed(row)):name==='erp_sales'?this.sales.filter(row=>this.readAllowed(row)):name==='erp_sale_items'?this.items.filter(item=>this.sales.some(s=>s.id===item.sale_id&&this.readAllowed(s))):this.events.filter(event=>this.sales.some(s=>s.id===event.sale_id&&this.readAllowed(s)));

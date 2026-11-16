@@ -25,6 +25,13 @@ function validateSale(row:PendingSaleRow) {
 }
 export class PendingSalesService {
   constructor(private client:SupabaseClient|null){}
+  private async mergeLinks(){
+    return readAllPages<{sale_id:string;source_ids:string[]}>(async(from,to)=>{
+      const {data,error,count}=await this.client!.from('erp_sale_merges').select('sale_id,source_ids',{count:'exact'}).order('sale_id').range(from,to);
+      if(error)throw saleError(error);if(!data||count===null)throw new Error('Não foi possível consultar os vínculos de fechamento.');
+      return {rows:data,total:count};
+    });
+  }
   async merge(userId:string,saleIds:string[],key:string):Promise<SaleDetails>{
     await this.identity(userId);
     const {data,error}=await this.client!.rpc('pamda_merge_pending_sales',{p_sale_ids:saleIds,p_request_key:key});
@@ -103,16 +110,19 @@ export class PendingSalesService {
   }
   async list(userId:string,history=false,customerId?:string):Promise<(PendingSaleRow&{status:'draft'|'confirmed'|'cancelled';is_test?:boolean|null})[]>{
     await this.identity(userId);
+    const links=await this.mergeLinks();
     const rows=await this.rows<OfficialSaleRow>(history?'erp_sales':'erp_pending_sales',history?SALE_COLUMNS:PENDING_COLUMNS,query=>{
       if(history)query=query.in('status',['confirmed','cancelled']);if(customerId)query=query.eq('customer_id',customerId);return query;
     });
     rows.forEach(validateSale);
-    return rows.map(row=>({...row,status:history?row.status:'draft'})).sort((a,b)=>b.created_at.localeCompare(a.created_at)||a.id.localeCompare(b.id));
+    return rows.filter(row=>!customerId||!links.some(m=>m.sale_id===row.id)).map(row=>{const closing=links.find(m=>m.sale_id===row.id),source=links.find(m=>m.source_ids.includes(row.id));return {...row,status:history?row.status:'draft' as const,mergeRole:closing?'closing' as const:source?'source' as const:undefined,mergeSourceIds:closing?.source_ids,mergedIntoId:source?.sale_id};}).sort((a,b)=>b.created_at.localeCompare(a.created_at)||a.id.localeCompare(b.id));
   }
   async details(userId:string,saleId:string):Promise<SaleDetails>{
     await this.identity(userId);if(!isUuid(saleId))throw new Error('Venda inválida.');
     const {data:sale,error}=await this.client!.from('erp_sales').select(SALE_COLUMNS).eq('id',saleId).returns<OfficialSaleRow[]>().maybeSingle();
     if(error)throw saleError(error);if(!sale||sale.id!==saleId)throw new SaleAccessError('Venda não encontrada ou sem permissão de leitura.');
+    const links=await this.mergeLinks();const closing=links.find(m=>m.sale_id===sale.id),source=links.find(m=>m.source_ids.includes(sale.id));
+    Object.assign(sale,{mergeRole:closing?'closing':source?'source':undefined,mergeSourceIds:closing?.source_ids,mergedIntoId:source?.sale_id});
     validateSale(sale);if(!['draft','confirmed','cancelled'].includes(sale.status))throw new Error('Situação da venda incompatível.');
     if(!(sale.is_test===null||typeof sale.is_test==='boolean'))throw new Error('Indicador de venda de teste incompatível.');
     const [items,events]=await Promise.all([

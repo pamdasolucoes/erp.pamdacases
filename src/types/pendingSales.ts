@@ -1,6 +1,7 @@
 export type OfficialSaleStatus = 'draft' | 'confirmed' | 'cancelled';
 export type DbNumeric = number | string;
 export interface PendingSaleRow {
+  mergeRole?:'closing'|'source';mergeSourceIds?:string[];mergedIntoId?:string;
   id:string; customer_id:string; branch_id:string; created_by:string;
   created_at:string; updated_at:string; customer_snapshot:Record<string,unknown>;
   branch_snapshot:Record<string,unknown>; seller_snapshot:string;
