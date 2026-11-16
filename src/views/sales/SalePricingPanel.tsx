@@ -23,7 +23,7 @@ function usePreparationField<K extends keyof PricingPreparation>(draft:PricingPr
   return [draft[key],value=>update(previous=>({...previous,[key]:typeof value==='function'?(value as (old:PricingPreparation[K])=>PricingPreparation[K])(previous[key]):value}))];
 }
 
-export function SalePricingPanel({ products, customerId, branchId, draft, onDraftChange, sellerName, paymentCondition, orderNumber, customerFreight = pendingCustomerFreight, selectedCustomer = null, selectedBranch = null, onFirstProductAdded, freightEditable = false, paymentSection, finalizationAction, onReceiptPreview }: { products: readonly OfficialProduct[]; customerId: string | null; branchId: string | null; draft:PricingPreparation; onDraftChange:React.Dispatch<React.SetStateAction<PricingPreparation>>; sellerName?:string; paymentCondition?:string; orderNumber?:number|null; customerFreight?: CustomerFreightSetting; selectedCustomer?: OfficialCustomer | null; selectedBranch?: OfficialCustomerBranch | null; onFirstProductAdded():Promise<void>; freightEditable?:boolean; paymentSection:React.ReactNode; finalizationAction?:React.ReactNode; onReceiptPreview(data:ReceiptDocumentData):void }) {
+export function SalePricingPanel({ readOnly=false,products, customerId, branchId, draft, onDraftChange, sellerName, paymentCondition, orderNumber, customerFreight = pendingCustomerFreight, selectedCustomer = null, selectedBranch = null, onFirstProductAdded, freightEditable = false, paymentSection, finalizationAction, onReceiptPreview }: { readOnly?:boolean;products: readonly OfficialProduct[]; customerId: string | null; branchId: string | null; draft:PricingPreparation; onDraftChange:React.Dispatch<React.SetStateAction<PricingPreparation>>; sellerName?:string; paymentCondition?:string; orderNumber?:number|null; customerFreight?: CustomerFreightSetting; selectedCustomer?: OfficialCustomer | null; selectedBranch?: OfficialCustomerBranch | null; onFirstProductAdded():Promise<void>; freightEditable?:boolean; paymentSection:React.ReactNode; finalizationAction?:React.ReactNode; onReceiptPreview(data:ReceiptDocumentData):void }) {
   const [items, setItems] = usePreparationField(draft,onDraftChange,'items');
   const [discount, setDiscount] = usePreparationField(draft,onDraftChange,'discount');
   const [discountReason, setDiscountReason] = usePreparationField(draft,onDraftChange,'discountReason');
@@ -108,6 +108,7 @@ export function SalePricingPanel({ products, customerId, branchId, draft, onDraf
     committedPrices.current.set(item.id, item.snapshot.originalUnitPriceCents);
   };
   return <section className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
+    <fieldset disabled={readOnly} className="min-w-0">
     <div className="p-4 border-b border-slate-100 flex flex-col sm:flex-row justify-between gap-3">
       <h2 className="font-bold flex items-center gap-2"><ShoppingCart className="w-5 h-5" />Produtos</h2>
       <div className="w-full sm:max-w-xl"><SearchDropdown label="Adicionar produto do catálogo oficial" placeholder="Pesquisar por nome, aparelho, SKU ou código" query={productQuery} onQueryChange={setProductQuery} options={productMatches} onSelect={product => addItem(product.id)}
@@ -142,8 +143,9 @@ export function SalePricingPanel({ products, customerId, branchId, draft, onDraf
           </tr>
         </React.Fragment>;
       })}</tbody></table></div>
+    </fieldset>
     <div className="grid grid-cols-1 gap-4 border-t border-slate-200 bg-slate-50 p-4 lg:grid-cols-2">
-      <div className="space-y-3">
+      <fieldset disabled={readOnly} className="space-y-3 min-w-0">
         <label className="block text-sm font-bold">
           DESCONTO GERENCIAL (R$)
           <input
@@ -212,7 +214,7 @@ export function SalePricingPanel({ products, customerId, branchId, draft, onDraf
             className={`${inputClass} mt-1`}
           />
         </label>
-      </div>
+      </fieldset>
       <div className="space-y-2 self-center text-sm" aria-live="polite">
         <p className="flex justify-between gap-4"><span>Subtotal dos produtos</span><strong data-testid="negotiated-subtotal">{calculation.totals ? formatMoney(calculation.totals.negotiatedCents) : 'Valor inválido'}</strong></p>
         {calculation.totals?.additionalDiscountCents ? <p className="flex justify-between gap-4"><span>Desconto gerencial</span><strong>− {formatMoney(calculation.totals.additionalDiscountCents)}</strong></p> : null}

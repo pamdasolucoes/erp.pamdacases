@@ -78,3 +78,14 @@ Ao fechar ou recarregar uma aba, o evento `pagehide` tenta descartar pela RPC um
 - `src/types/salePreparation.ts`, `src/types/salePricing.ts`, `src/services/salePreparation.ts`: metadados da pendência, pagamento e personalização.
 - `src/views/sales/NewSaleView.tsx`, `SalePricingPanel.tsx`, `OfficialSalesView.tsx`, `SalesListView.tsx` e `src/App.tsx`: formulário, lista oficial, detalhes e cancelamento.
 - `tests/pending-sales.test.ts`, `tests/fixtures/pendingSalesBackend.ts`, `tests/browser/pending-sales.spec.ts`, `tests/browser/support/mockSales.ts` e ajustes nos testes existentes: contrato e fluxos de regressão.
+
+
+## Mesclagem somente para fechamento
+
+A seleção permite apenas pedidos originais do mesmo UUID de cliente. Após marcar o primeiro, pedidos de outros clientes ficam desabilitados; o servidor repete a validação sob bloqueio de linhas. São exigidos pelo menos dois pedidos e frete informado em todos, incluindo zero quando liberado. O fechamento soma os fretes e mantém a confirmação, sem depender do frete padrão do cadastro.
+
+O agrupamento recebe a identificação de fechamento e links para cada pedido original. Os números e horários de criação dos originais são preservados. A consulta de vendas de um cliente omite o documento agregado e apresenta os originais como agrupados. No fechamento, apenas as condições de pagamento podem ser alteradas; itens, cliente, descontos e fretes ficam preservados também no servidor.
+
+Relatórios e lucratividade exibem os originais uma única vez depois que o fechamento for confirmado, usando a data original. O documento agregado não acrescenta outra venda. Os custos de produto são vinculados às cópias efetivamente fechadas; o custo de entrega do fechamento é rateado pelo frete de cada origem (ou igualmente quando todos os fretes são zero), com ajuste de centavos para preservar o total. Cancelar o fechamento retira seus originais dos totais. Cobrança, estoque e produção continuam sendo movimentados uma única vez pelo fechamento.
+
+A correção vale somente para mesclagens criadas após sua publicação. Os agrupamentos existentes, inclusive seus itens, fretes e comportamento nos relatórios, são preservados integralmente. A coluna preserve_originals distingue os novos fechamentos dos legados. Testes: `node --import tsx --test tests/merge-closing-sql.test.ts` e `npx playwright test tests/browser/pending-closing.spec.ts`.
