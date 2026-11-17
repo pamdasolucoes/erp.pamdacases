@@ -10,6 +10,63 @@ import {PendingDraftSync} from '../src/services/pendingDraftSync';
 import {captureProductPricing} from '../src/services/salePricing';
 import {mapProductCatalog} from '../src/services/productMapping';
 
+test('abertura usa a leitura recém-validada uma vez; revalidação continua consultando o servidor',async()=>{
+  const {service,user,backend}=pendingBackend();
+  const id=await service.start(user.id,uuid(1),uuid(1001),uuid(8000));
+  const details=await service.details(user.id,id);
+  const store=new PreparationStore(user.id,'opening',null);
+  store.update(preparationFromSale(user.id,details));
+  const sync=new PendingDraftSync(store,service,()=>true);
+  const read=service.details.bind(service);let reads=0;
+  service.details=async(...args)=>{reads++;return read(...args);};
+  sync.prime(details);await sync.activate();
+  assert.equal(await sync.flush(),true);assert.equal(reads,0);
+  backend.sales[0].status='cancelled';
+  await sync.revalidate();assert.equal(reads,1);assert.equal(sync.getSnapshot().status,'closed');
+  sync.dispose();
+});
+
+test('inicialização rejeita leitura de outra venda e continua validando a sessão',async()=>{
+  const {service,user}=pendingBackend();
+  const id=await service.start(user.id,uuid(1),uuid(1001),uuid(8000));
+  const details=await service.details(user.id,id);
+  const store=new PreparationStore(user.id,'opening',null);store.update(preparationFromSale(user.id,details));
+  const sync=new PendingDraftSync(store,service,()=>false);sync.prime(details);
+  await sync.activate();assert.equal(sync.getSnapshot().status,'error');sync.dispose();
+  const next=new PendingDraftSync(store,service,()=>true);
+  next.prime({...details,sale:{...details.sale,id:uuid(99999)}});
+  const read=service.details.bind(service);let reads=0;service.details=async(...args)=>{reads++;return read(...args);};
+  await next.activate();assert.equal(reads,1);next.dispose();
+});
+
+test('permissões em lote validam identidade uma vez sem reutilizar decisões anteriores',async()=>{
+  const {service,user,client,backend}=pendingBackend();let identities=0;
+  const get=client.auth.getUser.bind(client.auth);
+  client.auth.getUser=async()=>{identities++;return get();};
+  assert.deepEqual(await service.hasPermissions(user.id,['sales.draft','sales.cancel']),[true,true]);
+  assert.equal(identities,1);backend.permissions['sales.cancel']=false;
+  assert.deepEqual(await service.hasPermissions(user.id,['sales.cancel']),[false]);
+  assert.equal(identities,2);
+});
+
+test('consultas independentes de vínculos, itens e eventos começam juntas após validar a venda',async()=>{
+  const {service,user,backend}=pendingBackend();
+  const id=await service.start(user.id,uuid(1),uuid(1001),uuid(8000));
+  const original=backend.handle.bind(backend),started=new Set<string>();
+  let release!:()=>void;const gate=new Promise<void>(resolve=>{release=resolve;});
+  const tables=['erp_sale_merges','erp_sale_items','erp_sale_events'];
+  backend.handle=async(...args)=>{
+    const table=args[0].split('/').pop()!;
+    if(tables.includes(table)){started.add(table);await gate;}
+    return original(...args);
+  };
+  const reading=service.details(user.id,id);
+  try{
+    await new Promise(resolve=>setImmediate(resolve));
+    assert.deepEqual([...started].sort(),[...tables].sort());
+  }finally{release();await reading;}
+});
+
 test('início usa exatamente o contrato, repete chave sem duplicação e impede reutilização incompatível',async()=>{
   const {service,user,backend}=pendingBackend();const key=uuid(8000);
   const id=await service.start(user.id,uuid(1),uuid(1001),key);

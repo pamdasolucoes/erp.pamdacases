@@ -300,7 +300,8 @@ export const NewSaleView: React.FC<NewSaleViewProps> = ({ initialCustomer, onNew
             )
             : (
               <SalePricingPanel
-                readOnly={!!draft.remote?.mergeSourceIds?.length}
+                itemsReadOnly={!!draft.remote?.mergeSourceIds?.length}
+                notesReadOnly={!!draft.remote?.mergeSourceIds?.length}
                 orderNumber={draft.remote?.orderNumber}
                 draft={draft.pricing}
                 onDraftChange={setPricing}
@@ -340,7 +341,7 @@ export const NewSaleView: React.FC<NewSaleViewProps> = ({ initialCustomer, onNew
                     </div>
                   </section>
                 }
-                finalizationAction={admin&&<div className="space-y-1"><button type="button" onClick={()=>void openTestFinalization()} disabled={!draft.remote?.saleId||draft.remote.orderNumber===null||sync.status!=='saved'||locked||!paymentCatalog.data} className="rounded-xl bg-amber-700 px-5 py-3 text-sm font-bold text-white disabled:opacity-50">Finalizar venda</button><p className="text-xs text-slate-500">Operação real · estoque e financeiro</p></div>}
+                finalizationAction={admin&&<div className="space-y-1"><button type="button" onClick={()=>void openTestFinalization()} disabled={!draft.remote?.saleId||draft.remote.orderNumber===null||sync.status!=='saved'||locked||!paymentCatalog.data} className="rounded-xl bg-amber-700 px-5 py-3 text-sm font-bold text-white disabled:opacity-50">Finalizar venda</button></div>}
                 onReceiptPreview={setReceiptPreview}
               />
             )}

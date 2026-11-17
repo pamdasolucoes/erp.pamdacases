@@ -25,11 +25,12 @@ const unsubscribeAuth = authService.subscribe((user, loading, error) => {
   const scope = valid ? scopeFor(valid.id) : null;
   customerCatalog.setScope(scope); productCatalog.setScope(scope);
   if (!loading && valid) {
-    // App revalidates Auth on focus/online/visibility and token refresh. Recheck RLS too.
+    // Auth remains live, but unchanged sessions do not refresh business data.
+    // Explicit reloads and confirmed edits still recheck server authorization.
     if (changed) {
       if (customerCatalog.getSnapshot().data === null) customerCatalog.refreshActive();
       if (productCatalog.getSnapshot().data === null) productCatalog.refreshActive();
-    } else { customerCatalog.revalidate(); productCatalog.revalidate(); }
+    }
   }
 });
 const unsubscribeChanges = subscribeCustomerCatalog(({ client, userId, customer }) => {

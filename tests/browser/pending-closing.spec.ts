@@ -54,7 +54,16 @@ test('mescla três originais, preserva 5+5+0 de frete e permite consultar númer
  await page.getByRole('button',{name:'Mesclar e abrir fechamento',exact:true}).click();
  await expect(page.getByRole('heading',{name:/FECHAMENTO DE PEDIDOS/})).toBeVisible();
  await expect(page.getByLabel('Frete cobrado (R$)',{exact:true})).toHaveValue('10,00');
- await expect(page.getByLabel('Frete cobrado (R$)',{exact:true})).toBeDisabled();
+ await expect(page.getByLabel('Frete cobrado (R$)',{exact:true})).toBeEnabled();
+ const originals=structuredClone(sales.sales.filter(sale=>sale.id!==sales.merges[0].sale_id));
+ await page.getByLabel('Frete cobrado (R$)',{exact:true}).fill('12,34');
+ await page.getByLabel('Motivo do desconto',{exact:true}).fill('Ajuste aprovado');
+ await page.getByLabel('DESCONTO GERENCIAL (R$)',{exact:true}).fill('3,21');
+ await expect(page.getByTestId('sale-save-state')).toHaveText('Salvo · Pendente');
+ expect(sales.sales.find(sale=>sale.id===sales.merges[0].sale_id)?.total).toBe(84.13);
+ expect(sales.sales.filter(sale=>sale.id!==sales.merges[0].sale_id)).toEqual(originals);
+ await expect(page.getByLabel('OBSERVAÇÕES',{exact:true})).not.toHaveValue(/Unidade do cadastro original/);
+ await expect(page.getByText('Operação real · estoque e financeiro',{exact:true})).toHaveCount(0);
  await expect(page.getByRole('combobox',{name:'Cliente',exact:true})).toBeDisabled();
  await expect(page.getByLabel('Quantidade do item 1')).toBeDisabled();
  await page.getByRole('button',{name:'Pendências',exact:true}).click();

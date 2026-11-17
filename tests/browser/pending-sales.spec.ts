@@ -64,9 +64,9 @@ test('salva preços, personalização, frete e desconto serialmente e retoma ite
   await page.getByLabel('OBSERVAÇÕES',{exact:true}).fill('Persistir observação');
   await page.locator('details').first().locator('summary').click();
   await page.getByLabel('Modelo informado do item 1').fill('iPhone 11');await page.getByLabel('Cor informada do item 1').fill('Preto');
-  await page.getByLabel('Faces da carteira do item 1').selectOption('2');await saved(page);
+  await saved(page);
   expect(sales.maxConcurrent).toBe(1);expect(sales.sales[0].total).toBe(35);expect(sales.items).toHaveLength(1);
-  expect(sales.items[0].customization).toMatchObject({model:'iPhone 11',color:'Preto',walletFaces:'2'});
+  expect(sales.items[0].customization).toMatchObject({model:'iPhone 11',color:'Preto'});
   expect(products.find(p=>p.id===kitId(1))!.sale_price).toBe(25);
   await page.reload();await saved(page);
   await expect(page.getByLabel('Valor unitário do item 1')).toHaveValue('20,00');await expect(page.getByLabel('Quantidade do item 1')).toHaveValue('2');
@@ -154,11 +154,12 @@ test('salvamento negado não anuncia sucesso, conserva edição e não descarta 
   const {sales}=await setup(page,'venda_atendimento');sales.permissions['sales.shipping.override']=true;await page.getByRole('button',{name:'Nova Venda',exact:true}).last().click();
   const customer=page.getByRole('combobox',{name:'Cliente',exact:true});await customer.fill('350');await expect(page.getByRole('listbox').getByRole('option')).toHaveCount(1);await customer.press('Enter');await saved(page);
   await expect(page.getByLabel('Frete cobrado (R$)',{exact:true})).toBeEnabled();
+  const savedShipping={shipping_confirmed:sales.sales[0].shipping_confirmed,shipping_charged:sales.sales[0].shipping_charged};
   sales.permissions['sales.shipping.override']=false; // Revogada após a validação da interface.
   await page.getByLabel('Frete cobrado (R$)',{exact:true}).fill('15,00');
   await expect(page.getByTestId('sale-save-state')).toHaveText('Erro ao salvar');
   await page.getByRole('button',{name:'Nova venda',exact:true}).click();
-  await expect(page.getByLabel('Frete cobrado (R$)',{exact:true})).toHaveValue('15,00');expect(sales.sales[0].shipping_confirmed).toBe(false);
+  await expect(page.getByLabel('Frete cobrado (R$)',{exact:true})).toHaveValue('15,00');expect(sales.sales[0]).toMatchObject(savedShipping);
   sales.permissions['sales.shipping.override']=true;await page.getByRole('button',{name:'Tentar salvar novamente',exact:true}).click();await saved(page);
   expect(sales.sales[0].shipping_charged).toBe(15);expect(sales.sales).toHaveLength(1);
 });

@@ -14,6 +14,7 @@ export class SaleWorkspace {
   private sync:PendingDraftSync|null=null;
   private key='';
   private enabled=false;
+  private openingDetails:SaleDetails|null=null;
   private pendingNumberKey='';
   private numberRequest:Promise<void>|null=null;
   private listeners=new Set<()=>void>();
@@ -32,6 +33,7 @@ export class SaleWorkspace {
     this.sync?.dispose();this.unsubscribeSync?.();this.sync=null;this.key=key;
     if(key){
       this.sync=new PendingDraftSync(this.store,pendingSalesService,this.allowed);
+      if(this.openingDetails)this.sync.prime(this.openingDetails);
       this.unsubscribeSync=this.sync.subscribe(()=>{for(const listener of this.listeners)listener();});
       if(this.enabled&&this.allowed())void this.sync.activate();
     }
@@ -91,8 +93,13 @@ export class SaleWorkspace {
     await this.pause();
     const reservation=this.store.getSnapshot().numberReservation;
     if(reservation&&reservation.draftKey!==details.sale.draft_key)await pendingSalesService.releaseNumber(this.userId,reservation.draftKey);
-    this.store.update(preparationFromSale(this.userId,details));
-    this.enabled=true;this.ensure();await this.sync?.activate();
+    // The caller just read the authoritative sale. Consume it only for this opening.
+    this.openingDetails=details;
+    try{
+      this.store.update(preparationFromSale(this.userId,details));
+      this.ensure();this.sync?.prime(details);
+    }finally{this.openingDetails=null;}
+    this.enabled=true;await this.sync?.activate();
   }
   async newDraft(){
     if(!await this.flush())throw new Error('Há alterações ainda não salvas. Tente salvar novamente antes de iniciar outra venda.');

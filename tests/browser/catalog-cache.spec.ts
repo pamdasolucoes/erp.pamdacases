@@ -19,9 +19,12 @@ test('catálogos não repetem consultas na navegação e atualização manual co
   expect(state.reads).toBe(counts.customers + 22); expect(state.pageErrors).toEqual([]);
 });
 
-test('retorno à aplicação revalida RLS e descarta catálogo após negação', async ({ page }) => {
+test('catálogo fica estável no retorno à aba; atualização manual revalida RLS e descarta após negação', async ({ page }) => {
   const { state } = await setup(page);
-  state.listError = '42501'; await page.evaluate(() => window.dispatchEvent(new Event('focus')));
+  state.listError = '42501';const reads=state.reads;
+  await page.evaluate(async()=>{window.dispatchEvent(new Event('focus'));const path='/src/services/auth.ts';const {authService}=await import(path);await authService.refresh();});
+  expect(state.reads).toBe(reads);
+  await page.getByRole('button',{name:'Atualizar lista',exact:true}).click();
   await expect(page.getByRole('alert')).toContainText('política RLS');
   await expect(page.getByRole('region', { name: 'Lista de clientes' })).toHaveCount(0);
   const cached = await page.evaluate(async () => { const path = '/src/services/catalogResources.ts'; const resources = await import(path); return resources.customerCatalog.getSnapshot().data; });
@@ -30,7 +33,7 @@ test('retorno à aplicação revalida RLS e descarta catálogo após negação',
 
 test('logout limpa memória e outro usuário recebe apenas seu catálogo', async ({ page }) => {
   const { employee, customers, branches, state } = await setup(page);
-  await page.getByRole('button', { name: 'Sair do ERP', exact: true }).click();
+  await page.getByRole('complementary').getByRole('button', { name: 'Sair', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Bem-vindo ao PAMDA ERP' })).toBeVisible();
   const empty = await page.evaluate(async () => { const path = '/src/services/catalogResources.ts'; const resources = await import(path); return [resources.customerCatalog.getSnapshot().data, resources.productCatalog.getSnapshot().data]; });
   expect(empty).toEqual([null, null]);
@@ -41,6 +44,7 @@ test('logout limpa memória e outro usuário recebe apenas seu catálogo', async
   await page.getByRole('button', { name: 'Entrar', exact: true }).click();
   await page.getByRole('main').getByRole('button', { name: 'Clientes e Unidades', exact: true }).click();
   await expect(page.getByText('2 clientes acessíveis', { exact: true })).toBeVisible();
+  await page.getByRole('region', { name: 'Lista de clientes' }).getByRole('button', { name: 'Acesso do segundo usuário', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Acesso do segundo usuário', exact: true })).toBeVisible();
   expect(state.reads).toBe(previousReads + 2);
 });
@@ -52,6 +56,7 @@ test('listagens progressivas pesquisam registros fora dos primeiros 80 e permite
   await list.getByRole('button', { name: /Mostrar mais clientes/ }).click();
   await expect(list.locator('[data-testid^="customer-row-"]')).toHaveCount(160);
   await page.getByRole('searchbox').fill('000384');
+  await page.getByRole('region', { name: 'Lista de clientes' }).getByRole('button', { name: 'Cliente 384', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Cliente 384', exact: true })).toBeVisible();
   await page.getByRole('complementary').getByRole('button', { name: 'Produtos & Serviços', exact: true }).click();
   await expect(page.locator('[data-testid^="product-"]')).toHaveCount(80);

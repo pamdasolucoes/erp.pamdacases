@@ -24,7 +24,6 @@ export function OfficialDashboard({ onNavigate }: { onNavigate(tab: ActiveTab): 
     ).finally(() => { if (alive) setLoading(false); });
     return () => { alive = false; };
   }, [user, attempt]);
-  useEffect(() => { window.addEventListener('focus', reload); return () => window.removeEventListener('focus', reload); }, [reload]);
   const metric = (key: keyof ErpSummary, currency = false) => {
     if (loading) return 'Carregando…';
     if (error) return 'Indisponível';

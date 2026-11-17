@@ -1,5 +1,5 @@
 import {permissionVersion} from './services/permissions';
-import React, { useState, useEffect, useRef, lazy, Suspense } from 'react';
+import React, { useState, useEffect, useRef, Suspense } from 'react';
 import { User } from './types/erp';
 import type { CustomerContext } from './types/pamdaCore';
 import { authService } from './services/auth';
@@ -9,26 +9,52 @@ import { Header } from './components/layout/Header';
 import { LoginView } from './components/auth/LoginView';
 
 
-// Views
-const DashboardView = lazy(() => import('./views/DashboardView').then(module => ({ default: module.DashboardView })));
-const CustomerNetworksView=lazy(()=>import('./views/customers/CustomerNetworksView').then(m=>({default:m.CustomerNetworksView})));
-const CustomersView = lazy(() => import('./views/customers/CustomersView').then(module => ({ default: module.CustomersView })));
-const ProductsView = lazy(() => import('./views/products/ProductsView').then(module => ({ default: module.ProductsView })));
-const NewSaleView = lazy(() => import('./views/sales/NewSaleView').then(module => ({ default: module.NewSaleView })));
-const SalesListView = lazy(() => import('./views/sales/SalesListView').then(module => ({ default: module.SalesListView })));
-const ProductionView = lazy(() => import('./views/production/ProductionView').then(module => ({ default: module.ProductionView })));
-const ReceivablesView = lazy(() => import('./views/financial/ReceivablesView').then(module => ({ default: module.ReceivablesView })));
-const ClosingsView = lazy(() => import('./views/financial/ClosingsView').then(module => ({ default: module.ClosingsView })));
-const DeliveriesView = lazy(() => import('./views/financial/DeliveriesView').then(module => ({ default: module.DeliveriesView })));
-const ExpensesView = lazy(() => import('./views/financial/ExpensesView').then(module => ({ default: module.ExpensesView })));
-const PurchasesView = lazy(() => import('./views/purchases/PurchasesView').then(module => ({ default: module.PurchasesView })));
-const SalesReportView = lazy(() => import('./views/reports/SalesReportView').then(module => ({ default: module.SalesReportView })));
-const ProfitabilityView = lazy(() => import('./views/managerial/ProfitabilityView').then(module => ({ default: module.ProfitabilityView })));
-const UsersView = lazy(() => import('./views/managerial/UsersView').then(module => ({ default: module.UsersView })));
-const AuditLogsView = lazy(() => import('./views/managerial/AuditLogsView').then(module => ({ default: module.AuditLogsView })));
-const SettingsView = lazy(() => import('./views/managerial/SettingsView').then(module => ({ default: module.SettingsView })));
-const InventoryView = lazy(() => import('./views/inventory/InventoryView').then(module => ({ default: module.InventoryView })));
+import {lazyView} from './services/lazyView';
 import { ViewBoundary } from './components/common/ViewBoundary';
+
+// Views
+const DashboardView = lazyView(() => import('./views/DashboardView').then(module => ({ default: module.DashboardView })));
+const CustomerNetworksView=lazyView(()=>import('./views/customers/CustomerNetworksView').then(m=>({default:m.CustomerNetworksView})));
+const CustomersView = lazyView(() => import('./views/customers/CustomersView').then(module => ({ default: module.CustomersView })));
+const ProductsView = lazyView(() => import('./views/products/ProductsView').then(module => ({ default: module.ProductsView })));
+const NewSaleView = lazyView(() => import('./views/sales/NewSaleView').then(module => ({ default: module.NewSaleView })));
+const SalesListView = lazyView(() => import('./views/sales/SalesListView').then(module => ({ default: module.SalesListView })));
+const ProductionView = lazyView(() => import('./views/production/ProductionView').then(module => ({ default: module.ProductionView })));
+const ReceivablesView = lazyView(() => import('./views/financial/ReceivablesView').then(module => ({ default: module.ReceivablesView })));
+const ClosingsView = lazyView(() => import('./views/financial/ClosingsView').then(module => ({ default: module.ClosingsView })));
+const DeliveriesView = lazyView(() => import('./views/financial/DeliveriesView').then(module => ({ default: module.DeliveriesView })));
+const ExpensesView = lazyView(() => import('./views/financial/ExpensesView').then(module => ({ default: module.ExpensesView })));
+const PurchasesView = lazyView(() => import('./views/purchases/PurchasesView').then(module => ({ default: module.PurchasesView })));
+const SalesReportView = lazyView(() => import('./views/reports/SalesReportView').then(module => ({ default: module.SalesReportView })));
+const ProfitabilityView = lazyView(() => import('./views/managerial/ProfitabilityView').then(module => ({ default: module.ProfitabilityView })));
+const UsersView = lazyView(() => import('./views/managerial/UsersView').then(module => ({ default: module.UsersView })));
+const AuditLogsView = lazyView(() => import('./views/managerial/AuditLogsView').then(module => ({ default: module.AuditLogsView })));
+const SettingsView = lazyView(() => import('./views/managerial/SettingsView').then(module => ({ default: module.SettingsView })));
+const InventoryView = lazyView(() => import('./views/inventory/InventoryView').then(module => ({ default: module.InventoryView })));
+const tabViews={
+  dashboard: DashboardView,
+  nova_venda: NewSaleView,
+  vendas: SalesListView,
+  clientes: CustomersView,
+  redes: CustomerNetworksView,
+  produtos: ProductsView,
+  kits: ProductsView,
+  estoque: InventoryView,
+  producao: ProductionView,
+  contas_receber: ReceivablesView,
+  fechamentos: ClosingsView,
+  entregas: DeliveriesView,
+  despesas: ExpensesView,
+  compras: PurchasesView,
+  fornecedores: PurchasesView,
+  relatorio_vendas: SalesReportView,
+  relatorio_clientes: SalesReportView,
+  lucratividade: ProfitabilityView,
+  custo_estoque: InventoryView,
+  usuarios: UsersView,
+  logs: AuditLogsView,
+  configuracoes: SettingsView
+} satisfies Record<ActiveTab,{preload():void}>;
 
 export function App() {
   const [currentUser, setCurrentUser] = useState<User | null>(authService.getCurrentUser());
@@ -38,9 +64,13 @@ export function App() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [customerContext, setCustomerContext] = useState<CustomerContext | null>(null);
   const [historyCustomer, setHistoryCustomer] = useState<CustomerContext | null>(null);
+  const [salesRefreshVersion,setSalesRefreshVersion]=useState(0);
   const [newSaleCustomer, setNewSaleCustomer] = useState<CustomerContext | null>(null);
   const [saleSuccess,setSaleSuccess]=useState('');
   const [navigationError,setNavigationError]=useState('');
+  const [navigating,setNavigating]=useState(false);
+  const leavingSale=useRef(false);
+  const preloadTab=(tab:ActiveTab)=>{if(currentUser&&canAccessTab(currentUser,tab))tabViews[tab].preload();};
   const [newSaleVersion,setNewSaleVersion]=useState(0);
   const openingNewSale=useRef(false);
   const authenticatedId = useRef<string | null>(null);
@@ -96,8 +126,8 @@ export function App() {
   },[currentTab,currentUser?.id]);
 
   const openNewSale = async(customer: CustomerContext | null = null) => {
-    if(!currentUser||!canAccessTab(currentUser,'nova_venda')||openingNewSale.current)return;
-    openingNewSale.current=true;
+    if(!currentUser||!canAccessTab(currentUser,'nova_venda')||openingNewSale.current||leavingSale.current)return;
+    openingNewSale.current=true;setNavigating(true);preloadTab('nova_venda');
     setNavigationError('');setSaleSuccess('');
     try{
       const {saleWorkspace}=await import('./services/saleWorkspace');
@@ -111,21 +141,25 @@ export function App() {
       setNewSaleVersion(version=>version+1);
       setCurrentTab('nova_venda');
     }catch(error){setNavigationError(error instanceof Error?error.message:'Falha ao abrir nova venda.');}
-    finally{openingNewSale.current=false;}
+    finally{openingNewSale.current=false;setNavigating(false);}
   };
   const openCustomerSales = (customer: CustomerContext) => {
+    preloadTab('vendas');
     setCustomerContext(customer);
     setHistoryCustomer(customer);
     setCurrentTab('vendas');
   };
   const navigate = async(tab: ActiveTab) => {
+    if(leavingSale.current||openingNewSale.current)return;
+    preloadTab(tab);
     if(currentTab==='nova_venda'&&tab!=='nova_venda'&&currentUser){
-      setNavigationError('');
+      leavingSale.current=true;setNavigating(true);setNavigationError('');
       try{const {saleWorkspace}=await import('./services/saleWorkspace');await saleWorkspace(currentUser.id).leave();}
       catch(error){setNavigationError(error instanceof Error?error.message:'Não foi possível concluir a saída da venda.');return;}
+      finally{leavingSale.current=false;setNavigating(false);}
     }
     if (tab === 'nova_venda') { openNewSale(); return; }
-    if (tab === 'vendas') setHistoryCustomer(null);
+    if (tab === 'vendas') {setHistoryCustomer(null);setSalesRefreshVersion(value=>value+1);}
     setCurrentTab(tab);
   };
 
@@ -170,6 +204,7 @@ export function App() {
       <Sidebar
         currentTab={currentTab}
         onSelectTab={navigate}
+        onPreloadTab={preloadTab}
         currentUser={currentUser}
         onLogout={() => { void authService.logout(); }}
         mobileOpen={mobileMenuOpen}
@@ -186,6 +221,7 @@ export function App() {
 
         <main className={`flex-1 min-w-0 p-4 sm:p-6 lg:p-8 w-full mx-auto ${['dashboard','nova_venda','configuracoes'].includes(currentTab)?'max-w-7xl':''}`}>
           {saleSuccess&&<p role="status" className="mb-4 rounded-xl bg-emerald-50 p-4 text-emerald-800">{saleSuccess}</p>}
+          {navigating&&<p role="status" className="mb-4 text-sm text-emerald-800">Preparando tela…</p>}
           {navigationError&&<p role="alert" className="mb-4 text-sm text-rose-800">{navigationError}</p>}
           {!canAccessTab(currentUser, currentTab) ? (
             <p role="alert" className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-rose-800">Acesso não autorizado a este módulo.</p>
@@ -203,6 +239,7 @@ export function App() {
 
           {currentTab === 'vendas' && (
             <SalesListView
+              refreshToken={salesRefreshVersion}
               customerContext={historyCustomer}
               onBackToCustomer={() => setCurrentTab('clientes')}
               onNewSaleClick={() => openNewSale(historyCustomer)}

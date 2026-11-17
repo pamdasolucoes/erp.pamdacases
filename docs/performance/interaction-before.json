@@ -1,0 +1,373 @@
+{
+  "phase": "interaction-before",
+  "commit": "3cb25411c8735c7c4cfea9c37876ea7c52c73069",
+  "fixture": {
+    "customers": 384,
+    "products": 637,
+    "kitComponents": 634,
+    "serverMaxRows": 37,
+    "latencyPerDataRequestMs": 20
+  },
+  "environment": "Chrome headless / Windows / Vite production preview; synthetic intercepted API; no production latency measurement",
+  "bundle": {
+    "files": [
+      {
+        "name": "AuditLogsView-7Lcc0RSs.js",
+        "bytes": 193,
+        "gzip": 172
+      },
+      {
+        "name": "catalogResources-n8fF9yXy.js",
+        "bytes": 6978,
+        "gzip": 2912
+      },
+      {
+        "name": "ClosingsView-s3hWId9A.js",
+        "bytes": 195,
+        "gzip": 169
+      },
+      {
+        "name": "coreService-D1yl2-Ib.js",
+        "bytes": 4606,
+        "gzip": 1947
+      },
+      {
+        "name": "CustomerEditModal-DfMLd650.js",
+        "bytes": 7046,
+        "gzip": 2513
+      },
+      {
+        "name": "CustomerNetworksView-B7p3U79Q.js",
+        "bytes": 20316,
+        "gzip": 6429
+      },
+      {
+        "name": "customers-Db26aFtV.js",
+        "bytes": 7185,
+        "gzip": 2726
+      },
+      {
+        "name": "CustomersView-DWjUU-qN.js",
+        "bytes": 33829,
+        "gzip": 9414
+      },
+      {
+        "name": "DashboardView-CfD1SwI-.js",
+        "bytes": 6860,
+        "gzip": 2620
+      },
+      {
+        "name": "DeliveriesView-CqKXOdW2.js",
+        "bytes": 199,
+        "gzip": 171
+      },
+      {
+        "name": "ExpensesView-CZdId2cA.js",
+        "bytes": 195,
+        "gzip": 169
+      },
+      {
+        "name": "index-BdEoXAGr.js",
+        "bytes": 463650,
+        "gzip": 131702
+      },
+      {
+        "name": "InventoryView-DzpuQVl9.js",
+        "bytes": 193,
+        "gzip": 171
+      },
+      {
+        "name": "jsx-runtime-D3jfb0Ew.js",
+        "bytes": 8901,
+        "gzip": 3382
+      },
+      {
+        "name": "Modal-BCwuh7fI.js",
+        "bytes": 1557,
+        "gzip": 745
+      },
+      {
+        "name": "NewSaleView-DIw1oz7A.js",
+        "bytes": 37398,
+        "gzip": 11580
+      },
+      {
+        "name": "operations-BgF9kGJ5.js",
+        "bytes": 1361,
+        "gzip": 676
+      },
+      {
+        "name": "OperationsView-Czxljct1.js",
+        "bytes": 30191,
+        "gzip": 9421
+      },
+      {
+        "name": "PaymentSelect-BfhTWSRw.js",
+        "bytes": 2268,
+        "gzip": 1092
+      },
+      {
+        "name": "paymentsService-DUMDoZIC.js",
+        "bytes": 4536,
+        "gzip": 1764
+      },
+      {
+        "name": "pendingSales-Bdn68He3.js",
+        "bytes": 8341,
+        "gzip": 2912
+      },
+      {
+        "name": "plus-LPinrA6f.js",
+        "bytes": 142,
+        "gzip": 141
+      },
+      {
+        "name": "ProductionView-B2OP88uk.js",
+        "bytes": 7987,
+        "gzip": 3170
+      },
+      {
+        "name": "ProductsView-Cyna7hCt.js",
+        "bytes": 39575,
+        "gzip": 11987
+      },
+      {
+        "name": "ProductThumbnail-B01SGXOU.js",
+        "bytes": 606,
+        "gzip": 400
+      },
+      {
+        "name": "ProfitabilityView-DUIlABUW.js",
+        "bytes": 205,
+        "gzip": 173
+      },
+      {
+        "name": "PurchasesView-KfcCFZ-7.js",
+        "bytes": 219,
+        "gzip": 181
+      },
+      {
+        "name": "readPages-BcbHMv3y.js",
+        "bytes": 14501,
+        "gzip": 5049
+      },
+      {
+        "name": "ReceiptPreviewModal-BW9ddm2T.js",
+        "bytes": 17620,
+        "gzip": 5690
+      },
+      {
+        "name": "ReceivablesView-_VnGPGXP.js",
+        "bytes": 201,
+        "gzip": 173
+      },
+      {
+        "name": "refresh-cw-BC_UmsSe.js",
+        "bytes": 310,
+        "gzip": 221
+      },
+      {
+        "name": "SaleFinalizationModal-D4t0JMVr.js",
+        "bytes": 4154,
+        "gzip": 1936
+      },
+      {
+        "name": "SaleMovementModal-gHxgOBIt.js",
+        "bytes": 11927,
+        "gzip": 3732
+      },
+      {
+        "name": "SalesListView-GX0kcvV9.js",
+        "bytes": 37848,
+        "gzip": 10283
+      },
+      {
+        "name": "SalesReportView-BbyCc1MS.js",
+        "bytes": 197,
+        "gzip": 170
+      },
+      {
+        "name": "saleWorkspace-D-nDwwyM.js",
+        "bytes": 14560,
+        "gzip": 3919
+      },
+      {
+        "name": "search-Ha6HFaFJ.js",
+        "bytes": 163,
+        "gzip": 160
+      },
+      {
+        "name": "SettingsView-CLuRsyES.js",
+        "bytes": 195,
+        "gzip": 170
+      },
+      {
+        "name": "shopping-cart-6Kq3Us4H.js",
+        "bytes": 281,
+        "gzip": 225
+      },
+      {
+        "name": "useCatalog-nAyy5Jkt.js",
+        "bytes": 363,
+        "gzip": 253
+      },
+      {
+        "name": "useCorePermission-3R9julXR.js",
+        "bytes": 1082,
+        "gzip": 558
+      },
+      {
+        "name": "useProgressiveRows-BR4MUJCs.js",
+        "bytes": 249,
+        "gzip": 211
+      },
+      {
+        "name": "UsersView-BBKFBIEu.js",
+        "bytes": 7751,
+        "gzip": 2791
+      },
+      {
+        "name": "x-DOmMDj75.js",
+        "bytes": 143,
+        "gzip": 142
+      }
+    ],
+    "loginBytes": 514777,
+    "totalBytes": 806277,
+    "totalGzipBytes": 244422
+  },
+  "observations": [
+    {
+      "cycle": 0,
+      "screen": "customers",
+      "elapsedMs": 950.6,
+      "customerRequests": 22,
+      "productRequests": 0,
+      "scriptMs": 28.3,
+      "layoutMs": 20.5,
+      "domNodes": 688,
+      "listRows": 80
+    },
+    {
+      "cycle": 0,
+      "screen": "products",
+      "elapsedMs": 902.1,
+      "customerRequests": 0,
+      "productRequests": 36,
+      "scriptMs": 40.5,
+      "layoutMs": 56.5,
+      "domNodes": 3035,
+      "listRows": 80
+    },
+    {
+      "cycle": 0,
+      "screen": "sale",
+      "elapsedMs": 670.9,
+      "customerRequests": 0,
+      "productRequests": 0,
+      "scriptMs": 39.5,
+      "layoutMs": 18.4,
+      "domNodes": 91,
+      "listRows": null
+    },
+    {
+      "cycle": 1,
+      "screen": "customers",
+      "elapsedMs": 227.2,
+      "customerRequests": 0,
+      "productRequests": 0,
+      "scriptMs": 14.7,
+      "layoutMs": 7.4,
+      "domNodes": 688,
+      "listRows": 80
+    },
+    {
+      "cycle": 1,
+      "screen": "products",
+      "elapsedMs": 166.6,
+      "customerRequests": 0,
+      "productRequests": 0,
+      "scriptMs": 32,
+      "layoutMs": 22.9,
+      "domNodes": 3035,
+      "listRows": 80
+    },
+    {
+      "cycle": 1,
+      "screen": "sale",
+      "elapsedMs": 304.3,
+      "customerRequests": 0,
+      "productRequests": 0,
+      "scriptMs": 14.3,
+      "layoutMs": 4.2,
+      "domNodes": 91,
+      "listRows": null
+    },
+    {
+      "cycle": 2,
+      "screen": "customers",
+      "elapsedMs": 114.9,
+      "customerRequests": 0,
+      "productRequests": 0,
+      "scriptMs": 11.1,
+      "layoutMs": 6.7,
+      "domNodes": 688,
+      "listRows": 80
+    },
+    {
+      "cycle": 2,
+      "screen": "products",
+      "elapsedMs": 158.9,
+      "customerRequests": 0,
+      "productRequests": 0,
+      "scriptMs": 27.5,
+      "layoutMs": 22.5,
+      "domNodes": 3035,
+      "listRows": 80
+    },
+    {
+      "cycle": 2,
+      "screen": "sale",
+      "elapsedMs": 267.2,
+      "customerRequests": 0,
+      "productRequests": 0,
+      "scriptMs": 10.9,
+      "layoutMs": 4.9,
+      "domNodes": 91,
+      "listRows": null
+    },
+    {
+      "cycle": 3,
+      "screen": "customers",
+      "elapsedMs": 114.1,
+      "customerRequests": 0,
+      "productRequests": 0,
+      "scriptMs": 13,
+      "layoutMs": 6.3,
+      "domNodes": 688,
+      "listRows": 80
+    },
+    {
+      "cycle": 3,
+      "screen": "products",
+      "elapsedMs": 161.7,
+      "customerRequests": 0,
+      "productRequests": 0,
+      "scriptMs": 32.9,
+      "layoutMs": 24.3,
+      "domNodes": 3035,
+      "listRows": 80
+    },
+    {
+      "cycle": 3,
+      "screen": "sale",
+      "elapsedMs": 275.6,
+      "customerRequests": 0,
+      "productRequests": 0,
+      "scriptMs": 12.5,
+      "layoutMs": 4.9,
+      "domNodes": 91,
+      "listRows": null
+    }
+  ]
+}

@@ -46,6 +46,7 @@ export class MockSales {
       if(sources.length!==body.p_sale_ids.length||sources.length<2||new Set(sources.map(s=>s.customer_id)).size!==1)return this.error('Mescle somente pedidos do mesmo cliente');
       if(sources.some(s=>s.status!=='draft'||!s.shipping_confirmed||s.shipping_charged===null))return this.error('Informe o frete de todos os pedidos');
       const target={...sources[0],id:this.id(),order_number:this.nextOrderNumber++,created_by:this.identity().id,draft_key:body.p_request_key,created_at:new Date().toISOString()};
+      target.notes=sources.map(source=>'Pedido '+source.order_number+'\n'+(source.notes||'')).join('\n\n');
       target.subtotal=sources.reduce((sum,s)=>sum+Number(s.subtotal),0);target.discount_amount=sources.reduce((sum,s)=>sum+Number(s.discount_amount),0);target.shipping_charged=sources.reduce((sum,s)=>sum+Number(s.shipping_charged),0);target.total=Number(target.subtotal)-Number(target.discount_amount)+Number(target.shipping_charged);
       const sourceIds=sources.map(s=>s.id);const sourceItems=this.items.filter(i=>sourceIds.includes(i.sale_id));this.items.push(...sourceItems.map(i=>({...i,id:this.id(),sale_id:target.id})));
       for(const source of sources){source.status='cancelled';source.cancellation_reason='Mesclada no pedido '+target.order_number;this.event(source.id,'sale_merged',{target_sale_id:target.id});}
@@ -144,6 +145,15 @@ export class MockSales {
         if(!row)return this.error('Venda existente obrigatória');
         if(row.status!=='draft')return this.error('Somente vendas pendentes podem ser editadas');
         if(row.created_by!==this.identity().id&&this.identity().role!=='admin_gerencial')return this.error('Outro responsável','42501',403);
+        if(this.merges.some(merge=>merge.sale_id===row.id)){
+          const saved=this.items.filter(item=>item.sale_id===row.id);
+          if(body.p_cliente_id!==row.customer_id||body.p_filial_id!==row.branch_id||body.p_observacoes!==row.notes||body.p_itens.length!==saved.length||body.p_itens.some((item:any,index:number)=>item.product_id!==saved[index].product_id||item.quantity!==saved[index].quantity||item.unit_price!==saved[index].negotiated_unit_price))return this.error('Os dados dos pedidos originais devem ser preservados');
+          if(body.p_frete!==row.shipping_charged&&!this.allowed('sales.shipping.override'))return this.error('Frete sem permissão','42501',403);
+          if((body.p_desconto!==row.discount_amount||body.p_motivo!==row.discount_reason)&&!this.allowed('sales.discount'))return this.error('Desconto sem permissão','42501',403);
+          if(body.p_desconto<0||body.p_desconto>Number(row.subtotal)||body.p_desconto>0&&!body.p_motivo?.trim()||body.p_frete<0)return this.error('Valores inválidos');
+          Object.assign(row,{shipping_charged:body.p_frete,shipping_confirmed:true,discount_amount:body.p_desconto,discount_reason:body.p_motivo,total:Math.round((Number(row.subtotal)-body.p_desconto+body.p_frete)*100)/100,payment_method_id:body.p_forma_id,payment_term_id:body.p_prazo_id,updated_at:new Date().toISOString()});
+          this.event(row.id,'draft_saved');return {body:row.id};
+        }
         const customer=this.customers.find(c=>c.id===body.p_cliente_id&&c.active),branch=this.branches.find(b=>b.id===body.p_filial_id&&b.customer_id===customer?.id&&b.active);
         if(!customer||!branch)return this.error('Cliente e unidade inválidos');
         if(!Array.isArray(body.p_itens)||body.p_itens.length>200)return this.error('Itens inválidos');

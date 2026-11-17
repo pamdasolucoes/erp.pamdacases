@@ -11,7 +11,7 @@ test('mesclagem mantém originais, soma fretes, bloqueia clientes diferentes e c
    create function auth.uid() returns uuid language sql stable as $$select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$;
    set check_function_bodies=off;`);
   await db.exec(await read('./fixtures/merge-closing-schema.sql'));
-  await db.exec(`create function public.pamda_has_permission(text) returns boolean language sql stable as $$select auth.uid() is not null$$;
+  await db.exec(`create function public.pamda_has_permission(text) returns boolean language sql stable as $$select auth.uid() is not null and coalesce(current_setting('qa.denied_permission',true),'')<>$1$$;
    create function pamda_private.require_permission(text) returns void language plpgsql as $$begin if auth.uid() is null then raise exception 'Sem permissão' using errcode='42501';end if;end$$;
    create function pamda_private.audit(text,uuid,jsonb) returns void language sql as $$select$$;
    create function pamda_private.check_production_items(uuid,jsonb) returns void language sql as $$select$$;
@@ -20,7 +20,7 @@ test('mesclagem mantém originais, soma fretes, bloqueia clientes diferentes e c
    create sequence public.qa_order_number start 10000;
    create function public.pamda_iniciar_venda(p_cliente_id uuid,p_filial_id uuid,p_draft_key uuid) returns uuid language plpgsql as $$declare v uuid;begin
     insert into public.erp_sales(customer_id,branch_id,created_by,customer_snapshot,branch_snapshot,seller_snapshot,draft_key,order_number,is_test)
-    values(p_cliente_id,p_filial_id,auth.uid(),jsonb_build_object('name','QA','code','QA'),jsonb_build_object('name','QA'),'QA',p_draft_key,nextval('public.qa_order_number'),false) returning id into v;return v;end$$;
+    values(p_cliente_id,p_filial_id,auth.uid(),jsonb_build_object('name','QA','code','QA'),(select jsonb_build_object('name',name) from public.customer_branches where id=p_filial_id),'QA',p_draft_key,nextval('public.qa_order_number'),false) returning id into v;return v;end$$;
    create function public.qa_first_product() returns trigger language plpgsql as $$begin update public.erp_sales set first_product_at=coalesce(first_product_at,now()) where id=new.sale_id;return new;end$$;
    create trigger qa_first_product after insert on public.erp_sale_items for each row execute function public.qa_first_product();
    insert into public.erp_user_profiles(user_id,username,role,active) values(gen_random_uuid(),'QA','admin_gerencial',true);
@@ -51,6 +51,10 @@ test('mesclagem mantém originais, soma fretes, bloqueia clientes diferentes e c
   assert.deepEqual((await db.query("select to_jsonb(i)-'source_sale_item_id' data from public.erp_sale_items i order by id")).rows,legacyItemsBefore,'itens existentes preservados integralmente');
   assert.deepEqual((await db.query("select public.pamda_operation_read('reports',null,null) data")).rows,legacyReportsBefore,'relatórios existentes não mudam');
   await db.exec(await read('./merge-closing-preservation-homologation.sql'));
+  await db.exec(await read('../supabase/migrations/20261117001333_merged_order_adjustments_and_notes.sql'));
+  assert.deepEqual((await db.query("select public.pamda_operation_read('reports',null,null) data")).rows,legacyReportsBefore,'ajustes novos não alteram relatórios de fechamentos existentes');
+  await db.exec("set qa.permission_fixture='enabled'");
+  await db.exec(await read('./merge-adjustments-homologation.sql'));
   assert.equal((await db.query<{n:number}>('select count(*)::int n from public.erp_sales')).rows[0].n,3,'QA não deixa pedidos, pagamentos ou contadores de teste');
   const policy=(await db.query<{qual:string}>("select qual from pg_policies where tablename='erp_sale_merges'")).rows[0].qual as string;
   assert.match(policy,/sales.read/);

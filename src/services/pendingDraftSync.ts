@@ -10,6 +10,7 @@ export class PendingDraftSync {
   private state:DraftSyncState={status:'idle',message:''};
   private listeners=new Set<()=>void>();
   private initialized=false;
+  private initialDetails:SaleDetails|null=null;
   private initializing:Promise<void>|null=null;
   private validation:Promise<void>|null=null;
   private suppress=false;
@@ -49,6 +50,10 @@ export class PendingDraftSync {
     }
     void this.changed();
   }
+  prime(details:SaleDetails){
+    const remote=this.store.getSnapshot().remote;
+    if(!this.initialized&&!this.initializing&&remote?.saleId===details.sale.id&&remote.draftKey===details.sale.draft_key)this.initialDetails=details;
+  }
   async activate(){if(this.state.status==='closed')return;this.active=true;this.queue.resume();await this.changed();}
   private async initialize(){
     const initial=this.store.getSnapshot();if(!initial.remote)return;
@@ -58,7 +63,8 @@ export class PendingDraftSync {
     if(this.disposed)return;
     // Persist the returned UUID before issuing any save, including while the view is unmounted.
     this.store.update(current=>current.remote?.draftKey===remote.draftKey&&current.remote.saleId!==id?{...current,remote:{...current.remote,saleId:id}}:current);
-    const details=await this.service.details(this.store.userId,id);
+    const seed=this.initialDetails;this.initialDetails=null;
+    const details=seed?.sale.id===id&&seed.sale.draft_key===remote.draftKey?seed:await this.service.details(this.store.userId,id);
     if(this.disposed)return;
     const current=this.store.getSnapshot();if(current.remote?.draftKey!==remote.draftKey)return;
     const progress={orderNumber:details.sale.order_number,firstProductAt:details.sale.first_product_at};
@@ -125,5 +131,5 @@ export class PendingDraftSync {
     }).catch(()=>{/* A read failure does not invent a closed status. Writes still require server authorization. */}).finally(()=>{this.validation=null;});
     return this.validation;
   }
-  dispose(){this.disposed=true;this.unsubscribe();void this.pause();this.listeners.clear();}
+  dispose(){this.initialDetails=null;this.disposed=true;this.unsubscribe();void this.pause();this.listeners.clear();}
 }

@@ -61,9 +61,14 @@ export class PendingSalesService {
     return typeof navigator!=='undefined'&&navigator.locks?navigator.locks.request(name,write):write();
   }
   async hasPermission(userId:string,permission:string):Promise<boolean>{
+    return (await this.hasPermissions(userId,[permission]))[0];
+  }
+  async hasPermissions(userId:string,permissions:readonly string[]):Promise<boolean[]>{
     await this.identity(userId);
-    const {data,error}=await this.client!.rpc('pamda_has_permission',{p_permission:permission});
-    if(error)throw saleError(error);if(typeof data!=='boolean')throw new Error('Resposta de permissão inválida.');return data;
+    return Promise.all(permissions.map(async permission=>{
+      const {data,error}=await this.client!.rpc('pamda_has_permission',{p_permission:permission});
+      if(error)throw saleError(error);if(typeof data!=='boolean')throw new Error('Resposta de permissão inválida.');return data;
+    }));
   }
   async start(userId:string,customerId:string,branchId:string,draftKey:string):Promise<string>{
     if(![customerId,branchId,draftKey].every(isUuid))throw new Error('Cliente ou unidade inválidos.');
@@ -110,25 +115,31 @@ export class PendingSalesService {
   }
   async list(userId:string,history=false,customerId?:string):Promise<(PendingSaleRow&{status:'draft'|'confirmed'|'cancelled';is_test?:boolean|null})[]>{
     await this.identity(userId);
-    const links=await this.mergeLinks();
-    const rows=await this.rows<OfficialSaleRow>(history?'erp_sales':'erp_pending_sales',history?SALE_COLUMNS:PENDING_COLUMNS,query=>{
+    const [links,rows]=await Promise.all([this.mergeLinks(),this.rows<OfficialSaleRow>(history?'erp_sales':'erp_pending_sales',history?SALE_COLUMNS:PENDING_COLUMNS,query=>{
       if(history)query=query.in('status',['confirmed','cancelled']);if(customerId)query=query.eq('customer_id',customerId);return query;
-    });
+    })]);
     rows.forEach(validateSale);
-    return rows.filter(row=>!customerId||!links.some(m=>m.sale_id===row.id)).map(row=>{const closing=links.find(m=>m.sale_id===row.id),source=links.find(m=>m.source_ids.includes(row.id));return {...row,status:history?row.status:'draft' as const,mergeRole:closing?'closing' as const:source?'source' as const:undefined,mergeSourceIds:closing?.source_ids,mergedIntoId:source?.sale_id};}).sort((a,b)=>b.created_at.localeCompare(a.created_at)||a.id.localeCompare(b.id));
+    const closings=new Map(links.map(link=>[link.sale_id,link]));
+    const sources=new Map<string,string>();
+    for(const link of links)for(const id of link.source_ids)if(!sources.has(id))sources.set(id,link.sale_id);
+    return rows.filter(row=>!customerId||!closings.has(row.id)).map(row=>{
+      const closing=closings.get(row.id),source=sources.get(row.id);
+      return {...row,status:history?row.status:'draft' as const,mergeRole:closing?'closing' as const:source?'source' as const:undefined,mergeSourceIds:closing?.source_ids,mergedIntoId:source};
+    }).sort((a,b)=>b.created_at.localeCompare(a.created_at)||a.id.localeCompare(b.id));
   }
   async details(userId:string,saleId:string):Promise<SaleDetails>{
     await this.identity(userId);if(!isUuid(saleId))throw new Error('Venda inválida.');
     const {data:sale,error}=await this.client!.from('erp_sales').select(SALE_COLUMNS).eq('id',saleId).returns<OfficialSaleRow[]>().maybeSingle();
     if(error)throw saleError(error);if(!sale||sale.id!==saleId)throw new SaleAccessError('Venda não encontrada ou sem permissão de leitura.');
-    const links=await this.mergeLinks();const closing=links.find(m=>m.sale_id===sale.id),source=links.find(m=>m.source_ids.includes(sale.id));
-    Object.assign(sale,{mergeRole:closing?'closing':source?'source':undefined,mergeSourceIds:closing?.source_ids,mergedIntoId:source?.sale_id});
     validateSale(sale);if(!['draft','confirmed','cancelled'].includes(sale.status))throw new Error('Situação da venda incompatível.');
     if(!(sale.is_test===null||typeof sale.is_test==='boolean'))throw new Error('Indicador de venda de teste incompatível.');
-    const [items,events]=await Promise.all([
+    const [links,items,events]=await Promise.all([
+      this.mergeLinks(),
       this.rows<OfficialSaleItemRow>('erp_sale_items',ITEM_COLUMNS,q=>q.eq('sale_id',saleId)),
       this.rows<OfficialSaleEventRow>('erp_sale_events',EVENT_COLUMNS,q=>q.eq('sale_id',saleId)),
     ]);
+    const closing=links.find(m=>m.sale_id===sale.id),source=links.find(m=>m.source_ids.includes(sale.id));
+    Object.assign(sale,{mergeRole:closing?'closing':source?'source':undefined,mergeSourceIds:closing?.source_ids,mergedIntoId:source?.sale_id});
     for(const item of items){
       if(item.sale_id!==saleId||!isUuid(item.id)||!isUuid(item.product_id)||typeof item.product_code_snapshot!=='string'||typeof item.product_sku_snapshot!=='string'||typeof item.description_snapshot!=='string'||!Number.isFinite(Number(item.quantity))||Number(item.quantity)<=0)throw new Error('Item incompatível com a venda consultada.');
       dbCents(item.negotiated_unit_price);dbCents(item.line_subtotal);

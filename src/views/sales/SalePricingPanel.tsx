@@ -23,7 +23,7 @@ function usePreparationField<K extends keyof PricingPreparation>(draft:PricingPr
   return [draft[key],value=>update(previous=>({...previous,[key]:typeof value==='function'?(value as (old:PricingPreparation[K])=>PricingPreparation[K])(previous[key]):value}))];
 }
 
-export function SalePricingPanel({ readOnly=false,products, customerId, branchId, draft, onDraftChange, sellerName, paymentCondition, orderNumber, customerFreight = pendingCustomerFreight, selectedCustomer = null, selectedBranch = null, onFirstProductAdded, freightEditable = false, paymentSection, finalizationAction, onReceiptPreview }: { readOnly?:boolean;products: readonly OfficialProduct[]; customerId: string | null; branchId: string | null; draft:PricingPreparation; onDraftChange:React.Dispatch<React.SetStateAction<PricingPreparation>>; sellerName?:string; paymentCondition?:string; orderNumber?:number|null; customerFreight?: CustomerFreightSetting; selectedCustomer?: OfficialCustomer | null; selectedBranch?: OfficialCustomerBranch | null; onFirstProductAdded():Promise<void>; freightEditable?:boolean; paymentSection:React.ReactNode; finalizationAction?:React.ReactNode; onReceiptPreview(data:ReceiptDocumentData):void }) {
+export function SalePricingPanel({ readOnly=false,itemsReadOnly=false,notesReadOnly=false,products, customerId, branchId, draft, onDraftChange, sellerName, paymentCondition, orderNumber, customerFreight = pendingCustomerFreight, selectedCustomer = null, selectedBranch = null, onFirstProductAdded, freightEditable = false, paymentSection, finalizationAction, onReceiptPreview }: { readOnly?:boolean;itemsReadOnly?:boolean;notesReadOnly?:boolean;products: readonly OfficialProduct[]; customerId: string | null; branchId: string | null; draft:PricingPreparation; onDraftChange:React.Dispatch<React.SetStateAction<PricingPreparation>>; sellerName?:string; paymentCondition?:string; orderNumber?:number|null; customerFreight?: CustomerFreightSetting; selectedCustomer?: OfficialCustomer | null; selectedBranch?: OfficialCustomerBranch | null; onFirstProductAdded():Promise<void>; freightEditable?:boolean; paymentSection:React.ReactNode; finalizationAction?:React.ReactNode; onReceiptPreview(data:ReceiptDocumentData):void }) {
   const [items, setItems] = usePreparationField(draft,onDraftChange,'items');
   const [discount, setDiscount] = usePreparationField(draft,onDraftChange,'discount');
   const [discountReason, setDiscountReason] = usePreparationField(draft,onDraftChange,'discountReason');
@@ -108,7 +108,7 @@ export function SalePricingPanel({ readOnly=false,products, customerId, branchId
     committedPrices.current.set(item.id, item.snapshot.originalUnitPriceCents);
   };
   return <section className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
-    <fieldset disabled={readOnly} className="min-w-0">
+    <fieldset disabled={readOnly||itemsReadOnly} className="min-w-0">
     <div className="p-4 border-b border-slate-100 flex flex-col sm:flex-row justify-between gap-3">
       <h2 className="font-bold flex items-center gap-2"><ShoppingCart className="w-5 h-5" />Produtos</h2>
       <div className="w-full sm:max-w-xl"><SearchDropdown label="Adicionar produto do catálogo oficial" placeholder="Pesquisar por nome, aparelho, SKU ou código" query={productQuery} onQueryChange={setProductQuery} options={productMatches} onSelect={product => addItem(product.id)}
@@ -208,6 +208,7 @@ export function SalePricingPanel({ readOnly=false,products, customerId, branchId
           OBSERVAÇÕES
           <textarea
             aria-label="OBSERVAÇÕES"
+            readOnly={notesReadOnly}
             rows={3}
             value={notes}
             onChange={event => setNotes(event.target.value)}
