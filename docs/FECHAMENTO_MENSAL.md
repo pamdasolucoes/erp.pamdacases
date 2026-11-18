@@ -39,7 +39,15 @@ Este controle não movimenta estoque, contas a receber, despesas operacionais ne
 
 ## Referência e histórico
 
-A planilha enviada foi analisada como referência, sem edição nem inclusão do arquivo ou de seus dados pessoais no repositório. O bloco de ACERTO iniciado em A14 repete o título JUNHO, mas seu período indicado em G15 é de julho/agosto. As datas históricas e essa identificação precisam ser conciliadas antes de qualquer importação. Nenhum registro histórico foi importado ou alterado. A nova página usa o modelo atual confirmado: sem divisão com Thales desde setembro.
+A planilha enviada foi analisada como referência, sem edição nem inclusão do arquivo ou de seus dados pessoais no repositório. Confirmado pela administração: o primeiro bloco JUNHO é junho e o segundo corresponde a julho. Nenhum registro histórico foi importado ou alterado. A página usa o modelo atual confirmado: sem divisão com Thales desde setembro.
+
+## Contas recorrentes, folha e vencimentos
+
+Em Contas → Contas fixas ficam os cadastros privados da administração, com vigência, categoria, valor previsto, vencimento e antecedência do aviso. Valores variáveis precisam ser conferidos a cada mês. O valor mensal, a data e o valor efetivamente pago ficam nos Lançamentos, sem alterar o cadastro dos meses seguintes. Vencimentos no dia 31 usam o último dia do mês. Datas ausentes permanecem em branco para confirmação.
+
+A Folha de pagamento organiza salário, adiantamento, faltas, VT e VR. Informe os dias-base antes de descontar faltas e confira a folha mensal. Adiantamento e saldo salarial compõem um único custo, evitando duplicação. Os pagamentos são registrados nos mesmos lançamentos de Contas. Thales permanece nas Regras e entregas em Entregas, sem novo custo duplicado no cadastro.
+
+O aviso da administração mostra contas vencidas, de hoje, próximas e sem vencimento. A consulta acontece ao entrar, na mudança de dia e após salvar essas informações; não há consulta periódica nem atualização das vendas ao alternar abas. O aviso abre as Contas do mês correspondente. Meses fechados ficam preservados; novos cadastros podem ser trazidos explicitamente para rascunhos existentes. Valores de referência e pagamentos históricos da planilha não são tratados como pagamentos atuais.
 
 ## Verificação
 

@@ -39,6 +39,9 @@ export async function setup(page: Page, role: 'admin_gerencial' | 'gerencial' | 
     if (url.origin !== 'https://pamda-test.invalid') return route.abort();
     if (options.dataDelayMs && /^\/rest\/v1\/(customers|customer_branches|erp_product_catalog|kit_components)$/.test(url.pathname)) await new Promise(resolve => setTimeout(resolve, options.dataDelayMs));
     const respond=(body:unknown,status=200,headers:Record<string,string>={}) => route.fulfill({ status,contentType:'application/json',headers:{ 'access-control-allow-origin':'*', 'access-control-expose-headers':'content-range', ...headers },body:JSON.stringify(body) });
+    if(url.pathname==='/rest/v1/rpc/pamda_monthly_accounts_alerts')return respond({overdue:0,today:0,upcoming:0,unscheduled:0,firstMonth:null,checkedOn:request.postDataJSON().p_today});
+    if(url.pathname==='/rest/v1/rpc/pamda_monthly_accounts_generate')return respond({expenses:[],payroll:[]});
+    if(url.pathname==='/rest/v1/rpc/pamda_monthly_accounts_read')return respond([]);
     if (url.pathname==='/auth/v1/token') {state.tokenRequests++;if(url.searchParams.get('grant_type')==='refresh_token') state.refreshRequests++;return respond({ access_token:token(),token_type:'bearer',expires_in:state.authLifetimeSeconds,expires_at:expires(),refresh_token:'synthetic-refresh-token',user:employee });}
     if (url.pathname==='/auth/v1/logout') return respond({});
     if (url.pathname==='/auth/v1/user') return state.identityRevoked?respond({msg:'Invalid session',code:'session_not_found'},401):respond(employee);

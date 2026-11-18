@@ -32,6 +32,7 @@ const AuditLogsView = lazyView(() => import('./views/managerial/AuditLogsView').
 const SettingsView = lazyView(() => import('./views/managerial/SettingsView').then(module => ({ default: module.SettingsView })));
 const InventoryView = lazyView(() => import('./views/inventory/InventoryView').then(module => ({ default: module.InventoryView })));
 const MonthlyClosingView=lazyView(()=>import('./views/financial/MonthlyClosingView').then(m=>({default:m.MonthlyClosingView})));
+const MonthlyBillsNotice=lazyView(()=>import('./components/layout/MonthlyBillsNotice').then(m=>({default:m.MonthlyBillsNotice})));
 const tabViews={
   fechamento_mensal: MonthlyClosingView,
   dashboard: DashboardView,
@@ -71,6 +72,8 @@ export function App() {
   const [saleSuccess,setSaleSuccess]=useState('');
   const [navigationError,setNavigationError]=useState('');
   const [monthlyClosingDirty,setMonthlyClosingDirty]=useState(false);
+  const [monthlyOpen,setMonthlyOpen]=useState<{month:string;key:number}|null>(null);
+  const monthlyOpenCounter=useRef(0);
   const [navigating,setNavigating]=useState(false);
   const leavingSale=useRef(false);
   const preloadTab=(tab:ActiveTab)=>{if(currentUser&&canAccessTab(currentUser,tab))tabViews[tab].preload();};
@@ -152,8 +155,8 @@ export function App() {
     setHistoryCustomer(customer);
     setCurrentTab('vendas');
   };
-  const navigate = async(tab: ActiveTab) => {
-    if(currentTab==='fechamento_mensal'&&tab!==currentTab&&monthlyClosingDirty&&!window.confirm('Há alterações não salvas no fechamento mensal. Sair sem salvar?'))return;
+  const navigate = async(tab: ActiveTab,requestedMonth?:string) => {
+    if(currentTab==='fechamento_mensal'&&(tab!==currentTab||!!requestedMonth)&&monthlyClosingDirty&&!window.confirm('Há alterações não salvas no fechamento mensal. Sair sem salvar?'))return;
     if(leavingSale.current||openingNewSale.current)return;
     preloadTab(tab);
     if(currentTab==='nova_venda'&&tab!=='nova_venda'&&currentUser){
@@ -164,6 +167,7 @@ export function App() {
     }
     if (tab === 'nova_venda') { openNewSale(); return; }
     if (tab === 'vendas') {setHistoryCustomer(null);setSalesRefreshVersion(value=>value+1);}
+    if(tab==='fechamento_mensal'&&(currentTab!==tab||requestedMonth))setMonthlyOpen(requestedMonth?{month:requestedMonth,key:++monthlyOpenCounter.current}:null);
     setCurrentTab(tab);
   };
 
@@ -225,6 +229,7 @@ export function App() {
         />
 
         <main className={`flex-1 min-w-0 p-4 sm:p-6 lg:p-8 w-full mx-auto ${['dashboard','nova_venda','configuracoes'].includes(currentTab)?'max-w-7xl':''}`}>
+          {currentUser.role==='admin_gerencial'&&<Suspense fallback={null}><MonthlyBillsNotice userId={currentUser.id} onOpen={month=>void navigate('fechamento_mensal',month)}/></Suspense>}
           {saleSuccess&&<p role="status" className="mb-4 rounded-xl bg-emerald-50 p-4 text-emerald-800">{saleSuccess}</p>}
           {navigating&&<p role="status" className="mb-4 text-sm text-emerald-800">Preparando tela…</p>}
           {navigationError&&<p role="alert" className="mb-4 text-sm text-rose-800">{navigationError}</p>}
@@ -293,7 +298,7 @@ export function App() {
 
           {currentTab === 'logs' && <AuditLogsView />}
 
-          {currentTab==='fechamento_mensal'&&<MonthlyClosingView onDirtyChange={setMonthlyClosingDirty}/>}
+          {currentTab==='fechamento_mensal'&&<MonthlyClosingView key={monthlyOpen?.key||0} initialMonth={monthlyOpen?.month} initialSection={monthlyOpen?'Contas':undefined} onDirtyChange={setMonthlyClosingDirty}/>}
           {currentTab === 'configuracoes' && <SettingsView />}
           </Suspense></ViewBoundary>
           )}

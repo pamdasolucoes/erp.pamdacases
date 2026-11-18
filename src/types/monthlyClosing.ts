@@ -2,7 +2,7 @@ export interface MonthlyRules {
   pamBps:number; pamMinimumCents:number; reserveBps:number;
   thalesCents:number; thalesFrom:string; thalesUntil:string|null;
 }
-export interface MonthlyExpense {id:string;description:string;reference:string;amountCents:number;reductionCents:number;dueDate:string;paidCents:number;paidOn:string;}
+export interface MonthlyExpense {id:string;description:string;reference:string;amountCents:number;reductionCents:number;dueDate:string;paidCents:number;paidOn:string;sourceTemplateId?:string;category?:string;employee?:string;payrollId?:string;payrollPart?:'salary'|'advance'|'vt'|'vr';amountConfirmed?:boolean;}
 export interface MonthlyMovement {id:string;date:string;description:string;amountCents:number;}
 export interface CourierEntry {id:string;date:string;name:string;quantity:number;rateCents:number;gasCents:number;cashCents:number;advanceCents:number;paidCents:number;}
 export interface TimeEntry {id:string;date:string;name:string;start:string;end:string;breakMinutes:number;expectedMinutes:number;hourCents:number;extraHourCents:number;}
@@ -14,6 +14,9 @@ export interface MonthlyClosingData {
   couriers:CourierEntry[];timeEntries:TimeEntry[];withdrawalDeductions:MonthlyMovement[];
   payments:{thalesCents:number;thalesOn:string;pamCents:number;pamOn:string;withdrawalCents:number;withdrawalOn:string;};
   notes:string;
+  payroll?:import('./recurringAccounts').MonthlyPayroll[];
+  recurringApplied?:boolean;
+  appliedTemplateIds?:string[];
 }
 export interface MonthlyClosingRecord {month:string;version:number;status:'draft'|'closed';data:MonthlyClosingData;totals:MonthlyTotals;updatedAt:string;closedAt:string|null;}
 export interface MonthlyTotals {

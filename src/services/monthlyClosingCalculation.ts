@@ -1,3 +1,4 @@
+import {validateAccountExtensions} from './recurringAccountCalculation';
 import type {MonthlyClosingData,MonthlyRules,MonthlyTotals,TimeEntry} from '../types/monthlyClosing';
 
 export const defaultMonthlyRules:MonthlyRules={pamBps:2000,pamMinimumCents:170000,reserveBps:1000,thalesCents:207300,thalesFrom:'2026-09',thalesUntil:null};
@@ -21,6 +22,7 @@ export function timeEntryTotals(row:TimeEntry){
 }
 export function validateMonthlyClosing(data:MonthlyClosingData){
   if(!data||!validMonth(data.month)||!validDate(data.start)||!validDate(data.end)||data.start>data.end||Date.parse(data.end)-Date.parse(data.start)>62*86400000)throw new Error('Informe um período válido de até 63 dias.');
+  validateAccountExtensions(data);
   const r=data.rules;
   if(!r||![r.pamBps,r.reserveBps].every(v=>Number.isInteger(v)&&v>=0&&v<=10000)||!cents(r.pamMinimumCents)||!cents(r.thalesCents)||!validMonth(r.thalesFrom)||r.thalesUntil!==null&&(!validMonth(r.thalesUntil)||r.thalesUntil<r.thalesFrom))throw new Error('Confira as regras da PAM, da reserva e do custo fixo do Thales.');
   const arrays=[data.expenses,data.shopeeReceipts,data.shopeeCosts,data.couriers,data.timeEntries,data.withdrawalDeductions];
