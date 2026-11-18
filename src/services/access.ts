@@ -12,6 +12,7 @@ const SALES_TABS = new Set([
 export function canAccessTab(user: User | null, tab: string): boolean {
   if(tab==='redes' && !user?.permissions)return canAccessTab(user,'clientes');
   if (!user?.active || user.mustChangePassword) return false;
+  if(tab==='fechamento_mensal')return user.role==='admin_gerencial';
   if(user.permissions){
     if(user.role==='admin_gerencial')return true;
     if(`module.${tab}` in user.permissions&&user.permissions[`module.${tab}`]!==true)return false;

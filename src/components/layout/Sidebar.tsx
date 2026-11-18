@@ -22,6 +22,7 @@ export type ActiveTab =
   | 'relatorio_clientes'
   | 'lucratividade'
   | 'custo_estoque'
+  | 'fechamento_mensal'
   | 'usuarios'
   | 'logs'
   | 'configuracoes';
@@ -38,7 +39,7 @@ interface SidebarProps {
 }
 
 
-const sections=[["Principal",[["dashboard","Dashboard"],["nova_venda","Nova Venda"],["vendas","Pendências"],["clientes","Clientes e Unidades"],["redes","Rede de Lojas"]]],["Catálogo e operação",[["produtos","Produtos & Serviços"],["kits","Kits Compostos"],["estoque","Estoque & Movimentos"],["producao","Fila de Produção"]]],["Financeiro",[["contas_receber","Contas a Receber"],["fechamentos","Fechamentos"],["entregas","Fretes & Entregas"],["despesas","Despesas"]]],["Suprimentos",[["compras","Compras & Entradas"],["fornecedores","Fornecedores"]]],["Relatórios",[["relatorio_vendas","Relatório de Vendas"],["relatorio_clientes","Vendas por Cliente"],["lucratividade","Lucratividade Real"],["custo_estoque","Custo de Estoque"]]],["Administração",[["usuarios","Usuários & Acessos"],["logs","Auditoria & Logs"],["configuracoes","Configurações"]]]] as const;
+const sections=[["Principal",[["dashboard","Dashboard"],["nova_venda","Nova Venda"],["vendas","Pendências"],["clientes","Clientes e Unidades"],["redes","Rede de Lojas"]]],["Catálogo e operação",[["produtos","Produtos & Serviços"],["kits","Kits Compostos"],["estoque","Estoque & Movimentos"],["producao","Fila de Produção"]]],["Financeiro",[["contas_receber","Contas a Receber"],["fechamentos","Fechamentos"],["entregas","Fretes & Entregas"],["despesas","Despesas"]]],["Suprimentos",[["compras","Compras & Entradas"],["fornecedores","Fornecedores"]]],["Relatórios",[["relatorio_vendas","Relatório de Vendas"],["relatorio_clientes","Vendas por Cliente"],["lucratividade","Lucratividade Real"],["custo_estoque","Custo de Estoque"]]],["Administração",[["fechamento_mensal","Fechamento mensal"],["usuarios","Usuários & Acessos"],["logs","Auditoria & Logs"],["configuracoes","Configurações"]]]] as const;
 export function Sidebar({currentTab,onSelectTab,onPreloadTab,currentUser,onLogout,mobileOpen,onCloseMobile}:SidebarProps){return <>
 {mobileOpen&&<div className="fixed inset-0 z-40 bg-slate-900/50 lg:hidden" onClick={onCloseMobile}/>}
 <aside className={`fixed inset-y-0 left-0 z-40 erp-sidebar w-64 border-r flex flex-col transition-transform lg:translate-x-0 ${mobileOpen?'translate-x-0':'-translate-x-full'}`}>

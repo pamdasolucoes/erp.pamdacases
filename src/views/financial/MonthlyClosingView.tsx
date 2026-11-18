@@ -1,0 +1,167 @@
+import React,{useCallback,useEffect,useMemo,useRef,useState} from 'react';
+import {Check,Download,Plus,RefreshCw,Save,X} from 'lucide-react';
+import {authService} from '../../services/auth';
+import {monthlyClosingService} from '../../services/monthlyClosing';
+import {calculateMonthlyClosing,createMonthlyClosing,timeEntryTotals} from '../../services/monthlyClosingCalculation';
+import {centsInput,formatMoney,parsePriceInput} from '../../services/salePricing';
+import {localDate} from '../../services/operations';
+import {exportToCsv} from '../../services/csvExport';
+import type {CourierEntry,MonthlyClosingData,MonthlyClosingRead,MonthlyClosingRecord,MonthlyExpense,MonthlyMovement,TimeEntry} from '../../types/monthlyClosing';
+
+const input='w-full min-w-28 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm disabled:bg-slate-50';
+const sections=['Resumo','Contas','Shopee','Entregas','Folha ponto','Regras'];
+const button='inline-flex items-center justify-center gap-2 rounded-xl border bg-white px-4 py-2 text-sm font-semibold disabled:opacity-50';
+const cash=(n:number|null|undefined)=>n===null?'Aguardando lucro das lojas':n===undefined?'Confira os lançamentos':!Number.isFinite(n)?'Valor inválido':formatMoney(n);
+const hours=(n:number)=>`${Math.floor(n/60)}h ${String(n%60).padStart(2,'0')}min`;
+function MoneyInput({label,value,onChange,signed=false}:{label:string;value:number;onChange:(n:number)=>void;signed?:boolean}){
+  const ref=useRef<HTMLInputElement>(null),[raw,setRaw]=useState(Number.isFinite(value)?centsInput(value):'');
+  useEffect(()=>{if(document.activeElement!==ref.current)setRaw(Number.isFinite(value)?centsInput(value):'');},[value]);
+  return <input ref={ref} aria-label={label} aria-invalid={!Number.isFinite(value)||undefined} className={input} inputMode="decimal" value={raw} onChange={event=>{
+    const raw=event.target.value;setRaw(raw);const negative=signed&&raw.trim().startsWith('-');
+    const parsed=raw.trim()===''?0:parsePriceInput(negative?raw.trim().slice(1):raw);onChange(parsed===null?NaN:negative?-parsed:parsed);
+  }} onBlur={()=>{if(Number.isFinite(value))setRaw(centsInput(value));}}/>;
+}
+function Field({label,children}:{label:string;children:React.ReactNode}){return <label className="grid gap-1 text-sm font-medium">{label}{children}</label>;}
+function Metric({label,value}:{label:string;value:number|null|undefined}){return <div className="rounded-xl border bg-white p-4"><p className="text-xs text-slate-600">{label}</p><p className={`mt-1 text-xl font-bold ${value!==null&&value!==undefined&&value<0?'text-rose-700':'text-slate-900'}`}>{cash(value)}</p></div>;}
+function Editor<T extends {id:string}>({name,rows,columns,onRemove,onAdd}:{name:string;rows:T[];columns:{label:string;render:(row:T,index:number)=>React.ReactNode}[];onRemove:(id:string)=>void;onAdd:()=>void}){
+  return <section aria-label={name} className="space-y-3"><h2 className="font-bold text-slate-900">{name}</h2><div className="overflow-auto rounded-xl border bg-white"><table className="w-full text-left text-sm"><thead className="bg-slate-50"><tr>{columns.map(c=><th key={c.label} className="whitespace-nowrap px-3 py-2">{c.label}</th>)}<th className="p-2"><span className="sr-only">Remover</span></th></tr></thead><tbody>{rows.map((row,i)=><tr key={row.id} className="border-t">{columns.map(c=><td key={c.label} className="p-2 align-top">{c.render(row,i)}</td>)}<td className="p-2"><button type="button" title="Remover linha" aria-label={`Remover ${name} ${i+1}`} onClick={()=>onRemove(row.id)} className="inline-flex h-8 w-8 items-center justify-center rounded-full border bg-white text-rose-600"><X size={14}/></button></td></tr>)}{!rows.length&&<tr><td colSpan={columns.length+1} className="p-5 text-slate-500">Nenhum lançamento neste mês.</td></tr>}</tbody></table></div><button type="button" disabled={rows.length>=500} onClick={onAdd} className={button}><Plus size={15}/>Adicionar {name.toLocaleLowerCase('pt-BR')}</button></section>;
+}
+export function MonthlyClosingView({onDirtyChange}:{onDirtyChange:(dirty:boolean)=>void}){
+  const user=authService.getCurrentUser(),userId=user?.id||'';
+  const [month,setMonth]=useState(localDate().slice(0,7)),[data,setData]=useState<MonthlyClosingData|null>(null);
+  const [record,setRecord]=useState<MonthlyClosingRecord|null>(null),[months,setMonths]=useState<MonthlyClosingRead['months']>([]);
+  const [baseline,setBaseline]=useState(''),[tab,setTab]=useState('Resumo'),[busy,setBusy]=useState(false),[loading,setLoading]=useState(true),[error,setError]=useState(''),[notice,setNotice]=useState('');
+  const [confirmClose,setConfirmClose]=useState(false),[reopen,setReopen]=useState(false),[reason,setReason]=useState('');
+  const generation=useRef(0),alive=useRef(true),request=useRef({signature:'',key:''});
+  const dialogRef=useRef<HTMLElement>(null),busyRef=useRef(false);busyRef.current=busy;
+  useEffect(()=>{
+    if(!confirmClose&&!reopen)return;const previous=document.activeElement,dialog=dialogRef.current;if(!dialog)return;
+    const controls=()=>[...dialog.querySelectorAll<HTMLElement>('button:not(:disabled),textarea:not(:disabled),input:not(:disabled)')];
+    (controls()[0]||dialog).focus();
+    const keydown=(event:KeyboardEvent)=>{
+      if(event.key==='Escape'&&!busyRef.current){event.preventDefault();setConfirmClose(false);setReopen(false);}
+      if(event.key!=='Tab')return;const items=controls(),first=items[0],last=items[items.length-1];
+      if(!first){event.preventDefault();dialog.focus();}
+      else if(!dialog.contains(document.activeElement)||event.shiftKey&&document.activeElement===first||!event.shiftKey&&document.activeElement===last){event.preventDefault();(event.shiftKey?last:first).focus();}
+    };document.addEventListener('keydown',keydown,true);
+    return()=>{document.removeEventListener('keydown',keydown,true);if(previous instanceof HTMLElement&&previous.isConnected)previous.focus();};
+  },[confirmClose,reopen]);
+  const dirty=!!data&&JSON.stringify(data)!==baseline,locked=record?.status==='closed';
+  useEffect(()=>{onDirtyChange(dirty);},[dirty,onDirtyChange]);
+  useEffect(()=>{alive.current=true;return()=>{alive.current=false;onDirtyChange(false);};},[onDirtyChange]);
+  useEffect(()=>{if(!dirty)return;const before=(event:BeforeUnloadEvent)=>{event.preventDefault();event.returnValue='';};window.addEventListener('beforeunload',before);return()=>window.removeEventListener('beforeunload',before);},[dirty]);
+  const load=useCallback(async(month:string)=>{
+    const token=++generation.current;setLoading(true);setError('');setNotice('');
+    try{
+      const value=await monthlyClosingService.read(userId,month);if(!alive.current||token!==generation.current)return;
+      const next=value.record?.data||createMonthlyClosing(month,value.defaults||undefined);setData(next);setRecord(value.record);setMonths(value.months);setBaseline(JSON.stringify(next));
+    }catch(e){if(alive.current&&token===generation.current){setData(null);setRecord(null);setError(e instanceof Error?e.message:'Não foi possível abrir o mês.');}}
+    finally{if(alive.current&&token===generation.current)setLoading(false);}
+  },[userId]);
+  useEffect(()=>{if(user?.role==='admin_gerencial')void load(month);return()=>{generation.current++;};},[load,month,user?.role]);
+  const calculation=useMemo(()=>{if(!data)return {totals:null,error:''};try{return {totals:calculateMonthlyClosing(data),error:''};}catch(e){return {totals:null,error:e instanceof Error?e.message:'Confira os lançamentos.'};}},[data]);
+  const change=<K extends keyof MonthlyClosingData>(key:K,value:MonthlyClosingData[K])=>{setNotice('');setData(d=>d?{...d,[key]:value}:d);};
+  const updateRow=<K extends 'expenses'|'shopeeReceipts'|'shopeeCosts'|'couriers'|'timeEntries'|'withdrawalDeductions'>(key:K,id:string,patch:Partial<MonthlyClosingData[K][number]>)=>{
+    setNotice('');setData(d=>d?{...d,[key]:d[key].map(row=>row.id===id?{...row,...patch}:row)}:d);
+  };
+  const remove=(key:'expenses'|'shopeeReceipts'|'shopeeCosts'|'couriers'|'timeEntries'|'withdrawalDeductions',id:string)=>setData(d=>d?{...d,[key]:d[key].filter(row=>row.id!==id)}:d);
+  const chooseMonth=(next:string)=>{if(next&&(!dirty||window.confirm('Há alterações não salvas. Descartar e abrir outro mês?'))){setMonth(next);setConfirmClose(false);setReopen(false);}};
+  const refresh=()=>{if(!dirty||window.confirm('Descartar alterações não salvas e recarregar este mês?'))void load(month);};
+  const capture=async()=>{
+    if(!data||busy)return;setBusy(true);setError('');
+    try{const snapshot=await monthlyClosingService.profit(userId,data.start,data.end);if(alive.current){change('shop',{...data.shop,mode:'erp',snapshot});setNotice(snapshot.pendingCostCount?'Há pedidos com custos pendentes na lucratividade. Confira antes de fechar.':'Lucro dos produtos e frete cobrado atualizados para este período.');}}
+    catch(e){if(alive.current)setError(e instanceof Error?e.message:'Falha ao consultar a lucratividade.');}finally{if(alive.current)setBusy(false);}
+  };
+  const copyAccounts=async()=>{
+    if(!data||busy||data.expenses.length)return;setBusy(true);setError('');
+    try{
+      const [year,m]=month.split('-').map(Number),previous=new Date(Date.UTC(year,m-2,1)).toISOString().slice(0,7);
+      const source=(await monthlyClosingService.read(userId,previous)).record;
+      if(!alive.current)return;if(!source?.data.expenses.length)throw new Error('O mês anterior não tem contas salvas para copiar.');
+      const lastDay=Number(createMonthlyClosing(month).end.slice(-2));
+      change('expenses',source.data.expenses.map(row=>({...row,id:crypto.randomUUID(),reference:month,reductionCents:0,paidCents:0,paidOn:'',dueDate:row.dueDate?month+'-'+String(Math.min(Number(row.dueDate.slice(-2)),lastDay)).padStart(2,'0'):''})));
+      setNotice('Contas copiadas do mês anterior, sem os pagamentos e as reduções. Confira os valores e vencimentos antes de salvar.');
+    }catch(e){if(alive.current)setError(e instanceof Error?e.message:'Não foi possível copiar as contas.');}finally{if(alive.current)setBusy(false);}
+  };
+  const save=async(action:'save'|'close'|'reopen')=>{
+    if(!data||busy)return;setBusy(true);setError('');setNotice('');
+    const signature=JSON.stringify([data,record?.version||0,action,reason]);if(request.current.signature!==signature)request.current={signature,key:crypto.randomUUID()};
+    try{
+      const value=await monthlyClosingService.write(userId,data,record?.version||0,action,request.current.key,reason);if(!alive.current)return;
+      setData(value.data);setRecord(value);setBaseline(JSON.stringify(value.data));setMonths(rows=>[{month:value.month,status:value.status,version:value.version},...rows.filter(r=>r.month!==value.month)].sort((a,b)=>b.month.localeCompare(a.month)));
+      request.current={signature:'',key:''};setConfirmClose(false);setReopen(false);setReason('');setNotice(action==='close'?'Mês fechado e valores preservados.':action==='reopen'?'Mês reaberto para ajustes.':'Fechamento mensal salvo.');
+    }catch(e){if(alive.current)setError(e instanceof Error?e.message:'Não foi possível salvar.');}finally{if(alive.current)setBusy(false);}
+  };
+  if(!user?.active||user.role!=='admin_gerencial')return <p role="alert">Acesso exclusivo da administração.</p>;
+  const totals=calculation.totals;
+  const payment=(key:'thales'|'pam'|'withdrawal',label:string)=>data&&<div className="grid gap-3 sm:grid-cols-2"><Field label={`${label} · pago`}><MoneyInput label={`${label} pago`} value={data.payments[`${key}Cents`]} onChange={n=>change('payments',{...data.payments,[`${key}Cents`]:n})}/></Field><Field label="Pago em"><input aria-label={`${label} pago em`} type="date" className={input} value={data.payments[`${key}On`]} onChange={e=>change('payments',{...data.payments,[`${key}On`]:e.target.value})}/></Field></div>;
+  const movementEditor=(key:'shopeeReceipts'|'shopeeCosts'|'withdrawalDeductions',name:string)=>data&&<Editor<MonthlyMovement> name={name} rows={data[key]} onRemove={id=>remove(key,id)} onAdd={()=>change(key,[...data[key],{id:crypto.randomUUID(),date:data.start,description:'',amountCents:0}])} columns={[
+    {label:'Data',render:(r,i)=><input type="date" aria-label={`${name} data ${i+1}`} className={input} value={r.date} onChange={e=>updateRow(key,r.id,{date:e.target.value})}/>},
+    {label:'Descrição',render:(r,i)=><input aria-label={`${name} descrição ${i+1}`} maxLength={300} className={`${input} min-w-60`} value={r.description} onChange={e=>updateRow(key,r.id,{description:e.target.value})}/>},
+    {label:'Valor (R$)',render:(r,i)=><MoneyInput label={`${name} valor ${i+1}`} value={r.amountCents} onChange={n=>updateRow(key,r.id,{amountCents:n})}/>},
+  ]}/>;
+  return <div className="mx-auto w-full max-w-[1600px] space-y-5">
+    <div className="flex flex-wrap items-start justify-between gap-4"><div><h1 className="text-2xl font-black text-slate-900">Fechamento mensal</h1><p className="mt-1 text-sm text-slate-600">Acertos, contas e pagamentos da administração.</p></div><div className="flex flex-wrap gap-2">
+      <button type="button" className={button} disabled={busy||loading} onClick={refresh}><RefreshCw size={16}/>Recarregar mês</button>
+      {data&&<button type="button" className={button} disabled={!totals} onClick={()=>{if(totals)exportToCsv(`fechamento-${month}`,['Informação','Valor (R$)'],[['Mês',month],['Lucro lojas',totals.shopTotalCents===null?'Pendente':totals.shopTotalCents/100],['Lucro Shopee',totals.shopeeProfitCents/100],['Saídas',totals.totalOutflowsCents/100],['Lucro líquido',totals.netProfitCents===null?'Pendente':totals.netProfitCents/100],['PAM',totals.pamCents===null?'Pendente':totals.pamCents/100],['Reserva',totals.reserveCents===null?'Pendente':totals.reserveCents/100],['Retirada',totals.withdrawalCents===null?'Pendente':totals.withdrawalCents/100]]);}}><Download size={16}/>Exportar resumo</button>}
+    </div></div>
+    <div className="flex flex-wrap items-end gap-4 rounded-xl border bg-white p-4"><Field label="Mês de referência"><input aria-label="Mês de referência" type="month" min="2000-01" max="2100-12" className={input} value={month} disabled={busy} onChange={e=>chooseMonth(e.target.value)}/></Field>
+      {months.length>0&&<Field label="Meses salvos"><select aria-label="Meses salvos" value={months.some(m=>m.month===month)?month:''} className={input} disabled={busy} onChange={e=>chooseMonth(e.target.value)}><option value="">Selecione</option>{months.map(m=><option key={m.month} value={m.month}>{m.month.split('-').reverse().join('/')} · {m.status==='closed'?'Fechado':'Rascunho'}</option>)}</select></Field>}
+      {data&&<p className="pb-2 text-sm font-semibold text-emerald-800">{locked?'Mês fechado':dirty?'Alterações não salvas':record?'Salvo':'Novo mês'}</p>}
+    </div>
+    {error&&<p role="alert" className="rounded-xl bg-rose-50 p-4 text-sm text-rose-800">{error}</p>}{notice&&<p role="status" className="rounded-xl bg-emerald-50 p-4 text-sm text-emerald-900">{notice}</p>}
+    {loading?<p role="status">Carregando fechamento mensal…</p>:data&&<>
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4"><Metric label="Lucro lojas + frete" value={totals?.shopTotalCents}/><Metric label="Lucro Shopee" value={totals?.shopeeProfitCents}/><Metric label="Saídas do mês" value={totals?.totalOutflowsCents}/><Metric label="Lucro líquido" value={totals?.netProfitCents}/></div>
+      <div className="flex gap-2 overflow-auto border-b pb-3" role="tablist" aria-label="Seções do fechamento mensal">{sections.map((name,index)=><button key={name} type="button" id={`monthly-tab-${index}`} aria-controls="monthly-panel" tabIndex={tab===name?0:-1} role="tab" aria-selected={tab===name} onKeyDown={event=>{if(!['ArrowLeft','ArrowRight','Home','End'].includes(event.key))return;event.preventDefault();const next=event.key==='Home'?0:event.key==='End'?sections.length-1:(index+(event.key==='ArrowRight'?1:-1)+sections.length)%sections.length;setTab(sections[next]);document.getElementById(`monthly-tab-${next}`)?.focus();}} onClick={()=>setTab(name)} className={`${button} whitespace-nowrap ${tab===name?'!bg-slate-900 text-white':''}`}>{name}</button>)}</div>
+      {calculation.error&&<p role="status" className="text-sm text-amber-800">{calculation.error}</p>}
+      <fieldset disabled={locked||busy} className="min-w-0 space-y-5" id="monthly-panel" role="tabpanel" aria-labelledby={`monthly-tab-${sections.indexOf(tab)}`}>
+        {tab==='Resumo'&&<>
+          <section className="space-y-4 rounded-xl border bg-white p-5"><h2 className="font-bold">Lucro das lojas</h2><div className="grid gap-3 sm:grid-cols-3"><Field label="Período inicial"><input aria-label="Período inicial" type="date" className={input} value={data.start} onChange={e=>{change('start',e.target.value);change('shop',{...data.shop,snapshot:null});}}/></Field><Field label="Período final"><input aria-label="Período final" type="date" className={input} value={data.end} onChange={e=>{change('end',e.target.value);change('shop',{...data.shop,snapshot:null});}}/></Field><Field label="Origem dos valores"><select className={input} aria-label="Origem dos valores" value={data.shop.mode} onChange={e=>change('shop',{...data.shop,mode:e.target.value as 'erp'|'manual'})}><option value="erp">Lucratividade do ERP</option><option value="manual">Informar manualmente</option></select></Field></div>
+          {data.shop.mode==='erp'?<><button type="button" className={button} onClick={()=>void capture()}><RefreshCw size={15}/>Atualizar lucro das lojas</button>{data.shop.snapshot?<p className="text-sm text-slate-600">{data.shop.snapshot.saleCount} pedidos · {data.shop.snapshot.pendingCostCount} com custo pendente · consultado em {new Date(data.shop.snapshot.capturedAt).toLocaleString('pt-BR')}</p>:<p className="text-sm text-slate-600">Consulte a lucratividade para trazer o lucro dos produtos e o frete cobrado deste período.</p>}</>:<div className="grid gap-3 sm:grid-cols-3"><Field label="Lucro dos produtos"><MoneyInput signed label="Lucro dos produtos manual" value={data.shop.profitCents} onChange={n=>change('shop',{...data.shop,profitCents:n})}/></Field><Field label="Frete cobrado"><MoneyInput label="Frete lojas manual" value={data.shop.shippingCents} onChange={n=>change('shop',{...data.shop,shippingCents:n})}/></Field><Field label="Origem / observação"><input aria-label="Origem do lucro manual" className={input} maxLength={2000} value={data.shop.reason} onChange={e=>change('shop',{...data.shop,reason:e.target.value})}/></Field></div>}
+          <p className="text-xs text-slate-500">Lucro lojas = lucro dos produtos + frete cobrado. O custo do motoboy entra em Saídas, na seção Entregas.</p>
+        </section>
+        <div className="grid gap-3 sm:grid-cols-3"><Metric label="Pagamento PAM" value={totals?.pamCents}/><Metric label="Fundo de reserva" value={totals?.reserveCents}/><Metric label="Saldo para retirada Danilo" value={totals?.withdrawalCents}/></div>
+        <section className="grid gap-5 rounded-xl border bg-white p-5 lg:grid-cols-2"><div className="space-y-3"><h2 className="font-bold">Acerto PAM</h2>{payment('pam','PAM')}<p className="text-sm">Saldo: <strong>{cash(totals?.pamBalanceCents)}</strong></p></div><div className="space-y-3"><h2 className="font-bold">Acerto retirada Danilo</h2>{payment('withdrawal','Retirada')}<p className="text-sm">Saldo: <strong>{cash(totals?.withdrawalBalanceCents)}</strong></p></div></section>
+        {movementEditor('withdrawalDeductions','Descontos e adiantamentos da retirada')}
+        <Field label="Observações do fechamento"><textarea aria-label="Observações do fechamento" rows={3} maxLength={10000} className={input} value={data.notes} onChange={e=>change('notes',e.target.value)}/></Field>
+        </>}
+        {tab==='Contas'&&<>
+          <div className="grid gap-3 sm:grid-cols-3"><Metric label="Contas e despesas" value={totals?.expensesCents}/><Metric label="Pago nas contas" value={totals?.expensesPaidCents}/><Metric label="Saldo das contas" value={totals?.expensesBalanceCents}/></div>
+          <button type="button" className={button} disabled={!!data.expenses.length} onClick={()=>void copyAccounts()}>Copiar contas do mês anterior</button>
+          <Editor<MonthlyExpense> name="Contas" rows={data.expenses} onRemove={id=>remove('expenses',id)} onAdd={()=>change('expenses',[...data.expenses,{id:crypto.randomUUID(),description:'',reference:month,amountCents:0,reductionCents:0,dueDate:'',paidCents:0,paidOn:''}])} columns={[
+            {label:'Descrição',render:(r,i)=><input aria-label={`Conta descrição ${i+1}`} className={`${input} min-w-56`} value={r.description} maxLength={300} onChange={e=>updateRow('expenses',r.id,{description:e.target.value})}/>},
+            {label:'Referência',render:(r,i)=><input aria-label={`Conta referência ${i+1}`} className={input} value={r.reference} maxLength={100} onChange={e=>updateRow('expenses',r.id,{reference:e.target.value})}/>},
+            {label:'Valor (R$)',render:(r,i)=><MoneyInput label={`Conta valor ${i+1}`} value={r.amountCents} onChange={n=>updateRow('expenses',r.id,{amountCents:n})}/>},
+            {label:'Redução (R$)',render:(r,i)=><MoneyInput label={`Conta redução ${i+1}`} value={r.reductionCents} onChange={n=>updateRow('expenses',r.id,{reductionCents:n})}/>},
+            {label:'Vencimento',render:(r,i)=><input aria-label={`Conta vencimento ${i+1}`} type="date" className={input} value={r.dueDate} onChange={e=>updateRow('expenses',r.id,{dueDate:e.target.value})}/>},
+            {label:'Pago (R$)',render:(r,i)=><MoneyInput label={`Conta pago ${i+1}`} value={r.paidCents} onChange={n=>updateRow('expenses',r.id,{paidCents:n})}/>},
+            {label:'Pago em',render:(r,i)=><input aria-label={`Conta pago em ${i+1}`} type="date" className={input} value={r.paidOn} onChange={e=>updateRow('expenses',r.id,{paidOn:e.target.value})}/>},
+            {label:'Saldo',render:r=><span className="whitespace-nowrap">{cash(r.amountCents-r.reductionCents-r.paidCents)}</span>},
+          ]}/>
+          <section className="space-y-3 rounded-xl border bg-white p-5"><h2 className="font-bold">Thales · custo fixo mensal</h2><p className="text-sm">Valor neste mês: <strong>{cash(totals?.thalesCents)}</strong>. A vigência e o valor ficam na seção Regras.</p>{payment('thales','Thales')}<p className="text-sm">Saldo: <strong>{cash(totals?.thalesBalanceCents)}</strong></p></section>
+          <p className="text-sm text-slate-600">Saídas = contas após reduções + custo fixo Thales + custo das entregas. Esses dois custos já entram automaticamente; não repita nas contas.</p>
+        </>}
+        {tab==='Shopee'&&<><div className="grid gap-3 sm:grid-cols-3"><Metric label="Saques e recebimentos" value={totals?.shopeeReceivedCents}/><Metric label="Custos Shopee" value={totals?.shopeeCostCents}/><Metric label="Lucro Shopee" value={totals?.shopeeProfitCents}/></div>{movementEditor('shopeeReceipts','Recebimentos Shopee')}{movementEditor('shopeeCosts','Custos Shopee')}<p className="text-sm text-slate-600">Identifique Pamda ou Dama na descrição de cada saque. Os custos desta seção já são descontados do lucro Shopee.</p></>}
+        {tab==='Entregas'&&<><div className="grid gap-3 sm:grid-cols-3"><Metric label="Custo entregas + combustível" value={totals?.courierCostCents}/><Metric label="Acerto após dinheiro e adiantamentos" value={totals?.courierDueCents}/><Metric label="Saldo motoboy" value={totals?.courierBalanceCents}/></div><Editor<CourierEntry> name="Entregas" rows={data.couriers} onRemove={id=>remove('couriers',id)} onAdd={()=>change('couriers',[...data.couriers,{id:crypto.randomUUID(),date:data.start,name:'',quantity:0,rateCents:1000,gasCents:0,cashCents:0,advanceCents:0,paidCents:0}])} columns={[
+          {label:'Data',render:(r,i)=><input aria-label={`Entrega data ${i+1}`} type="date" className={input} value={r.date} onChange={e=>updateRow('couriers',r.id,{date:e.target.value})}/>},
+          {label:'Motoboy',render:(r,i)=><input aria-label={`Entrega motoboy ${i+1}`} className={input} value={r.name} onChange={e=>updateRow('couriers',r.id,{name:e.target.value})}/>},
+          {label:'Quantidade',render:(r,i)=><input aria-label={`Entrega quantidade ${i+1}`} type="number" min="0" step="1" className={input} value={r.quantity} onChange={e=>updateRow('couriers',r.id,{quantity:Number(e.target.value)})}/>},
+          ...([['rateCents','Por entrega'],['gasCents','Combustível'],['cashCents','Dinheiro recebido'],['advanceCents','Adiantamento'],['paidCents','Pago (+) / recebido (-)']] as const).map(([key,label])=>({label,render:(r:CourierEntry,i:number)=><MoneyInput signed={key==='paidCents'} label={`Entrega ${label.toLowerCase()} ${i+1}`} value={r[key]} onChange={n=>updateRow('couriers',r.id,{[key]:n})}/>})),
+          {label:'Saldo',render:r=><span className="whitespace-nowrap">{cash(r.quantity*r.rateCents+r.gasCents-r.cashCents-r.advanceCents-r.paidCents)}</span>},
+        ]}/><p className="text-sm text-slate-600">Saldo positivo: falta pagar ao motoboy. Negativo: falta receber dele. O dinheiro recebido e os adiantamentos não diminuem o custo econômico das entregas.</p></>}
+        {tab==='Folha ponto'&&<><div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">{[['Trabalhadas',totals?.workedMinutes],['Previstas',totals?.expectedMinutes],['Extras',totals?.extraMinutes],['Saldo negativo',totals?.missingMinutes]].map(([label,value])=><div key={label} className="rounded-xl border bg-white p-4 text-sm"><p>{label}</p><strong>{typeof value==='number'?hours(value):'Confira as linhas'}</strong></div>)}<Metric label="Valor pelas horas configuradas" value={totals?.timeValueCents}/></div><Editor<TimeEntry> name="Folha ponto" rows={data.timeEntries} onRemove={id=>remove('timeEntries',id)} onAdd={()=>change('timeEntries',[...data.timeEntries,{id:crypto.randomUUID(),date:data.start,name:'',start:'08:00',end:'17:00',breakMinutes:60,expectedMinutes:480,hourCents:0,extraHourCents:0}])} columns={[
+          {label:'Data',render:(r,i)=><input aria-label={`Ponto data ${i+1}`} type="date" className={input} value={r.date} onChange={e=>updateRow('timeEntries',r.id,{date:e.target.value})}/>},
+          {label:'Nome',render:(r,i)=><input aria-label={`Ponto nome ${i+1}`} className={input} value={r.name} onChange={e=>updateRow('timeEntries',r.id,{name:e.target.value})}/>},
+          ...(['start','end'] as const).map((key,i)=>({label:i?'Saída':'Entrada',render:(r:TimeEntry,index:number)=><input aria-label={`Ponto ${i?'saída':'entrada'} ${index+1}`} type="time" className={input} value={r[key]} onChange={e=>updateRow('timeEntries',r.id,{[key]:e.target.value})}/>})),
+          ...([['breakMinutes','Intervalo (min)'],['expectedMinutes','Previsto (min)']] as const).map(([key,label])=>({label,render:(r:TimeEntry,i:number)=><input aria-label={`Ponto ${label} ${i+1}`} type="number" min="0" max="1440" className={input} value={r[key]} onChange={e=>updateRow('timeEntries',r.id,{[key]:Number(e.target.value)})}/>})),
+          {label:'Valor hora',render:(r,i)=><MoneyInput label={`Ponto valor hora ${i+1}`} value={r.hourCents} onChange={n=>updateRow('timeEntries',r.id,{hourCents:n})}/>},
+          {label:'Valor hora extra',render:(r,i)=><MoneyInput label={`Ponto valor hora extra ${i+1}`} value={r.extraHourCents} onChange={n=>updateRow('timeEntries',r.id,{extraHourCents:n})}/>},
+          {label:'Trabalhado',render:r=>{try{return hours(timeEntryTotals(r).worked);}catch{return 'Confira horários';}}},
+        ]}/><p className="text-sm text-slate-600">Configure jornada, intervalo e valores conforme o seu acerto. Este controle de horas não lança pagamentos nas contas automaticamente.</p></>}
+        {tab==='Regras'&&<section className="space-y-4 rounded-xl border bg-white p-5"><h2 className="font-bold">Regras deste fechamento</h2><div className="grid gap-4 sm:grid-cols-3"><Field label="PAM · percentual do lucro líquido (%)"><input aria-label="PAM percentual" type="number" min="0" max="100" step="0.01" className={input} value={data.rules.pamBps/100} onChange={e=>change('rules',{...data.rules,pamBps:Math.round(Number(e.target.value)*100)})}/></Field><Field label="PAM · mínimo mensal"><MoneyInput label="PAM mínimo mensal" value={data.rules.pamMinimumCents} onChange={n=>change('rules',{...data.rules,pamMinimumCents:n})}/></Field><Field label="Reserva após PAM (%)"><input aria-label="Reserva percentual" type="number" min="0" max="100" step="0.01" className={input} value={data.rules.reserveBps/100} onChange={e=>change('rules',{...data.rules,reserveBps:Math.round(Number(e.target.value)*100)})}/></Field><Field label="Thales · custo fixo mensal"><MoneyInput label="Thales custo fixo mensal" value={data.rules.thalesCents} onChange={n=>change('rules',{...data.rules,thalesCents:n})}/></Field><Field label="Thales · primeiro mês"><input aria-label="Thales primeiro mês" type="month" className={input} value={data.rules.thalesFrom} onChange={e=>change('rules',{...data.rules,thalesFrom:e.target.value})}/></Field><Field label="Thales · último mês (opcional)"><input aria-label="Thales último mês" type="month" className={input} value={data.rules.thalesUntil||''} onChange={e=>change('rules',{...data.rules,thalesUntil:e.target.value||null})}/></Field></div><p className="text-sm text-slate-600">PAM recebe o maior valor entre o percentual e o mínimo. A reserva usa apenas o saldo positivo após PAM. O restante, após descontos e adiantamentos, fica para a retirada Danilo, sem divisão com Thales. Novos meses usam as regras do mês salvo mais recente; meses já salvos mantêm suas próprias regras.</p></section>}
+      </fieldset>
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-white p-4"><p className="text-xs text-slate-500">{record?`Revisão ${record.version} · salvo em ${new Date(record.updatedAt).toLocaleString('pt-BR')}`:'Este mês ainda não foi salvo.'}</p><div className="flex flex-wrap gap-2">{locked?<button type="button" disabled={busy} className={button} onClick={()=>setReopen(true)}>Reabrir mês</button>:<><button type="button" disabled={busy||!!calculation.error} className={button} onClick={()=>void save('save')}><Save size={16}/>{busy?'Salvando…':'Salvar rascunho'}</button><button type="button" disabled={busy||!totals||totals.netProfitCents===null} className={`${button} !bg-emerald-700 text-white`} onClick={()=>setConfirmClose(true)}><Check size={16}/>Fechar mês</button></>}</div></div>
+    </>}
+    {(confirmClose||reopen)&&<div className="fixed inset-0 z-[60] grid place-items-center bg-slate-900/60 p-4"><section ref={dialogRef} tabIndex={-1} role="dialog" aria-modal="true" aria-label={reopen?'Reabrir mês':'Fechar mês'} className="w-full max-w-lg space-y-4 rounded-2xl bg-white p-5"><h2 className="font-bold">{reopen?'Reabrir fechamento mensal':'Fechar mês '+month.split('-').reverse().join('/')}</h2>{reopen?<Field label="Motivo da reabertura"><textarea aria-label="Motivo da reabertura" rows={3} maxLength={1000} className={input} value={reason} onChange={e=>setReason(e.target.value)}/></Field>:<><p className="text-sm">Os valores deste mês ficarão preservados para consulta. Os pagamentos informados são registros do seu acerto.</p><p className="text-sm">PAM: <strong>{cash(totals?.pamCents)}</strong> · Reserva: <strong>{cash(totals?.reserveCents)}</strong> · Retirada: <strong>{cash(totals?.withdrawalCents)}</strong></p></>}<div className="flex flex-wrap gap-2"><button type="button" disabled={busy||reopen&&reason.trim().length<3} className={`${button} !bg-emerald-700 text-white`} onClick={()=>void save(reopen?'reopen':'close')}>{busy?'Salvando…':reopen?'Confirmar reabertura':'Confirmar fechamento'}</button><button type="button" disabled={busy} className={button} onClick={()=>{setConfirmClose(false);setReopen(false);}}>Voltar</button></div></section></div>}
+  </div>;
+}

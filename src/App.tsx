@@ -31,7 +31,9 @@ const UsersView = lazyView(() => import('./views/managerial/UsersView').then(mod
 const AuditLogsView = lazyView(() => import('./views/managerial/AuditLogsView').then(module => ({ default: module.AuditLogsView })));
 const SettingsView = lazyView(() => import('./views/managerial/SettingsView').then(module => ({ default: module.SettingsView })));
 const InventoryView = lazyView(() => import('./views/inventory/InventoryView').then(module => ({ default: module.InventoryView })));
+const MonthlyClosingView=lazyView(()=>import('./views/financial/MonthlyClosingView').then(m=>({default:m.MonthlyClosingView})));
 const tabViews={
+  fechamento_mensal: MonthlyClosingView,
   dashboard: DashboardView,
   nova_venda: NewSaleView,
   vendas: SalesListView,
@@ -68,6 +70,7 @@ export function App() {
   const [newSaleCustomer, setNewSaleCustomer] = useState<CustomerContext | null>(null);
   const [saleSuccess,setSaleSuccess]=useState('');
   const [navigationError,setNavigationError]=useState('');
+  const [monthlyClosingDirty,setMonthlyClosingDirty]=useState(false);
   const [navigating,setNavigating]=useState(false);
   const leavingSale=useRef(false);
   const preloadTab=(tab:ActiveTab)=>{if(currentUser&&canAccessTab(currentUser,tab))tabViews[tab].preload();};
@@ -150,6 +153,7 @@ export function App() {
     setCurrentTab('vendas');
   };
   const navigate = async(tab: ActiveTab) => {
+    if(currentTab==='fechamento_mensal'&&tab!==currentTab&&monthlyClosingDirty&&!window.confirm('Há alterações não salvas no fechamento mensal. Sair sem salvar?'))return;
     if(leavingSale.current||openingNewSale.current)return;
     preloadTab(tab);
     if(currentTab==='nova_venda'&&tab!=='nova_venda'&&currentUser){
@@ -193,6 +197,7 @@ export function App() {
     custo_estoque: 'Custo Total de Estoque',
     usuarios: 'Controle de Usuários e Permissões',
     logs: 'Auditoria & Logs Administrativos',
+    fechamento_mensal: 'Fechamento mensal',
     configuracoes: 'Configurações Globais & Chave Pix',
   };
 
@@ -206,7 +211,7 @@ export function App() {
         onSelectTab={navigate}
         onPreloadTab={preloadTab}
         currentUser={currentUser}
-        onLogout={() => { void authService.logout(); }}
+        onLogout={() => {if(!monthlyClosingDirty||window.confirm('Há alterações não salvas no fechamento mensal. Sair sem salvar?'))void authService.logout();}}
         mobileOpen={mobileMenuOpen}
         onCloseMobile={() => setMobileMenuOpen(false)}
       />
@@ -288,6 +293,7 @@ export function App() {
 
           {currentTab === 'logs' && <AuditLogsView />}
 
+          {currentTab==='fechamento_mensal'&&<MonthlyClosingView onDirtyChange={setMonthlyClosingDirty}/>}
           {currentTab === 'configuracoes' && <SettingsView />}
           </Suspense></ViewBoundary>
           )}
