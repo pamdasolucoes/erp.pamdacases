@@ -1,0 +1,46 @@
+import {test} from 'node:test';import assert from 'node:assert/strict';import {readFile} from 'node:fs/promises';import {PGlite} from '@electric-sql/pglite';
+import {uuid} from './fixtures/customerRows';
+const read=(path:string)=>readFile(new URL(path,import.meta.url),'utf8');
+test('edição de venda fechada corrige produto, estoque, pagamentos e recibo com permissão, versão e repetição segura',async()=>{
+ const db=new PGlite();try{
+  await db.exec(`create role authenticated;create role anon;create schema auth;create schema pamda_private;
+   create function auth.uid() returns uuid language sql stable as $$select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$;
+   create function public.pamda_has_permission(text) returns boolean language sql stable as $$select auth.uid() is not null and coalesce(current_setting('test.allowed',true),'true')<>'false'$$;
+   create function pamda_private.require_permission(text) returns void language plpgsql as $$begin if not public.pamda_has_permission($1) then raise exception 'Sem permissão' using errcode='42501';end if;end$$;
+   create function pamda_private.audit(text,uuid,jsonb) returns void language sql as $$select$$;
+   create table pamda_private.sale_maintenance_requests(request_key uuid primary key,actor uuid,sale_id uuid,payload jsonb);
+   create function public.pamda_sale_movement_read(p_sale_id uuid) returns jsonb language plpgsql as $$declare s record;begin select p_sale_id id into s;return jsonb_build_object('can_maintain',public.pamda_has_permission('sales.maintain'));end$$;`);
+  await db.exec(await read('./fixtures/closed-sale-schema.sql'));await db.exec(await read('./fixtures/closed-sale-production.sql'));
+  await db.exec('alter table public.erp_sale_items add primary key(id);alter table public.erp_real_payments add primary key(id);');
+  await db.exec(await read('../supabase/migrations/20261125152209_closed_sale_full_maintenance.sql'));
+  await db.exec(`create function public.pamda_numera_pedido_ao_adicionar_item() returns trigger language plpgsql as $$declare v_status text;begin select status into v_status from public.erp_sales where id=NEW.sale_id;IF v_status<>'draft' THEN raise exception 'Itens não podem ser adicionados a venda encerrada';end if;return NEW;end$$;create trigger item_guard after insert on public.erp_sale_items for each row execute function public.pamda_numera_pedido_ao_adicionar_item();`);
+  await db.exec(await read('../supabase/migrations/20261125152414_closed_sale_maintenance_item_guard.sql'));
+  await db.query("select set_config('request.jwt.claim.sub',$1,false)",[uuid(1)]);
+  const sale=uuid(10),physical=uuid(20),service=uuid(21),item=uuid(30),payment=uuid(40),stamp='2026-11-10T12:00:00Z';
+  await db.query("insert into public.products(id,code,name,type,active,current_cost,sale_price,controls_inventory,current_inventory) values($1,'CAPA','Capa','fisico',true,5,25,true,9),($2,'IMP','Impressão capa cedida','servico',true,2,20,false,0)",[physical,service]);
+  await db.query("insert into public.erp_sales(id,status,order_number,subtotal,confirmed_at,updated_at,created_at) values($1,'draft',10122,25,$2,$2,$2)",[sale,stamp]);
+  await db.query("insert into public.erp_sale_items(id,sale_id,product_id,product_code_snapshot,description_snapshot,quantity,negotiated_unit_price,unit_cost_snapshot,direct_unit_cost_snapshot,cost_verified) values($1,$2,$3,'CAPA','Capa',1,25,5,5,true)",[item,sale,physical]);
+  await db.query("update public.erp_sales set status='confirmed' where id=$1",[sale]);
+  await assert.rejects(()=>db.query('insert into public.erp_sale_items(sale_id) values($1)',[sale]),/encerrada/);
+  await db.query("insert into public.erp_stock_movements(product_id,sale_id,quantity,kind,balance_after) values($1,$2,-1,'sale',9)",[physical,sale]);
+  await db.exec("insert into public.erp_payment_methods(code,name,active) values('pix','Pix',true),('dinheiro','Dinheiro',true);insert into public.erp_operational_settings(singleton,production_after_payment) values(true,false)");
+  await db.query("insert into public.erp_real_payments(id,sale_id,method_code,amount,status,channel,paid_at) values($1,$2,'pix',25,'paid','erp',$3)",[payment,sale,stamp]);
+  await db.query('insert into public.erp_receivables(sale_id,total,paid,due_date) values($1,25,25,$2)',[sale,'2026-11-10']);await db.query("insert into public.erp_sale_receipts(sale_id,receipt_number,receipt_snapshot,issued_at) values($1,'10122','{}',$2)",[sale,stamp]);
+  const doc={items:[{product_id:service,quantity:1,unit_price:20,customization:{model:'Modelo QA'}}],freight:0,discount:0,discount_reason:'',notes:'Capa cedida pelo cliente',due_date:'2026-11-10',payments:[{id:payment,method_code:'pix',amount:20,status:'paid',scheduled_for:null,reference:''}]};
+  const edit=async(document=doc,key=uuid(50),expected=stamp)=>db.query('select public.pamda_sale_movement_edit($1,$2::jsonb,$3,$4,$5)',[sale,JSON.stringify(document),'Correção do produto entregue',expected,key]);
+  await db.exec("select set_config('test.allowed','false',false)");await assert.rejects(()=>edit(),/Sem permissão/);await db.exec("select set_config('test.allowed','true',false)");
+  await assert.rejects(()=>edit({...doc,payments:[{...doc.payments[0],amount:25}]}),/Soma dos pagamentos/);assert.equal((await db.query<any>('select current_inventory from products where id=$1',[physical])).rows[0].current_inventory,'9.00');
+  await edit();await edit();const saved=(await db.query<any>('select * from erp_sales where id=$1',[sale])).rows[0];assert.equal(saved.status,'confirmed');assert.equal(saved.total,'20.00');assert.equal(saved.order_number,10122);assert.equal(saved.confirmed_at.toISOString(),new Date(stamp).toISOString());
+  assert.equal((await db.query<any>('select count(*) from pamda_private.sale_edit_context')).rows[0].count,0);
+  assert.equal((await db.query<any>('select current_inventory from products where id=$1',[physical])).rows[0].current_inventory,'10.00');
+  const bill=(await db.query<any>('select * from erp_receivables where sale_id=$1',[sale])).rows[0];assert.equal(bill.total,'20.00');assert.equal(bill.paid,'20.00');
+  const changed=(await db.query<any>('select * from erp_sale_items where sale_id=$1',[sale])).rows[0];assert.equal(changed.product_id,service);assert.equal(Number(changed.unit_cost_snapshot),2);
+  const receipt=(await db.query<any>('select * from erp_sale_receipts where sale_id=$1',[sale])).rows[0];assert.equal(receipt.receipt_number,'10122');assert.equal(receipt.receipt_snapshot.total,20);
+  assert.equal((await db.query<any>('select count(*) from erp_sale_events where sale_id=$1',[sale])).rows[0].count,1);await assert.rejects(()=>edit(doc,uuid(51)),/outro operador/);
+  const next={...doc,items:[{id:changed.id,product_id:service,quantity:1,unit_price:20,customization:{model:'Modelo QA'}}],payments:[{...doc.payments[0],method_code:'dinheiro'}]};
+  await db.query('update products set current_cost=99 where id=$1',[service]);await edit(next,uuid(52),saved.updated_at.toISOString());assert.equal(Number((await db.query<any>('select unit_cost_snapshot from erp_sale_items where id=$1',[changed.id])).rows[0].unit_cost_snapshot),2);
+  assert.equal((await db.query<any>('select count(*) from erp_stock_movements where sale_id=$1',[sale])).rows[0].count,2);
+  const stamp2=(await db.query<any>('select updated_at from erp_sales where id=$1',[sale])).rows[0].updated_at.toISOString();await db.query("update erp_real_payments set channel='site' where id=$1",[payment]);await assert.rejects(()=>edit({...next,payments:[{...next.payments[0],amount:19}]},uuid(53),stamp2),/externo/);
+  await db.exec('set role anon');await assert.rejects(()=>edit(),/permission denied/);await db.exec('reset role');
+ }finally{await db.close();}
+});

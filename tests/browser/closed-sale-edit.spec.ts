@@ -1,0 +1,26 @@
+import {test,expect} from '@playwright/test';import {setup} from './support/mockErp';import {uuid} from '../fixtures/customerRows';import {productId,serviceId} from '../fixtures/officialProducts';
+test('operador autorizado troca produto, ajusta pagamento e mantém venda fechada; resposta perdida não duplica',async({page},testInfo)=>{
+ const app=await setup(page,'gerencial',{stayOnDashboard:true,permissions:{'reports.read':true,'module.relatorio_vendas':true,'module.relatorio_clientes':true,'sales.maintain':true,'sales.read':true,'module.vendas':true}});
+ const sale={id:uuid(81000),customer_id:uuid(1),branch_id:uuid(1),order_number:10122,status:'confirmed',is_test:false,updated_at:'2026-11-10T12:00:00Z',confirmed_at:'2026-11-10T12:00:00Z',created_at:'2026-11-10T12:00:00Z',customer_snapshot:{code:'350',name:'Loja sintética'},branch_snapshot:{name:'Matriz'},seller_snapshot:'Operador QA',subtotal:25,discount_amount:0,shipping_charged:0,total:25,notes:''};
+ let items=[{id:uuid(81001),product_id:productId(1),product_code_snapshot:'201',description_snapshot:'Capa sintética',quantity:1,negotiated_unit_price:25,line_subtotal:25,customization:{model:'Modelo QA'}}];
+ const payment={id:uuid(81002),method_code:'pix',method_name:'Pix',amount:25,status:'paid',channel:'erp',reference:null,scheduled_for:null};let stamp=sale.updated_at;let fail=true;const keys:string[]=[],writes:any[]=[];
+ await page.route('**/rest/v1/rpc/pamda_operation_read',r=>r.fulfill({json:{rows:[{...sale,customer_name:'Loja sintética'}],expenses:0}}));
+ await page.route('**/rest/v1/rpc/pamda_sale_movement_read',r=>r.fulfill({json:{sale,items,payments:[payment],methods:[{code:'pix',name:'Pix'},{code:'dinheiro',name:'Dinheiro'}],events:[],can_maintain:true,can_edit_sale:true,receivable:{due_date:'2026-11-10'}}}));
+ await page.route('**/rest/v1/rpc/pamda_sale_movement_edit',r=>{const b=r.request().postDataJSON();writes.push(b);expect(b.p_expected_updated_at).toBe(stamp);expect(b.p_document.items).toHaveLength(1);expect(b.p_document.items[0].product_id).toBe(serviceId(1));expect(b.p_document.payments[0].amount).toBe(20);
+  if(!keys.includes(b.p_request_key)){keys.push(b.p_request_key);sale.subtotal=20;sale.total=20;sale.updated_at='2026-11-19T12:00:00Z';payment.amount=20;items=[{...items[0],product_id:serviceId(1),description_snapshot:'Serviço de impressão 1',negotiated_unit_price:20,line_subtotal:20}];}
+  if(fail){fail=false;return r.fulfill({status:503,json:{message:'Resposta perdida'}});}return r.fulfill({json:sale.id});});
+ await page.getByRole('button',{name:'Relatório de Vendas',exact:true}).click();await page.getByRole('button',{name:'Pedido 10122',exact:true}).click();await page.getByRole('button',{name:'Manutenção de movimento',exact:true}).click();
+ await expect(page.getByRole('form',{name:'Editar venda fechada'})).toBeVisible();await page.getByRole('button',{name:'Remover produto 1',exact:true}).click();
+ await page.getByRole('combobox',{name:'Adicionar produto na manutenção',exact:true}).fill('SKU-SERVICO-1');await page.getByRole('option').filter({hasText:'Serviço de impressão 1'}).click();
+ await expect(page.getByLabel('Preço na manutenção 1',{exact:true})).toHaveValue('20,00');await page.getByLabel('Valor corrigido 1',{exact:true}).fill('20,00');await page.getByLabel('Motivo da correção',{exact:true}).fill('Capa devolvida; foi somente impressão');
+ await page.screenshot({path:testInfo.outputPath('closed-sale-edit-desktop.png'),fullPage:true});await page.setViewportSize({width:390,height:844});expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);await page.screenshot({path:testInfo.outputPath('closed-sale-edit-mobile.png'),fullPage:true});
+ await page.getByRole('button',{name:'Salvar correção e manter fechada',exact:true}).click();await expect(page.getByRole('form').getByRole('alert')).toContainText('Resultado não confirmado');
+ await page.getByRole('button',{name:'Salvar correção e manter fechada',exact:true}).click();await expect(page.getByRole('dialog').getByRole('status')).toHaveText('Venda corrigida e mantida fechada.');expect(sale.status).toBe('confirmed');expect(writes).toHaveLength(2);expect(keys).toHaveLength(1);expect(app.state.pageErrors).toEqual([]);
+});
+
+test('consulta sem autorização não mostra manutenção nem cancelamento',async({page})=>{
+ await setup(page,'gerencial',{stayOnDashboard:true,permissions:{'reports.read':true,'module.relatorio_vendas':true,'module.relatorio_clientes':true}});
+ const sale={id:uuid(82000),order_number:10123,status:'confirmed',customer_snapshot:{name:'Loja QA'},branch_snapshot:{name:'Matriz'},total:25};
+ await page.route('**/rest/v1/rpc/pamda_operation_read',r=>r.fulfill({json:{rows:[sale],expenses:0}}));await page.route('**/rest/v1/rpc/pamda_sale_movement_read',r=>r.fulfill({json:{sale,items:[],payments:[],events:[],methods:[],can_maintain:false,can_edit_sale:false}}));
+ await page.getByRole('button',{name:'Relatório de Vendas',exact:true}).click();await page.getByRole('button',{name:'Pedido 10123',exact:true}).click();await expect(page.getByRole('button',{name:'Manutenção de movimento',exact:true})).toHaveCount(0);await expect(page.getByRole('button',{name:'Cancelar venda fechada',exact:true})).toHaveCount(0);
+});

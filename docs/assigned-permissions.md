@@ -30,10 +30,14 @@ Também foi executado cadastro real de capa+kit e edição por gerencial autoriz
 
 Validação do navegador com APIs sintéticas: concessão e revogação sem novo login, cadastro de produto autorizado/negado, cadastro de cliente por gerencial, opções de filiais e pagamento, matriz de acessos delegada, clientes e pagamentos administrativos, redes, operações e produtos. Os testes antigos de cadastro de cliente foram atualizados para o código automático e a seleção explícita do cadastro após recarregar a página.
 
-## Instalação
-1. Revisar e aplicar supabase/review/assigned_permissions.sql como uma transação. Ele já cobre o cadastro básico; não aplicar o arquivo antigo product_create_permission.sql depois deste.
+## Instalação e conferência em produção
+Em 25/11/2026 a conferência encontrou que o SQL de revisão ainda não havia sido instalado: o cadastro estava liberado na interface, mas funções do banco continuavam exigindo administrador. A migration `20261125150951_honor_assigned_user_permissions.sql` foi aplicada, preservando os valores das permissões de usuários e perfis. Ela cobre os 17 RPCs revisados e as leituras contextuais necessárias. O teste SQL automatizado usa a própria migration publicada.
+
+Cadastro básico foi validado com as três contas não administrativas ativas que já possuíam `products.manage`, dentro de uma transação integralmente desfeita. Nenhum cadastro fictício permaneceu no banco. As demais verificações usam definições de funções em produção e testes isolados positivos e negativos; não representam execução de todas as ações administrativas sobre dados reais.
+
+1. A migration substitui a instalação manual de supabase/review/assigned_permissions.sql. Não aplicar o arquivo antigo product_create_permission.sql depois dela.
 2. Publicar a função pamda-user-admin atualizada e o frontend.
 3. Conferir as opções do usuário na tela de acessos; para combinações históricas incompletas, reativar a ação desejada e salvar os requisitos apresentados.
 4. Validar com as sessões normais dos usuários. Os testes não usaram senhas reais nem criaram produtos/clientes em produção.
 
-O envio ao GitHub, a integração da branch e a instalação em produção são estados distintos. O código local e os testes não tornam a correção ativa no ERP publicado por si só.
+As funções agora avaliam a permissão específica, mantendo as negações individuais, o bloqueio de usuários inativos e os controles de custos separados. Nenhuma permissão de administrador foi concedida aos funcionários.

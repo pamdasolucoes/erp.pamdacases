@@ -25,7 +25,7 @@ test('RPCs e RLS respeitam permissões individuais, sem permissões novas ou esc
   }
   for(const [cmd,suffix] of [['SELECT','select'],['INSERT','insert'],['UPDATE','update'],['DELETE','delete']]) await db.exec('CREATE POLICY panda_ia_tech_assets_admin_'+suffix+' ON storage.objects FOR '+cmd+' TO authenticated '+(cmd==='INSERT'?'WITH CHECK':'USING')+" (bucket_id='panda-ia-modelos' AND public.pamda_is_admin());");
   await db.exec(`CREATE FUNCTION pamda_private.require_permission(text) RETURNS void LANGUAGE plpgsql AS $$ BEGIN IF auth.uid() IS NULL OR NOT public.pamda_has_permission($1) THEN RAISE EXCEPTION 'Acesso não autorizado' USING errcode='42501'; END IF; END $$;`);
-  const sql=await read('../supabase/review/assigned_permissions.sql');
+  const sql=await read('../supabase/migrations/20261125150951_honor_assigned_user_permissions.sql');
   const definitions=async()=> (await db.query("select pg_get_functiondef(p.oid) definition from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname in ('public','private') and p.proname like 'pamda%' order by n.nspname,p.proname")).rows;
   await db.exec(sql); const once=await definitions(); await db.exec(sql); assert.deepEqual(await definitions(),once); // safe to reapply
   const id='00000000-0000-4000-8000-000000000001';

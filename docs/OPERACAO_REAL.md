@@ -48,4 +48,12 @@ Cancelamento de pedido pendente continua preservado. Venda confirmada exige proc
 
 Os avisos de segurança do Supabase sobre funções SECURITY DEFINER autenticadas refletem o padrão de RPCs com autorização interna, `search_path` vazio e execução anônima revogada. As tabelas operacionais têm RLS e não permitem escrita direta pelo navegador. A proteção contra senhas vazadas do projeto permanece desativada no serviço Auth; não foi alterada nesta entrega.
 
-Validação final: 178 testes automatizados, 19 testes de interface dos módulos/vendas e um teste de interface da conciliação e fechamento de redes. Compilação e verificação TypeScript aprovadas. A consulta individual de clientes também foi exercitada sob o papel `authenticated`, com negação após inativação.
+Validação da entrega original: 178 testes automatizados, 19 testes de interface dos módulos/vendas e um teste de interface da conciliação e fechamento de redes. Compilação e verificação TypeScript aprovadas. A consulta individual de clientes também foi exercitada sob o papel `authenticated`, com negação após inativação.
+
+## Manutenção de venda fechada
+
+A permissão `sales.maintain` autoriza corrigir os itens, quantidades, preços, personalizações, frete, desconto, observações, vencimento e os pagamentos registrados pelo ERP. A correção exige motivo e mantém a identidade, o número e a data de fechamento originais. Não cria pendência nem uma segunda venda. Pagamentos externos permanecem protegidos contra alteração manual. Custos históricos de produtos mantidos são preservados; produtos substitutos capturam os custos atuais.
+
+A atualização é atômica, verifica a versão da venda e aceita repetição da mesma operação sem duplicar estoque, cobrança ou auditoria. A troca de produtos reconcilia o consumo de estoque registrado, atualiza as tarefas do ERP e o recibo. Se a composição histórica do estoque não puder ser conciliada com o catálogo, a troca é bloqueada para evitar ajuste incorreto. Itens gerenciados pela produção do Messenger conservam as proteções do fluxo de aprovação. Agrupamentos de fechamento continuam preservando seus pedidos originais e dispõem da manutenção de pagamentos já existente.
+
+O cancelamento retira a venda dos totais operacionais e cobranças e mantém o registro no histórico. Não representa estorno bancário nem retorno físico automático ao estoque. O teste `tests/closed-sale-maintenance-homologation.sql`, integralmente desfeito, cobre a troca de capa de 25 por impressão de 20, estoque, financeiro, recibo, produção, lucratividade, repetição e cancelamento.
